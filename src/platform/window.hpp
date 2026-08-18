@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include <spdlog/spdlog.h>
+
 namespace wind::platform {
 
 struct WindowConfiguration
@@ -23,7 +25,8 @@ struct Window
   WindowConfiguration m_config{};
   SDL_Window*         m_handle{nullptr};
 
-  Window() = default;
+  explicit Window(WindowConfiguration cfg)
+      : m_config{std::move(cfg)} {};
 
   Window(const Window&)                   = delete;
   auto operator=(const Window&) -> Window = delete;
@@ -50,16 +53,20 @@ struct Window
   };
 
 
-  auto init(WindowConfiguration config) -> WindResult<Window>;
+  [[nodiscard]] auto init() noexcept -> WindResult<void>;
+
+  auto extensions() const noexcept -> void;
 
   ~Window()
   {
     if(m_handle != nullptr)
     {
       SDL_DestroyWindow(m_handle);
+#ifdef LOG_ENABLE
+      spdlog::info("window handler destroyed");
+#endif
     }
   }
 };
-
 
 }  // namespace wind::platform
