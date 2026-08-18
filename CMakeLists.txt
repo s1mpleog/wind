@@ -1,0 +1,103 @@
+cmake_minimum_required(VERSION 3.28)
+project(wind VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+endif()
+
+option(VALIDATION "Enable Vulkan validation layers" ON)
+option(RENDERER_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+option(LOG_ENABLE "Enable logging for creation and shutdown of sub-systems and useful stuffs" OFF)
+
+include(FetchContent)
+
+FetchContent_Declare(
+  SDL3
+  GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+  GIT_TAG main
+  GIT_SHALLOW TRUE
+)
+
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG v1.17.0
+  GIT_SHALLOW TRUE
+)
+
+FetchContent_Declare(
+  cpptrace
+  GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
+  GIT_TAG main
+  GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(SDL3 spdlog cpptrace)
+
+find_package(Vulkan REQUIRED)
+
+add_executable(wind
+  src/main.cc
+  src/platform/window.cc
+)
+
+configure_file(
+  ${CMAKE_SOURCE_DIR}/src/vulkan_config.hpp.in
+  ${CMAKE_BINARY_DIR}/generated/vulkan_config.hpp
+)
+
+target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)
+
+target_include_directories(wind PRIVATE src)
+
+target_link_libraries(wind PRIVATE
+  SDL3::SDL3
+  spdlog::spdlog
+  cpptrace::cpptrace
+  Vulkan::Vulkan
+)
+
+target_compile_options(wind PRIVATE
+  -Wall -Wextra -Wpedantic
+  -fno-exceptions
+  -Wno-gnu-statement-expression-from-macro-expansion
+)
+
+target_compile_definitions(wind PRIVATE
+  GLM_FORCE_DEPTH_ZERO_TO_ONE
+)
+
+if(WIN32)
+  target_compile_definitions(wind PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+endif()
+
+string(TOLOWER "${CMAKE_BUILD_TYPE}" _build_type_lower)
+if(_build_type_lower STREQUAL "debug")
+  target_compile_definitions(wind PRIVATE RENDERER_DEBUG)
+elseif(_build_type_lower STREQUAL "release")
+  target_compile_definitions(wind PRIVATE RENDERER_RELEASE)
+endif()
+
+if(LOG_ENABLE)
+  target_compile_definitions(wind PRIVATE LOG_ENABLE)
+endif()
+
+if(VALIDATION)
+  target_compile_definitions(wind PRIVATE RENDERER_VULKAN_VALIDATION)
+endif()
+
+if(RENDERER_WARNINGS_AS_ERRORS)
+  target_compile_options(wind PRIVATE -Werror)
+endif()
+
+message(STATUS "=== Build Configuration ===")
+message(STATUS "Compiler        : ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "C++ Standard    : c++23")
+message(STATUS "Build type      : ${CMAKE_BUILD_TYPE}")
+message(STATUS "Vulkan          : ${Vulkan_VERSION}")
+message(STATUS "Validation      : ${VALIDATION}")
+message(STATUS "Log enable      : ${LOG_ENABLE}")
