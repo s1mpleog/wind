@@ -69,6 +69,8 @@ target_compile_options(wind PRIVATE
 
 target_compile_definitions(wind PRIVATE
   GLM_FORCE_DEPTH_ZERO_TO_ONE
+  FMT_EXCEPTIONS=0
+  SPDLOG_NO_EXCEPTIONS
 )
 
 if(WIN32)

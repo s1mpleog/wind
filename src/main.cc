@@ -1,3 +1,5 @@
+#include "platform/window.hpp"
+#include "utils/expected_util.hpp"
 #include <print>
 #include <spdlog/spdlog.h>
 
@@ -54,9 +56,31 @@ utilities functions inside utils/
 types related code inside types.h e.g. for vulkan it will be vulkan/types.h for platform it will be platform/types.h
 */
 
+
+auto test() -> WindResult<void>
+{
+  auto window_cfg = wind::platform::WindowConfiguration{.name = "Wind", .width = 400, .height = 200};
+  auto window     = wind::platform::Window{std::move(window_cfg)};
+
+  // ownership of the window_cfg resource has been moved to window UB to use here
+  window_cfg = {};
+
+  auto result = window.init();
+
+  WIND_TRY_VOID(result);
+
+  return {};
+}
+
 auto main() -> int
 {
   std::println("hey");
   spdlog::info("hey");
+
+  if(auto result = test(); !result)
+  {
+    spdlog::error("{}", result.error().to_string());
+  }
+
   return 0;
 }
