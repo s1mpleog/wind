@@ -3,9 +3,12 @@
 #include "SDL3/SDL_video.h"
 #include "error.hpp"
 #include "types.hpp"
+#include <algorithm>
 #include <cassert>
 #include <spdlog/spdlog.h>
+#include <vector>
 #include "SDL3/SDL_vulkan.h"
+#include "utils/expected_util.hpp"
 
 namespace wind::platform {
 [[nodiscard]] auto Window::init() noexcept -> WindResult<void>
@@ -36,27 +39,33 @@ namespace wind::platform {
 }
 
 
-auto Window::extensions() const noexcept -> void
+// this function guarantees that the return value will have valid extensions
+[[nodiscard]] auto Window::extensions() const noexcept -> WindResult<std::vector<const char*>>
 {
+  assert(m_handle != nullptr && "window handler is nullptr");
 
   u32 extensions_count{0};
   // extensions is a pointer to a const pointer to const char
-  auto extensions = SDL_Vulkan_GetInstanceExtensions(&extensions_count);
-
-  const char* y = "hello";
-
-  // const char *
-  // const *
-  const char* const* x = &y;
-
-  auto p = x;
-
+  const auto* const extensions_raw = SDL_Vulkan_GetInstanceExtensions(&extensions_count);
 
   if(extensions_count == 0)
   {
-    spdlog::error("sdl instance exension count is 0");
-    return;
+    return std::unexpected(WindError::internal(ErrorCode::ExtensionNotSupported));
   }
+
+  std::vector<const char*> extensions(extensions_count);
+
+  for(usize i = 0; i < extensions_count; ++i)
+  {
+    extensions[i] = extensions_raw[i];
+  }
+
+#ifdef LOG_ENABLE
+  spdlog::info("SDL3 returns {} extensions", extensions_count);
+  std::ranges::for_each(extensions, [](auto extension) -> auto { spdlog::info("extension: {}", extension); });
+#endif
+
+  return extensions;
 }
 
 }  // namespace wind::platform

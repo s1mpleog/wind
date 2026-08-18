@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <spdlog/spdlog.h>
+#include <vector>
 
 namespace wind::platform {
 
@@ -20,11 +21,9 @@ struct WindowConfiguration
   u16         height{};
 };
 
-struct Window
+class Window
 {
-  WindowConfiguration m_config{};
-  SDL_Window*         m_handle{nullptr};
-
+public:
   explicit Window(WindowConfiguration cfg)
       : m_config{std::move(cfg)} {};
 
@@ -52,10 +51,8 @@ struct Window
     return *this;
   };
 
-
   [[nodiscard]] auto init() noexcept -> WindResult<void>;
-
-  auto extensions() const noexcept -> void;
+  [[nodiscard]] auto extensions() const noexcept -> WindResult<std::vector<const char*>>;
 
   ~Window()
   {
@@ -67,6 +64,10 @@ struct Window
 #endif
     }
   }
+
+private:
+  WindowConfiguration m_config{};
+  SDL_Window*         m_handle{nullptr};
 };
 
 }  // namespace wind::platform

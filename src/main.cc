@@ -1,6 +1,9 @@
 #include "platform/window.hpp"
+#include "types.hpp"
 #include "utils/expected_util.hpp"
+#include "vulkan/extension_manager.hpp"
 #include <print>
+#include <span>
 #include <spdlog/spdlog.h>
 
 /*
@@ -57,17 +60,35 @@ types related code inside types.h e.g. for vulkan it will be vulkan/types.h for 
 */
 
 
-auto test() -> WindResult<void>
+static auto test() -> WindResult<void>
 {
-  auto window_cfg = wind::platform::WindowConfiguration{.name = "Wind", .width = 400, .height = 200};
+  constexpr u16 WINDOW_WIDTH  = 800;
+  constexpr u16 WINDOW_HEIGHT = 600;
+
+  auto window_cfg = wind::platform::WindowConfiguration{.name = "Wind", .width = WINDOW_WIDTH, .height = WINDOW_HEIGHT};
   auto window     = wind::platform::Window{std::move(window_cfg)};
 
   // ownership of the window_cfg resource has been moved to window UB to use here
   window_cfg = {};
 
-  auto result = window.init();
+  WIND_TRY_VOID(window.init());
 
-  WIND_TRY_VOID(result);
+  auto instance_extensions = WIND_TRY(window.extensions());
+
+  wind::vulkan::ExtensionManager extension_manager{};
+
+  extension_manager.push(std::span{std::move(instance_extensions.data()), instance_extensions.size()});
+
+  auto total_extensions = extension_manager.get_extensions();
+
+  auto find = extension_manager.find("VK_KHR_surface");
+
+  if(find.has_value())
+  {
+    std::println("found extension: {}", find->data());
+  }
+
+  std::println("total extensions: {}", total_extensions.size());
 
   return {};
 }
