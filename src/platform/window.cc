@@ -3,7 +3,6 @@
 #include "SDL3/SDL_video.h"
 #include "error.hpp"
 #include "types.hpp"
-#include <algorithm>
 #include <cassert>
 #include <spdlog/spdlog.h>
 #include <vector>
@@ -31,15 +30,13 @@ namespace wind::platform {
     return std::unexpected(WindError::sdl(ErrorCode::FailedToCreateWindow));
   }
 
-#ifdef LOG_ENABLE
-  spdlog::info("Window created: {}: {}", m_config.width, m_config.height);
+#ifdef WIND_LOG_ENABLE
+  spdlog::info("Window created: {}x{}", m_config.width, m_config.height);
 #endif
 
   return {};
 }
 
-
-// this function guarantees that the return value will have valid extensions
 [[nodiscard]] auto Window::extensions() const noexcept -> WindResult<std::vector<const char*>>
 {
   assert(m_handle != nullptr && "window handler is nullptr");
@@ -60,7 +57,7 @@ namespace wind::platform {
     extensions[i] = extensions_raw[i];
   }
 
-#ifdef LOG_ENABLE
+#ifdef WIND_LOG_ENABLE
   spdlog::info("SDL3 returns {} extensions", extensions_count);
   std::ranges::for_each(extensions, [](auto extension) -> auto { spdlog::info("extension: {}", extension); });
 #endif

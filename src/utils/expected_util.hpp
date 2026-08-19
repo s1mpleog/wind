@@ -11,7 +11,7 @@ using WindResult = std::expected<T, WindError>;
     auto r = (expr);                                                                                                   \
     if(!r)                                                                                                             \
       return std::unexpected(r.error());                                                                               \
-    r.value();                                                                                                         \
+    std::move(r).value();                                                                                              \
   })
 
 #define WIND_TRY_VOID(expr)                                                                                            \
