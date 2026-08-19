@@ -1,19 +1,16 @@
 #include "validation_layer.hpp"
 #include "error.hpp"
+#include "vulkan/core/configuration.hpp"
+#include <vulkan/vulkan_core.h>
 
 namespace wind::vulkan {
-auto create_debug_utils(const vk::raii::Instance& instance) noexcept -> WindResult<vk::raii::DebugUtilsMessengerEXT>
+auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) noexcept
+    -> WindResult<vk::raii::DebugUtilsMessengerEXT>
 {
-  //TODO: later this will come from VulkanConfiguration
-  VkDebugUtilsMessengerCreateInfoEXT create_info{};
-  create_info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+  vk::DebugUtilsMessengerCreateInfoEXT create_info{};
 
-  create_info.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
-                                | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-  ;
-  create_info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
-                            | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-  ;
+  create_info.messageType     = to_vk(cfg.debug_message_type);
+  create_info.messageSeverity = to_vk(cfg.debug_message_severity);
   create_info.pfnUserCallback = debug_callback;
 
   auto messenger = instance.createDebugUtilsMessengerEXT(create_info);
@@ -21,6 +18,7 @@ auto create_debug_utils(const vk::raii::Instance& instance) noexcept -> WindResu
   if(!messenger.has_value())
     return std::unexpected(WindError::vulkan(ErrorCode::FailedToCreateDebugMessenger, messenger.result));
 
-  return std::move(*messenger);
+  return std::move(messenger).value;
 }
+
 }  // namespace wind::vulkan

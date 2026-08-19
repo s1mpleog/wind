@@ -2,6 +2,7 @@
 
 #include "platform/window.hpp"
 #include "utils/expected_util.hpp"
+#include "vulkan/core/configuration.hpp"
 #include "vulkan/core/context.hpp"
 
 namespace wind::app {
@@ -11,7 +12,7 @@ struct Context
   vulkan::Context  ctx;
 };
 
-[[nodiscard]] auto init(platform::WindowConfiguration win_cfg) noexcept -> WindResult<Context>;
+[[nodiscard]] auto init(platform::WindowConfiguration win_cfg, vulkan::Configuration vulkan_cfg) noexcept -> WindResult<Context>;
 
 auto run() noexcept -> void;
 

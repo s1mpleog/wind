@@ -5,6 +5,7 @@
 #include "SDL3/SDL_video.h"
 #include "types.hpp"
 #include "utils/expected_util.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <string>
 #include <utility>
@@ -58,6 +59,7 @@ public:
 
   [[nodiscard]] auto init() noexcept -> WindResult<void>;
   [[nodiscard]] auto extensions() const noexcept -> WindResult<std::vector<const char*>>;
+  [[nodiscard]] auto create_surface(const vk::Instance& instance) const noexcept -> WindResult<VkSurfaceKHR>;
 
   ~Window()
   {

@@ -2,7 +2,9 @@
 
 #include "platform/window.hpp"
 #include "utils/expected_util.hpp"
-#include <vulkan/vulkan_raii.hpp>
+#include "vulkan/core/configuration.hpp"
+
+#include <vulkan/vulkan_core.h>
 
 namespace wind::vulkan {
 struct Context
@@ -15,6 +17,6 @@ struct Context
   vk::raii::SurfaceKHR surface{nullptr};
 };
 
-auto init(const platform::Window& window) noexcept -> WindResult<Context>;
+auto init(const platform::Window& window, Configuration cfg) noexcept -> WindResult<Context>;
 
 }  // namespace wind::vulkan

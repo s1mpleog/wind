@@ -22,6 +22,7 @@ Checks: >
   -cppcoreguidelines-special-member-functions,
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-avoid-magic-numbers
   -readability-named-parameter,
   -readability-braces-around-statements,
   -readability-identifier-length,
