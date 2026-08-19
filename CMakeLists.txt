@@ -47,6 +47,7 @@ add_executable(wind
   src/vulkan/core/context.cc
   src/vulkan/core/instance.cc
   src/vulkan/core/validation_layer.cc
+  src/vulkan/core/device.cc
 )
 
 target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -58,6 +59,12 @@ target_link_libraries(wind PRIVATE
   spdlog::spdlog
   cpptrace::cpptrace
   Vulkan::Vulkan
+)
+
+target_precompile_headers(wind PRIVATE
+    <vulkan/vulkan.hpp>
+    <vulkan/vulkan_raii.hpp>
+    <spdlog/spdlog.h>
 )
 
 target_compile_options(wind PRIVATE

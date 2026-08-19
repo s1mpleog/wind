@@ -1,5 +1,6 @@
 #include "window.hpp"
 #include "SDL3/SDL_init.h"
+#include "SDL3/SDL_surface.h"
 #include "SDL3/SDL_video.h"
 #include "error.hpp"
 #include "types.hpp"
@@ -63,6 +64,23 @@ namespace wind::platform {
 #endif
 
   return extensions;
+}
+
+
+[[nodiscard]] auto Window::create_surface(const vk::Instance& instance) const noexcept -> WindResult<VkSurfaceKHR>
+{
+  assert(m_handle != nullptr && "trying to create vulkan surface but window handle is null");
+
+  VkSurfaceKHR surface{};
+
+  if(!SDL_Vulkan_CreateSurface(m_handle, instance, nullptr, &surface))
+    return std::unexpected(WindError::sdl(ErrorCode::FailedToCreateSurface));
+
+#ifdef WIND_LOG_ENABLE
+  spdlog::info("successfully created vulkan surface");
+#endif
+
+  return surface;
 }
 
 }  // namespace wind::platform

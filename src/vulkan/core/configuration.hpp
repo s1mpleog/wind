@@ -1,0 +1,129 @@
+#pragma once
+
+/*
+ * high level the configurator should expose settings like
+ * vulkan version, application name, version and optionally engine name
+ * settings for debug layer, vsync options, double buffer or triple buffer
+ * optional features for later preferred extensions, layers etc
+ *
+ * initially i want it to look like this
+ *
+ * Configuration {
+  .name = "Wind",
+  .vulkan = VULKAN_14,
+  .vsync = true,
+  .buffering = DOUBLE_BUFFER,
+  .debug_message_type = GENERAL,
+  .debug_message_severity = GENERAL,
+  ...
+ * }
+ *
+ */
+
+#include "types.hpp"
+#include <vulkan/vulkan_core.h>
+#include <string_view>
+
+namespace wind::vulkan {
+enum class VulkanVersion : u8
+{
+  VERSION13,
+  VERSION14,
+};
+
+enum class Buffering : u8
+{
+  DoubleBuffering = 2,
+  TripleBuffering = 3,
+};
+
+enum class DebugMessageSeverity : u16
+{
+  Verbose = 0x00000001,
+  Info    = 0x00000010,
+  Warning = 0x00000100,
+  Error   = 0x00001000,
+};
+
+enum class DebugMessageType : u8
+{
+  General              = 1 << 0,
+  Validation           = 1 << 1,
+  Performance          = 1 << 2,
+  DeviceAddressBinding = 1 << 3
+};
+
+constexpr auto operator|(DebugMessageSeverity lhs, DebugMessageSeverity rhs) noexcept -> DebugMessageSeverity
+{
+  using U = std::underlying_type_t<DebugMessageSeverity>;
+
+  return static_cast<DebugMessageSeverity>(static_cast<U>(lhs) | static_cast<U>(rhs));
+}
+
+constexpr auto operator|(DebugMessageType lhs, DebugMessageType rhs) noexcept -> DebugMessageType
+{
+  using U = std::underlying_type_t<DebugMessageType>;
+
+  return static_cast<DebugMessageType>(static_cast<U>(lhs) | static_cast<U>(rhs));
+}
+
+struct Configuration
+{
+  VulkanVersion        api_version{VulkanVersion::VERSION14};
+  bool                 vsync{true};
+  Buffering            buffering{Buffering::DoubleBuffering};
+  std::string_view     app_name;
+  std::string_view     engine_name{"NoEngine"};
+  DebugMessageSeverity debug_message_severity{DebugMessageSeverity::Error};
+  DebugMessageType     debug_message_type{DebugMessageType::General};
+};
+
+constexpr auto to_vk(VulkanVersion value) noexcept -> uint32_t
+{
+  switch(value)
+  {
+    case VulkanVersion::VERSION13:
+      return vk::ApiVersion13;
+
+    case VulkanVersion::VERSION14:
+      return vk::ApiVersion14;
+  }
+
+  std::unreachable();
+}
+
+constexpr auto to_vk(DebugMessageSeverity value) noexcept -> vk::DebugUtilsMessageSeverityFlagBitsEXT
+{
+  return static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(static_cast<u32>(value));
+}
+
+constexpr auto to_vk(DebugMessageType value) noexcept -> vk::DebugUtilsMessageTypeFlagsEXT
+{
+  return static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(static_cast<u32>(value));
+}
+
+namespace presets {
+inline constexpr Configuration Default{
+    .api_version            = VulkanVersion::VERSION14,
+    .vsync                  = true,
+    .buffering              = Buffering::DoubleBuffering,
+    .app_name               = "application",
+    .engine_name            = "NoEngine",
+    .debug_message_severity = DebugMessageSeverity::Error,
+    .debug_message_type     = DebugMessageType::General,
+};
+
+inline constexpr Configuration Development{
+    .api_version            = VulkanVersion::VERSION14,
+    .vsync                  = false,
+    .buffering              = Buffering::DoubleBuffering,
+    .app_name               = "application",
+    .engine_name            = "NoEngine",
+    .debug_message_severity = DebugMessageSeverity::Error | DebugMessageSeverity::Info | DebugMessageSeverity::Warning
+                              | DebugMessageSeverity::Verbose,
+    .debug_message_type     = DebugMessageType::General | DebugMessageType::Performance | DebugMessageType::Validation,
+};
+
+}  // namespace presets
+
+};  // namespace wind::vulkan

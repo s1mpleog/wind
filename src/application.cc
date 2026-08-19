@@ -5,7 +5,7 @@
 #include <spdlog/spdlog.h>
 
 namespace wind::app {
-[[nodiscard]] auto init(platform::WindowConfiguration win_cfg) noexcept -> WindResult<Context>
+[[nodiscard]] auto init(platform::WindowConfiguration win_cfg, vulkan::Configuration vulkan_cfg) noexcept -> WindResult<Context>
 {
 #ifdef WIND_LOG_ENABLE
   spdlog::info("initializing application...");
@@ -14,8 +14,7 @@ namespace wind::app {
   auto window = platform::Window{std::move(win_cfg)};
   WIND_TRY(window.init());
 
-  // later init vulkan_context and pass window.extensions()
-  auto vulkan = WIND_TRY(vulkan::init(window));
+  auto vulkan = WIND_TRY(vulkan::init(window, std::move(vulkan_cfg)));
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("application init success");

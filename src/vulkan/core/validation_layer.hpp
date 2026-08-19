@@ -1,26 +1,27 @@
 #pragma once
 
 #include "utils/expected_util.hpp"
-#include <vulkan/vulkan.hpp>
+#include "vulkan/core/configuration.hpp"
 #include <spdlog/spdlog.h>
-#include <vulkan/vulkan_raii.hpp>
+#include <vulkan/vulkan_core.h>
 
 namespace wind::vulkan {
-inline VKAPI_ATTR auto VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT           message_severity,
-                                                 [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT message_type,
-                                                 const VkDebugUtilsMessengerCallbackDataEXT*      p_callback_data,
-                                                 [[maybe_unused]] void* p_user_data) -> VkBool32
+inline auto debug_callback(vk::DebugUtilsMessageSeverityFlagBitsEXT           message_severity,
+                           [[maybe_unused]] vk::DebugUtilsMessageTypeFlagsEXT message_type,
+                           const vk::DebugUtilsMessengerCallbackDataEXT*      p_callback_data,
+                           [[maybe_unused]] void*                             p_user_data) -> vk::Bool32
 {
-  if((message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0)
+  if(message_severity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
     spdlog::error("[VK] {}", p_callback_data->pMessage);
-  else if((message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0)
+  else if(message_severity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
     spdlog::warn("[VK] {}", p_callback_data->pMessage);
-  else if((message_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0)
+  else if(message_severity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
     spdlog::info("[VK] {}", p_callback_data->pMessage);
 
   return VK_FALSE;
 }
 
-auto create_debug_utils(const vk::raii::Instance& instance) noexcept -> WindResult<vk::raii::DebugUtilsMessengerEXT>;
+auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) noexcept
+    -> WindResult<vk::raii::DebugUtilsMessengerEXT>;
 
 };  // namespace wind::vulkan

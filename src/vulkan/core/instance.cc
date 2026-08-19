@@ -1,6 +1,7 @@
 #include "instance.hpp"
 #include "error.hpp"
 #include "utils/expected_util.hpp"
+#include "vulkan/core/configuration.hpp"
 #include <vulkan/vulkan.hpp>
 #include <algorithm>
 #include <array>
@@ -48,7 +49,8 @@ static auto query_instance_extension_support(std::string_view requested_extensio
   return {};
 }
 
-[[nodiscard]] auto create_instance(const vk::raii::Context& ctx, std::vector<const char*> extensions) noexcept
+// this function takes the ownership of extensions
+[[nodiscard]] auto create_instance(const Configuration& cfg, const vk::raii::Context& ctx, std::vector<const char*> extensions) noexcept
     -> WindResult<vk::raii::Instance>
 {
   auto inst_version = vk::enumerateInstanceVersion();
@@ -56,24 +58,24 @@ static auto query_instance_extension_support(std::string_view requested_extensio
   if(!inst_version.has_value())
     return std::unexpected(WindError::vulkan(ErrorCode::InternalError, inst_version.result));
 
-  if(inst_version.value < vk::ApiVersion14)
+  if(inst_version.value < to_vk(cfg.api_version))
     return std::unexpected(WindError::vulkan(ErrorCode::VulkanVersion14NotFound, vk::Result::eErrorIncompatibleDriver));
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Vulkan API: {}.{}", vk::versionMajor(inst_version.value), vk::versionMinor(inst_version.value));
 #endif
 
-  // TODO: later take this info from VulkanConfiguration
-  vk::ApplicationInfo app_info{"Wind", VK_MAKE_VERSION(0, 1, 0), "NoEngine", VK_MAKE_VERSION(0, 1, 0), VK_API_VERSION_1_4};
+  // note: it is safe use {cfg.app_name.data(), cfg.engine..} here since its a string literal so it will have null terminator
+  vk::ApplicationInfo app_info{cfg.app_name.data(), VK_MAKE_VERSION(0, 1, 0), cfg.engine_name.data(),
+                               VK_MAKE_VERSION(0, 1, 0), to_vk(cfg.api_version)};
 
   vk::InstanceCreateInfo inst_info{};
-  inst_info.sType            = vk::StructureType::eInstanceCreateInfo;
   inst_info.pApplicationInfo = &app_info;
 
 #ifdef WIND_VULKAN_VALIDATION
   std::array layers{"VK_LAYER_KHRONOS_validation"};
 
-  for(auto&& [_, layer] : std::ranges::views::enumerate(layers))
+  for(auto&& [_, layer] : std::views::enumerate(layers))
   {
     WIND_TRY_VOID(query_instance_layer_support(layer));
   }
@@ -81,20 +83,18 @@ static auto query_instance_extension_support(std::string_view requested_extensio
   // check for debug util extension
   WIND_TRY_VOID(query_instance_extension_support(VK_EXT_DEBUG_UTILS_EXTENSION_NAME));
 
-  std::vector total_instance_extensions{std::move(extensions)};
-
-  total_instance_extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+  extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
   inst_info.enabledLayerCount   = layers.size();
   inst_info.ppEnabledLayerNames = layers.data();
 
-  inst_info.enabledExtensionCount   = total_instance_extensions.size();
-  inst_info.ppEnabledExtensionNames = total_instance_extensions.data();
+  inst_info.enabledExtensionCount   = extensions.size();
+  inst_info.ppEnabledExtensionNames = extensions.data();
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("creating instance | layers: {} | extensions: {}", layers.size(), total_instance_extensions.size());
+  spdlog::info("creating instance | layers: {} | extensions: {}", layers.size(), extensions.size());
   std::ranges::for_each(layers, [](const auto l) -> auto { spdlog::info("  layer:     {}", l); });
-  std::ranges::for_each(total_instance_extensions, [](const auto e) -> auto { spdlog::info("  extension: {}", e); });
+  std::ranges::for_each(extensions, [](const auto e) -> auto { spdlog::info("  extension: {}", e); });
 #endif
 
   // don't enable validation layer or debug extensions
@@ -114,7 +114,7 @@ static auto query_instance_extension_support(std::string_view requested_extensio
   spdlog::info("Instance created successfully");
 #endif
 
-  return std::move(*inst);
+  return std::move(inst).value;
 }
 
 }  // namespace wind::vulkan
