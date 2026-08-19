@@ -9,9 +9,9 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
-option(VALIDATION "Enable Vulkan validation layers" ON)
-option(RENDERER_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
-option(LOG_ENABLE "Enable logging for creation and shutdown of sub-systems and useful stuffs" OFF)
+option(WIND_VALIDATION "Enable Vulkan validation layers" ON)
+option(WIND_RENDERER_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+option(WIND_LOG_ENABLE "Enable logging for creation and shutdown of sub-systems and useful stuffs" OFF)
 
 include(FetchContent)
 
@@ -43,11 +43,10 @@ find_package(Vulkan REQUIRED)
 add_executable(wind
   src/main.cc
   src/platform/window.cc
-)
-
-configure_file(
-  ${CMAKE_SOURCE_DIR}/src/vulkan_config.hpp.in
-  ${CMAKE_BINARY_DIR}/generated/vulkan_config.hpp
+  src/application.cc
+  src/vulkan/core/context.cc
+  src/vulkan/core/instance.cc
+  src/vulkan/core/validation_layer.cc
 )
 
 target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -68,6 +67,7 @@ target_compile_options(wind PRIVATE
 )
 
 target_compile_definitions(wind PRIVATE
+  VULKAN_HPP_NO_EXCEPTIONS
   GLM_FORCE_DEPTH_ZERO_TO_ONE
   FMT_EXCEPTIONS=0
   SPDLOG_NO_EXCEPTIONS
@@ -84,12 +84,12 @@ elseif(_build_type_lower STREQUAL "release")
   target_compile_definitions(wind PRIVATE RENDERER_RELEASE)
 endif()
 
-if(LOG_ENABLE)
-  target_compile_definitions(wind PRIVATE LOG_ENABLE)
+if(WIND_LOG_ENABLE)
+  target_compile_definitions(wind PRIVATE WIND_LOG_ENABLE)
 endif()
 
-if(VALIDATION)
-  target_compile_definitions(wind PRIVATE RENDERER_VULKAN_VALIDATION)
+if(WIND_VALIDATION)
+  target_compile_definitions(wind PRIVATE WIND_VULKAN_VALIDATION)
 endif()
 
 if(RENDERER_WARNINGS_AS_ERRORS)

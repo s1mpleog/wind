@@ -6,7 +6,7 @@
 #include <source_location>
 #include <string>
 #include <string_view>
-#include "vulkan_config.hpp"
+#include <vulkan/vulkan.hpp>
 
 #include "types.hpp"
 #include "utils/ansii.hpp"
@@ -16,12 +16,14 @@ enum class ErrorCode : u8
   // instance
   FailedToCreateInstance,
   FailedToCreateDebugMessenger,
+  VulkanVersion14NotFound,
 
   // device
   NoSuitablePhysicalDevice,
   FailedToCreateDevice,
   ExtensionNotSupported,
-  ValidationLayerNotSupported,  // fixed typo
+  ValidationLayerNotSupported,
+  LayerNotSupported,
 
   // surface & swapchain
   FailedToCreateSurface,
@@ -216,6 +218,13 @@ private:
       case ErrorCode::FailedToCreateDebugMessenger:
         return "Failed to create Vulkan debug messenger — validation layers may "
                "not be installed";
+
+      case ErrorCode::VulkanVersion14NotFound:
+        return "Vulkan loader 1.4 is required to run this app - try updating your Vulkan "
+               "loader";
+
+      case ErrorCode::LayerNotSupported:
+        return "Failed to find requested layer - not supported";
 
       // device
       case ErrorCode::NoSuitablePhysicalDevice:

@@ -1,9 +1,7 @@
+#include "application.hpp"
 #include "platform/window.hpp"
 #include "types.hpp"
-#include "utils/expected_util.hpp"
-#include "vulkan/extension_manager.hpp"
-#include <print>
-#include <span>
+#include <cstdlib>
 #include <spdlog/spdlog.h>
 
 /*
@@ -58,50 +56,20 @@ utilities functions inside utils/
 
 types related code inside types.h e.g. for vulkan it will be vulkan/types.h for platform it will be platform/types.h
 */
-
-
-static auto test() -> WindResult<void>
+auto main() -> i32
 {
   constexpr u16 WINDOW_WIDTH  = 800;
   constexpr u16 WINDOW_HEIGHT = 600;
 
   auto window_cfg = wind::platform::WindowConfiguration{.name = "Wind", .width = WINDOW_WIDTH, .height = WINDOW_HEIGHT};
-  auto window     = wind::platform::Window{std::move(window_cfg)};
 
-  // ownership of the window_cfg resource has been moved to window UB to use here
-  window_cfg = {};
+  auto app = wind::app::init(std::move(window_cfg));
 
-  WIND_TRY_VOID(window.init());
-
-  auto instance_extensions = WIND_TRY(window.extensions());
-
-  wind::vulkan::ExtensionManager extension_manager{};
-
-  extension_manager.push(std::span{std::move(instance_extensions.data()), instance_extensions.size()});
-
-  auto total_extensions = extension_manager.get_extensions();
-
-  auto find = extension_manager.find("VK_KHR_surface");
-
-  if(find.has_value())
+  if(!app)
   {
-    std::println("found extension: {}", find->data());
+    spdlog::error("{}", app.error().to_string());
+    return EXIT_FAILURE;
   }
 
-  std::println("total extensions: {}", total_extensions.size());
-
-  return {};
-}
-
-auto main() -> int
-{
-  std::println("hey");
-  spdlog::info("hey");
-
-  if(auto result = test(); !result)
-  {
-    spdlog::error("{}", result.error().to_string());
-  }
-
-  return 0;
+  return EXIT_SUCCESS;
 }

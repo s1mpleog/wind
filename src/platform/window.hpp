@@ -21,6 +21,11 @@ struct WindowConfiguration
   u16         height{};
 };
 
+inline auto make_window_config(const u16 width, const u16 height, std::string name) noexcept -> WindowConfiguration
+{
+  return WindowConfiguration{.name = std::move(name), .width = width, .height = height};
+}
+
 class Window
 {
 public:
@@ -59,7 +64,7 @@ public:
     if(m_handle != nullptr)
     {
       SDL_DestroyWindow(m_handle);
-#ifdef LOG_ENABLE
+#ifdef WIND_LOG_ENABLE
       spdlog::info("window handler destroyed");
 #endif
     }
