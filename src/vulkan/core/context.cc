@@ -3,6 +3,7 @@
 #include "vulkan/core/device.hpp"
 #include "vulkan/core/instance.hpp"
 #include "vulkan/core/validation_layer.hpp"
+#include "swapchain.hpp"
 
 namespace wind::vulkan {
 auto init(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<Context>
@@ -23,6 +24,9 @@ auto init(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> Wi
   ctx.surface       = vk::raii::SurfaceKHR(ctx.instance, surface_raw);
 
   ctx.device_ctx = WIND_TRY(device::create(cfg, ctx.instance, ctx.surface));
+
+  ctx.swapchain_ctx =
+      WIND_TRY(swapchain::create(cfg, window.get_config().width, window.get_config().height, ctx.surface, ctx.device_ctx));
 
   return ctx;
 }
