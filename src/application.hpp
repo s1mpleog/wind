@@ -12,8 +12,8 @@ struct Context
   vulkan::Context  ctx;
 };
 
-[[nodiscard]] auto init(platform::WindowConfiguration win_cfg, vulkan::Configuration vulkan_cfg) noexcept -> WindResult<Context>;
+WIND_NODISCARD auto init(platform::WindowConfiguration win_cfg, vulkan::Configuration vulkan_cfg) WIND_NOEXCEPT -> WindResult<Context>;
 
-auto run() noexcept -> void;
+auto run() WIND_NOEXCEPT -> void;
 
 };  // namespace wind::app

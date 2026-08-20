@@ -5,7 +5,6 @@
 #include <vulkan/vulkan.hpp>
 #include <algorithm>
 #include <array>
-#include <expected>
 #include <ranges>
 #include <string_view>
 #include <vector>
@@ -13,56 +12,47 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <spdlog/spdlog.h>
 
-namespace wind::vulkan {
+namespace wind::vulkan::instance {
 static auto query_instance_layer_support(std::string_view requested_layer) -> WindResult<void>
 {
-  auto layers = vk::enumerateInstanceLayerProperties();
-
-  if(!layers.has_value())
-    return std::unexpected(WindError::vulkan(ErrorCode::InternalError, layers.result));
+  auto layers = WIND_TRY(vk::enumerateInstanceLayerProperties());
 
   // any_of checks if atlease one element in given range statisfies e.g. layers need to have atleast one requested_layer
-  auto layer_found = std::ranges::any_of(*layers, [requested_layer](const vk::LayerProperties& lp) -> bool {
+  auto layer_found = std::ranges::any_of(layers, [requested_layer](const vk::LayerProperties& lp) -> bool {
     return std::string_view{lp.layerName} == requested_layer;
   });
 
   if(!layer_found)
-    return std::unexpected(WindError::vulkan(ErrorCode::LayerNotSupported, vk::Result::eErrorLayerNotPresent));
+    WIND_ERR(WindError::vulkan(ErrorCode::LayerNotSupported, vk::Result::eErrorLayerNotPresent));
 
   return {};
 }
 
 static auto query_instance_extension_support(std::string_view requested_extension) -> WindResult<void>
 {
-  auto extensions = vk::enumerateInstanceExtensionProperties();
+  auto extensions = WIND_TRY(vk::enumerateInstanceExtensionProperties());
 
-  if(!extensions.has_value())
-    return std::unexpected(WindError::vulkan(ErrorCode::InternalError, extensions.result));
-
-  auto layer_found = std::ranges::any_of(*extensions, [requested_extension](const vk::ExtensionProperties& lp) -> bool {
+  auto layer_found = std::ranges::any_of(extensions, [requested_extension](const vk::ExtensionProperties& lp) -> bool {
     return std::string_view{lp.extensionName} == requested_extension;
   });
 
   if(!layer_found)
-    return std::unexpected(WindError::vulkan(ErrorCode::ExtensionNotSupported, vk::Result::eErrorExtensionNotPresent));
+    WIND_ERR(WindError::vulkan(ErrorCode::ExtensionNotSupported, vk::Result::eErrorExtensionNotPresent));
 
   return {};
 }
 
 // this function takes the ownership of extensions
-[[nodiscard]] auto create_instance(const Configuration& cfg, const vk::raii::Context& ctx, std::vector<const char*> extensions) noexcept
+WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Context& ctx, std::vector<const char*> extensions) WIND_NOEXCEPT
     -> WindResult<vk::raii::Instance>
 {
-  auto inst_version = vk::enumerateInstanceVersion();
+  auto inst_version = WIND_TRY(vk::enumerateInstanceVersion());
 
-  if(!inst_version.has_value())
-    return std::unexpected(WindError::vulkan(ErrorCode::InternalError, inst_version.result));
-
-  if(inst_version.value < to_vk(cfg.api_version))
-    return std::unexpected(WindError::vulkan(ErrorCode::VulkanVersion14NotFound, vk::Result::eErrorIncompatibleDriver));
+  if(inst_version < to_vk(cfg.api_version))
+    WIND_ERR(WindError::vulkan(ErrorCode::VulkanVersion14NotFound, vk::Result::eErrorIncompatibleDriver));
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("Vulkan API: {}.{}", vk::versionMajor(inst_version.value), vk::versionMinor(inst_version.value));
+  spdlog::info("Vulkan API: {}.{}", vk::versionMajor(inst_version), vk::versionMinor(inst_version));
 #endif
 
   // note: it is safe use {cfg.app_name.data(), cfg.engine..} here since its a string literal so it will have null terminator
@@ -105,16 +95,13 @@ static auto query_instance_extension_support(std::string_view requested_extensio
   inst_info.ppEnabledExtensionNames = extensions.data();
 #endif
 
-  auto inst = ctx.createInstance(inst_info);
-
-  if(!inst.has_value())
-    return std::unexpected(WindError::vulkan(ErrorCode::FailedToCreateInstance, inst.result));
+  auto inst = WIND_TRY(ctx.createInstance(inst_info), ErrorCode::FailedToCreateInstance);
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Instance created successfully");
 #endif
 
-  return std::move(inst).value;
+  return inst;
 }
 
-}  // namespace wind::vulkan
+}  // namespace wind::vulkan::instance
