@@ -14,7 +14,7 @@ WIND_NODISCARD auto init(platform::WindowConfiguration win_cfg, vulkan::Configur
   auto window = platform::Window{std::move(win_cfg)};
   WIND_TRY(window.init());
 
-  auto vulkan = WIND_TRY(vulkan::init(window, std::move(vulkan_cfg)));
+  auto vulkan = WIND_TRY(vulkan::create(window, std::move(vulkan_cfg)));
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("application init success");

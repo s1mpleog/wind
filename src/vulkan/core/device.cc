@@ -60,6 +60,8 @@ static auto make_physical_device_candidate(const vk::raii::PhysicalDevice& physi
   if(!present_queue)
     return {};
 
+  auto transfer_queue = find_queue(vk::QueueFlagBits::eTransfer);
+
   PhysicalDeviceCandidate candiate{
       .score                = 0,
       .device               = physical_device,
@@ -68,10 +70,6 @@ static auto make_physical_device_candidate(const vk::raii::PhysicalDevice& physi
       .present_queue_index  = present_queue,
       .transfer_queue_index = {},
   };
-
-  // i need transfer queue later
-
-  auto transfer_queue = find_queue(vk::QueueFlagBits::eTransfer);
 
   if(transfer_queue)
   {
@@ -230,11 +228,32 @@ WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candida
   return context;
 };
 
+WIND_NODISCARD static auto create_command_pool(const vk::raii::Device& device, u32 queue_index) WIND_NOEXCEPT
+    -> WindResult<vk::raii::CommandPool>
+{
+  vk::CommandPoolCreateInfo cmd_pool_create_info{};
+  cmd_pool_create_info.queueFamilyIndex = queue_index;
+  cmd_pool_create_info.flags            = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+
+  return WIND_TRY(device.createCommandPool(cmd_pool_create_info));
+}
+
 WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
     -> WindResult<DeviceContext>
 {
   auto candidate      = WIND_TRY(select_physical_device(cfg, instance, surface));
   auto device_context = WIND_TRY(create_logical_device(std::move(candidate)));
+
+  device_context.graphics_pool =
+      WIND_TRY(create_command_pool(device_context.device, device_context.graphics_queue_idx.value()));
+
+  if(device_context.has_transfer_queue()
+     && device_context.transfer_queue_idx.value() != device_context.graphics_queue_idx.value())
+  {
+    device_context.transfer_pool =
+        WIND_TRY(create_command_pool(device_context.device, device_context.transfer_queue_idx.value()));
+  }
+
   return device_context;
 }
 
