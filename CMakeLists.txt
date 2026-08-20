@@ -48,6 +48,7 @@ add_executable(wind
   src/vulkan/core/instance.cc
   src/vulkan/core/validation_layer.cc
   src/vulkan/core/device.cc
+  src/vulkan/core/swapchain.cc
 )
 
 target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)

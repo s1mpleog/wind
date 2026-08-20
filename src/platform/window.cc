@@ -82,4 +82,9 @@ WIND_NODISCARD auto Window::create_surface(const vk::Instance& instance) const W
   return surface;
 }
 
+auto Window::get_config() const WIND_NOEXCEPT -> const WindowConfiguration&
+{
+  return m_config;
+}
+
 }  // namespace wind::platform
