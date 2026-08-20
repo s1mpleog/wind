@@ -5,10 +5,11 @@
 #include "vulkan/core/configuration.hpp"
 #include "vulkan/vulkan.hpp"
 #include <algorithm>
-#include <expected>
 #include <optional>
 #include <ranges>
+#include <set>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 
@@ -61,6 +62,7 @@ static auto make_physical_device_candidate(const vk::raii::PhysicalDevice& physi
 
   PhysicalDeviceCandidate candiate{
       .score                = 0,
+      .device               = physical_device,
       .device_props         = properties_2,
       .graphics_queue_index = graphics_queue,
       .present_queue_index  = present_queue,
@@ -97,58 +99,143 @@ static auto make_physical_device_candidate(const vk::raii::PhysicalDevice& physi
   return best.value();
 }
 
-// responsible for selecting the preferred physical device
-auto select_physical_device(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) noexcept
-    -> WindResult<void>
+WIND_NODISCARD auto check_hard_requirements(const Configuration& cfg, const vk::raii::PhysicalDevice& device) WIND_NOEXCEPT -> bool
 {
-  auto physical_devices = instance.enumeratePhysicalDevices();
+  auto features_2   = device.getFeatures2().features;
+  auto properties_2 = device.getProperties2().properties;
 
-  if(!physical_devices.has_value())
-    return std::unexpected(WindError::vulkan(ErrorCode::InternalError, physical_devices.result));
+  auto features13 =
+      device.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features>().get<vk::PhysicalDeviceVulkan13Features>();
 
-  if(physical_devices->empty())
-    return std::unexpected(WindError::vulkan(ErrorCode::NoSuitablePhysicalDevice, vk::Result::eErrorUnknown));
+  auto available_extensions = device.enumerateDeviceExtensionProperties();
 
-  auto usable_devices = physical_devices.value | std::views::filter([&](const vk::raii::PhysicalDevice& device) -> bool {
-                          auto features_2   = device.getFeatures2().features;
-                          auto properties_2 = device.getProperties2().properties;
-                          return features_2.geometryShader && properties_2.apiVersion >= to_vk(cfg.api_version);
+  // limitation can't use WindResult :(
+  if(!available_extensions || available_extensions->empty())
+    return false;
+
+  const std::array<std::string_view, 2> required_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+
+  // for all required extensions:
+  // does any of available extensions matches the requirement
+  // if available extensions = {"A", "B", "C"}
+  // and required extensions = {"A", "B"}
+  // then
+  // "A" == "A" -> any_of true
+  // "B" == "B" -> any_of true
+  const auto supported = std::ranges::all_of(required_extensions, [&](std::string_view required) {
+    return std::ranges::any_of(*available_extensions, [&](const vk::ExtensionProperties& extension) {
+      return required == extension.extensionName;
+    });
+  });
+
+  return (features_2.geometryShader == vk::True) && properties_2.apiVersion >= to_vk(cfg.api_version)
+         && (features13.dynamicRendering == vk::True) && (features13.synchronization2 == vk::True) && supported;
+}
+
+// responsible for selecting the preferred physical device
+WIND_NODISCARD static auto select_physical_device(const Configuration&      cfg,
+                                                  const vk::raii::Instance& instance,
+                                                  const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT -> WindResult<PhysicalDeviceCandidate>
+{
+  auto physical_devices = WIND_TRY(instance.enumeratePhysicalDevices(), ErrorCode::InternalError);
+
+  WIND_ENSURE_NOT_EMPTY(physical_devices, WindError::vulkan(ErrorCode::NoSuitablePhysicalDevice));
+
+  auto usable_devices = physical_devices | std::views::filter([&](const vk::raii::PhysicalDevice& device) -> bool {
+                          return check_hard_requirements(cfg, device);
                         });
 
-  if(usable_devices.empty())
-    return std::unexpected(WindError::vulkan(ErrorCode::NoSuitablePhysicalDevice, vk::Result::eErrorUnknown));
+  WIND_ENSURE_NOT_EMPTY(usable_devices, WindError::vulkan(ErrorCode::NoSuitablePhysicalDevice));
 
   auto candidates = usable_devices
                     | std::views::transform([&](const auto& dev) { return make_physical_device_candidate(dev, surface); });
 
-  if(candidates.empty())
-  {
-    return std::unexpected(WindError::vulkan(ErrorCode::NoSuitablePhysicalDevice, vk::Result::eErrorUnknown));
-  }
+  WIND_ENSURE_NOT_EMPTY(candidates, WindError::vulkan(ErrorCode::NoSuitablePhysicalDevice));
 
   auto best =
       std::ranges::max_element(candidates, [](const auto& lhs, const auto& rhs) -> auto { return lhs.score < rhs.score; });
 
-  const auto& selected_gpu = *best;
+  // we already checked candidates empty so at this point we are sure that there will be atleast one candidate
+  auto selected_gpu = *best;
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("best device score is: {}, using GPU: {}, graphics_queue: {}, presentation_queue: {}, transfer_queue: {}",
-               selected_gpu.score, std::string_view{selected_gpu.device_props.deviceName},
-               selected_gpu.graphics_queue_index.value(), selected_gpu.present_queue_index.value(),
-               selected_gpu.transfer_queue_index.value());
+  spdlog::info("using GPU: {}, graphics_queue: {}, presentation_queue: {}, transfer_queue: {}",
+               std::string_view{selected_gpu.device_props.deviceName}, selected_gpu.graphics_queue_index.value(),
+               selected_gpu.present_queue_index.value(), selected_gpu.transfer_queue_index.value());
 #endif
 
-  return {};
+  return selected_gpu;
 };
 
-[[nodiscard]] auto init(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) noexcept
-    -> WindResult<vk::raii::Device>
+WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candidate) WIND_NOEXCEPT -> WindResult<DeviceContext>
 {
+  // candidate already have all the hard requirements check just create device here
+  vk::PhysicalDeviceVulkan13Features features_13{};
+  features_13.dynamicRendering = vk::True;
+  features_13.synchronization2 = vk::True;
 
-  WIND_TRY_VOID(select_physical_device(cfg, instance, surface));
+  float queue_priorities = 1.0F;
 
-  return nullptr;
+  std::set unique_queues{candidate.graphics_queue_index.value(), candidate.present_queue_index.value()};
+
+  if(candidate.present_queue_index)
+    unique_queues.insert(candidate.present_queue_index.value());
+
+  std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
+  queue_create_infos.reserve(unique_queues.size());
+
+  for(auto idx : unique_queues)
+  {
+    queue_create_infos.emplace_back(vk::DeviceQueueCreateFlags{}, idx, 1, &queue_priorities);
+  }
+
+#ifdef WIND_LOG_ENABLE
+  spdlog::info("using {} queues", queue_create_infos.size());
+#endif
+
+  // NOTE: i am using this same array in two places i should put this somewhere maybe some DeviceConfiguration or something
+  const std::array<const char*, 2> enabled_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+
+  vk::DeviceCreateInfo create_info{};
+  create_info.pNext                   = &features_13;
+  create_info.enabledExtensionCount   = enabled_extensions.size();
+  create_info.ppEnabledExtensionNames = enabled_extensions.data();
+  create_info.queueCreateInfoCount    = queue_create_infos.size();
+  create_info.pQueueCreateInfos       = queue_create_infos.data();
+
+  WIND_ASSERT(candidate.device != nullptr && "Physical device is null");
+
+  auto device = WIND_TRY(candidate.device.createDevice(create_info), ErrorCode::FailedToCreateDevice);
+
+#ifdef WIND_LOG_ENABLE
+  spdlog::info("Creating logical device, enabled extensions: {}", enabled_extensions.size());
+#endif
+
+  DeviceContext context{};
+
+  context.device                 = std::move(device);
+  context.physical_device        = std::move(candidate.device);
+  context.physical_device_props  = candidate.device_props;
+  context.graphics_queue_idx     = candidate.graphics_queue_index;
+  context.presentation_queue_idx = candidate.present_queue_index;
+  context.graphics_queue         = context.device.getQueue(context.graphics_queue_idx.value(), 0);
+  context.presentation_queue     = context.device.getQueue(context.presentation_queue_idx.value(), 0);
+
+  if(candidate.transfer_queue_index) [[likely]]
+  {
+    context.transfer_queue_idx = candidate.transfer_queue_index;
+    context.presentation_queue = context.device.getQueue(context.transfer_queue_idx.value(), 0);
+  }
+
+  return context;
+};
+
+WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
+    -> WindResult<DeviceContext>
+{
+  auto candidate      = WIND_TRY(select_physical_device(cfg, instance, surface));
+  auto device_context = WIND_TRY(create_logical_device(std::move(candidate)));
+  return device_context;
 }
-
 
 };  // namespace wind::vulkan::device

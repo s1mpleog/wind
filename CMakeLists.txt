@@ -65,6 +65,9 @@ target_precompile_headers(wind PRIVATE
     <vulkan/vulkan.hpp>
     <vulkan/vulkan_raii.hpp>
     <spdlog/spdlog.h>
+    <ranges>
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/config.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/expected_util.hpp"
 )
 
 target_compile_options(wind PRIVATE
@@ -75,6 +78,7 @@ target_compile_options(wind PRIVATE
 
 target_compile_definitions(wind PRIVATE
   VULKAN_HPP_NO_EXCEPTIONS
+  VULKAN_HPP_USE_STD_EXPECTED
   GLM_FORCE_DEPTH_ZERO_TO_ONE
   FMT_EXCEPTIONS=0
   SPDLOG_NO_EXCEPTIONS

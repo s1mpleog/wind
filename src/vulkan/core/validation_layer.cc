@@ -4,7 +4,7 @@
 #include <vulkan/vulkan_core.h>
 
 namespace wind::vulkan {
-auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) noexcept
+auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) WIND_NOEXCEPT
     -> WindResult<vk::raii::DebugUtilsMessengerEXT>
 {
   vk::DebugUtilsMessengerCreateInfoEXT create_info{};
@@ -13,12 +13,9 @@ auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& inst
   create_info.messageSeverity = to_vk(cfg.debug_message_severity);
   create_info.pfnUserCallback = debug_callback;
 
-  auto messenger = instance.createDebugUtilsMessengerEXT(create_info);
+  auto messenger = WIND_TRY(instance.createDebugUtilsMessengerEXT(create_info), ErrorCode::FailedToCreateDebugMessenger);
 
-  if(!messenger.has_value())
-    return std::unexpected(WindError::vulkan(ErrorCode::FailedToCreateDebugMessenger, messenger.result));
-
-  return std::move(messenger).value;
+  return messenger;
 }
 
 }  // namespace wind::vulkan

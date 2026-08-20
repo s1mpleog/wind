@@ -30,6 +30,12 @@ Checks: >
   -readability-function-cognitive-complexity,
   -misc-non-private-member-variables-in-classes
   -misc-static-assert
+  -cppcoreguidelines-macro-usage,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-union-access,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-avoid-magic-numbers,
 
 CheckOptions:
   - { key: readability-identifier-naming.NamespaceCase,         value: lower_case }

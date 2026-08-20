@@ -5,7 +5,7 @@
 #include <spdlog/spdlog.h>
 
 namespace wind::app {
-[[nodiscard]] auto init(platform::WindowConfiguration win_cfg, vulkan::Configuration vulkan_cfg) noexcept -> WindResult<Context>
+WIND_NODISCARD auto init(platform::WindowConfiguration win_cfg, vulkan::Configuration vulkan_cfg) WIND_NOEXCEPT -> WindResult<Context>
 {
 #ifdef WIND_LOG_ENABLE
   spdlog::info("initializing application...");

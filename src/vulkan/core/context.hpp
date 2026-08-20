@@ -3,6 +3,7 @@
 #include "platform/window.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/configuration.hpp"
+#include "vulkan/core/device.hpp"
 
 #include <vulkan/vulkan_core.h>
 
@@ -15,8 +16,9 @@ struct Context
   vk::raii::DebugUtilsMessengerEXT messenger{nullptr};
 #endif
   vk::raii::SurfaceKHR surface{nullptr};
+  DeviceContext        device_ctx{};
 };
 
-auto init(const platform::Window& window, Configuration cfg) noexcept -> WindResult<Context>;
+auto init(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<Context>;
 
 }  // namespace wind::vulkan

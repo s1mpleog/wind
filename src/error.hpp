@@ -10,6 +10,7 @@
 
 #include "types.hpp"
 #include "utils/ansii.hpp"
+#include "vulkan/vulkan.hpp"
 
 enum class ErrorCode : u8
 {
@@ -17,6 +18,8 @@ enum class ErrorCode : u8
   FailedToCreateInstance,
   FailedToCreateDebugMessenger,
   VulkanVersion14NotFound,
+  DynamicRenderingNotSupported,
+  Synchronization2FeatureNotSupported,
 
   // device
   NoSuitablePhysicalDevice,
@@ -102,21 +105,24 @@ struct WindError
   cpptrace::stacktrace trace;
 
 public:
-  [[nodiscard]] static auto vulkan(ErrorCode code, vk::Result result, std::source_location loc = std::source_location::current()) -> WindError
+  WIND_NODISCARD static auto vulkan(ErrorCode            code   = ErrorCode::InternalError,
+                                    vk::Result           result = vk::Result::eErrorUnknown,
+                                    std::source_location loc    = std::source_location::current()) -> WindError
   {
     return WindError{code, ErrorKind::Vulkan, result, {}, loc};
   }
 
-  [[nodiscard]] static auto sdl(ErrorCode code, std::source_location loc = std::source_location::current()) -> WindError
+  WIND_NODISCARD static auto sdl(ErrorCode code, std::source_location loc = std::source_location::current()) -> WindError
   {
     return WindError{code, ErrorKind::SDL, vk::Result::eSuccess, SDL_GetError(), loc};
   };
 
-  [[nodiscard]] static auto internal(ErrorCode code, std::source_location loc = std::source_location::current()) -> WindError
+  WIND_NODISCARD static auto internal(ErrorCode            code = ErrorCode::InternalError,
+                                      std::source_location loc  = std::source_location::current()) -> WindError
   {
     return {code, ErrorKind::Internal, vk::Result::eSuccess, {}, loc};
   }
-  [[nodiscard]] auto to_string() const -> std::string
+  WIND_NODISCARD auto to_string() const -> std::string
   {
     std::string out;
 
@@ -207,7 +213,7 @@ private:
 #endif
   };
 
-  [[nodiscard]] constexpr auto code_message() const noexcept -> std::string_view
+  WIND_NODISCARD constexpr auto code_message() const WIND_NOEXCEPT -> std::string_view
   {
     switch(code)
     {
@@ -225,6 +231,15 @@ private:
 
       case ErrorCode::LayerNotSupported:
         return "Failed to find requested layer - not supported";
+
+      case ErrorCode::DynamicRenderingNotSupported:
+        return "Dynamic Rendering is required to run this features - make sure "
+               "your "
+               "Vulkan version is 1.3 or above";
+      case ErrorCode::Synchronization2FeatureNotSupported:
+        return "This feature is required to run Application - make sure "
+               "your "
+               "Vulkan version is 1.3 or above";
 
       // device
       case ErrorCode::NoSuitablePhysicalDevice:

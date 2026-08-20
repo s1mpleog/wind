@@ -22,7 +22,7 @@ struct WindowConfiguration
   u16         height{};
 };
 
-inline auto make_window_config(const u16 width, const u16 height, std::string name) noexcept -> WindowConfiguration
+inline auto make_window_config(const u16 width, const u16 height, std::string name) WIND_NOEXCEPT -> WindowConfiguration
 {
   return WindowConfiguration{.name = std::move(name), .width = width, .height = height};
 }
@@ -36,11 +36,9 @@ public:
   Window(const Window&)                   = delete;
   auto operator=(const Window&) -> Window = delete;
 
-  Window(Window&& other) noexcept
-      : m_config{std::move(other.m_config)}
-      , m_handle{std::exchange(other.m_handle, nullptr)} {};
+  Window(Window&& other) WIND_NOEXCEPT : m_config{std::move(other.m_config)}, m_handle{std::exchange(other.m_handle, nullptr)} {};
 
-  auto operator=(Window&& other) noexcept -> Window&
+  auto operator=(Window&& other) WIND_NOEXCEPT->Window&
   {
     if(this != &other)
     {
@@ -57,9 +55,9 @@ public:
     return *this;
   };
 
-  [[nodiscard]] auto init() noexcept -> WindResult<void>;
-  [[nodiscard]] auto extensions() const noexcept -> WindResult<std::vector<const char*>>;
-  [[nodiscard]] auto create_surface(const vk::Instance& instance) const noexcept -> WindResult<VkSurfaceKHR>;
+  WIND_NODISCARD auto init() WIND_NOEXCEPT -> WindResult<void>;
+  WIND_NODISCARD auto extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char*>>;
+  WIND_NODISCARD auto create_surface(const vk::Instance& instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>;
 
   ~Window()
   {
