@@ -1,5 +1,6 @@
 words = [
     "KHRONOS",
+    "Shader",
     "raii",
     "swapchain",
 ]
