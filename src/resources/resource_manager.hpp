@@ -14,6 +14,7 @@
 
 
 #include "error.hpp"
+#include "resources/texture_loader.hpp"
 #include "utils/expected_util.hpp"
 #include <filesystem>
 #include <string_view>
@@ -45,8 +46,8 @@ public:
   template <typename T>
   WIND_NODISCARD auto load(std::string_view path) WIND_NOEXCEPT -> WindResult<Handle<T>>
   {
-    if(!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
-      WIND_ERR(WindError::internal(ErrorCode::ResourceNotFound));
+
+    auto asset = WIND_TRY(asset::load_asset(path));
 
     // do validation, cache check loading and all
 
