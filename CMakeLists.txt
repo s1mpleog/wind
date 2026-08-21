@@ -36,7 +36,17 @@ FetchContent_Declare(
   GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(SDL3 spdlog cpptrace)
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    glm
+    GIT_REPOSITORY https://github.com/g-truc/glm.git
+    GIT_TAG 1.0.3
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(SDL3 spdlog cpptrace glm)
 
 find_package(Vulkan REQUIRED)
 
@@ -62,6 +72,7 @@ target_link_libraries(wind PRIVATE
   spdlog::spdlog
   cpptrace::cpptrace
   Vulkan::Vulkan
+  glm::glm
 )
 
 target_precompile_headers(wind PRIVATE

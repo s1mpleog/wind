@@ -36,7 +36,7 @@ auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> 
       (WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, ctx.device_ctx.device, ctx.device_ctx.graphics_pool, nullptr)));
 
   wind::ResourceManager manager{};
-  auto                  texture = WIND_TRY(manager.load<wind::TextureHandle>("src/main.cc"));
+  auto                  texture = WIND_TRY(manager.load<wind::TextureHandle>("test.wind"));
 
   spdlog::info("got texture handle: idx: {}, generation: {}", texture.index, texture.generation);
 
