@@ -84,6 +84,7 @@ enum class ErrorCode : u8
   // shader / io
   FailedToLoadShader,
   ShaderCompilationFailed,
+  ResourceNotFound,
 
   InternalError,
 };
@@ -371,6 +372,9 @@ private:
 
       case ErrorCode::InternalError:
         return "Internal engine error — cannot continue";
+
+      case ErrorCode::ResourceNotFound:
+        return "Resource not found 404 - The requested file is not present";
 
       case ErrorCode::InvalidWindowConfig:
         return "Window configuration error - trying to create window with invalid config";

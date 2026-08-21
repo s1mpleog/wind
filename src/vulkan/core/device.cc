@@ -62,7 +62,7 @@ static auto make_physical_device_candidate(const vk::raii::PhysicalDevice& physi
 
   auto transfer_queue = find_queue(vk::QueueFlagBits::eTransfer);
 
-  PhysicalDeviceCandidate candiate{
+  PhysicalDeviceCandidate candidate{
       .score                = 0,
       .device               = physical_device,
       .device_props         = properties_2,
@@ -73,25 +73,25 @@ static auto make_physical_device_candidate(const vk::raii::PhysicalDevice& physi
 
   if(transfer_queue)
   {
-    candiate.score += 100;
-    candiate.transfer_queue_index = transfer_queue;
+    candidate.score += 100;
+    candidate.transfer_queue_index = transfer_queue;
   }
 
   if(features_2.samplerAnisotropy == vk::True)
-    candiate.score += 100;
+    candidate.score += 100;
 
   if(properties_2.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-    candiate.score += 500;
+    candidate.score += 500;
 
   if(properties_2.deviceType == vk::PhysicalDeviceType::eIntegratedGpu)
-    candiate.score += 300;
+    candidate.score += 300;
 
   if(properties_2.deviceType == vk::PhysicalDeviceType::eCpu)
-    candiate.score += 150;
+    candidate.score += 150;
 
-  if(!best || candiate.score > best->score)
+  if(!best || candidate.score > best->score)
   {
-    best = candiate;
+    best = candidate;
   }
 
   return best.value();

@@ -1,7 +1,8 @@
 #include "context.hpp"
+#include "resources/resource_manager.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/device.hpp"
-#include "vulkan/core/frame_context.hpp"
+#include "vulkan/frame/frame_context.hpp"
 #include "vulkan/core/instance.hpp"
 #include "vulkan/core/validation_layer.hpp"
 #include "swapchain.hpp"
@@ -33,6 +34,11 @@ auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> 
 
   ctx.frame_context =
       (WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, ctx.device_ctx.device, ctx.device_ctx.graphics_pool, nullptr)));
+
+  wind::ResourceManager manager{};
+  auto                  texture = WIND_TRY(manager.load<wind::TextureHandle>("src/main.cc"));
+
+  spdlog::info("got texture handle: idx: {}, generation: {}", texture.index, texture.generation);
 
   return ctx;
 }
