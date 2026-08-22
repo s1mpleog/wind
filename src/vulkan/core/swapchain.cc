@@ -153,9 +153,9 @@ auto create(const Configuration& cfg, u32 window_width, u32 window_height, const
     create_info.pQueueFamilyIndices   = nullptr;
   }
 
-  auto swapchain   = WIND_TRY(device_context.device.createSwapchainKHR(create_info));
+  auto swapchain   = WIND_TRY(device_context.handle.createSwapchainKHR(create_info));
   auto images      = WIND_TRY(get_images(swapchain));
-  auto image_views = WIND_TRY(create_image_views(images, device_context.device, surface_format.format));
+  auto image_views = WIND_TRY(create_image_views(images, device_context.handle, surface_format.format));
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Swapchain created dimension: {}x{}, images: {}", extent.width, extent.height, images.size());

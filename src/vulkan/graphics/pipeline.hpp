@@ -7,12 +7,12 @@
 
 namespace wind::vulkan::graphics {
 
-struct PipelineInfo
+struct GraphicsPipeline
 {
   vk::raii::PipelineLayout pipeline_layout{nullptr};
   vk::raii::Pipeline       graphics_pipeline{nullptr};
 };
 
-WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) WIND_NOEXCEPT -> WindResult<PipelineInfo>;
+WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) WIND_NOEXCEPT -> WindResult<GraphicsPipeline>;
 
 };  // namespace wind::vulkan::graphics

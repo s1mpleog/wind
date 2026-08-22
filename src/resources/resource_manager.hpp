@@ -16,6 +16,7 @@
 #include "config.hpp"
 #include "error.hpp"
 #include "resources/texture_loader.hpp"
+#include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
 #include "vulkan/vulkan.hpp"
 #include <filesystem>
@@ -80,19 +81,24 @@ public:
     if(file_size == 0)
       WIND_ERR(WindError::internal(ErrorCode::FailedToLoadShader));
 
+    if(file_size % sizeof(u32) != 0)
+      WIND_ERR(WindError::internal());
+
     std::ifstream file_stream(path, std::ios::binary);
 
     if(!file_stream.is_open())
       WIND_ERR(WindError::internal());
 
-    std::vector<u32> buffer(file_size);
+    std::vector<u32> buffer(file_size / sizeof(u32));
 
     if(!file_stream.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(file_size)))
       WIND_ERR(WindError::internal());
 
     vk::ShaderModuleCreateInfo shader_module_info{};
-    shader_module_info.codeSize = buffer.size();
+    shader_module_info.codeSize = buffer.size() * sizeof(u32);
     shader_module_info.pCode    = buffer.data();
+
+    spdlog::info("code size: {}", buffer.size() * 4);
 
     u32 index = static_cast<u32>(m_shaders.size());
 

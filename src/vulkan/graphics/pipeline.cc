@@ -8,7 +8,7 @@
 #include <array>
 
 namespace wind::vulkan::graphics {
-WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) WIND_NOEXCEPT -> WindResult<PipelineInfo>
+WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) WIND_NOEXCEPT -> WindResult<GraphicsPipeline>
 {
   vk::GraphicsPipelineCreateInfo gp_create_info{};
 
@@ -58,8 +58,7 @@ WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) W
 
   spdlog::info("graphics pipeline created success: {}", (void*)*graphics_pipeline);
 
-
-  return PipelineInfo{.pipeline_layout = std::move(layout), .graphics_pipeline = std::move(graphics_pipeline)};
+  return GraphicsPipeline{.pipeline_layout = std::move(layout), .graphics_pipeline = std::move(graphics_pipeline)};
 }
 
 }  // namespace wind::vulkan::graphics

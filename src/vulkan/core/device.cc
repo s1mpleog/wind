@@ -212,18 +212,18 @@ WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candida
 
   DeviceContext context{};
 
-  context.device                 = std::move(device);
+  context.handle                 = std::move(device);
   context.physical_device        = std::move(candidate.device);
   context.physical_device_props  = candidate.device_props;
   context.graphics_queue_idx     = candidate.graphics_queue_index;
   context.presentation_queue_idx = candidate.present_queue_index;
-  context.graphics_queue         = context.device.getQueue(context.graphics_queue_idx.value(), 0);
-  context.presentation_queue     = context.device.getQueue(context.presentation_queue_idx.value(), 0);
+  context.graphics_queue         = context.handle.getQueue(context.graphics_queue_idx.value(), 0);
+  context.presentation_queue     = context.handle.getQueue(context.presentation_queue_idx.value(), 0);
 
   if(candidate.transfer_queue_index) [[likely]]
   {
     context.transfer_queue_idx = candidate.transfer_queue_index;
-    context.presentation_queue = context.device.getQueue(context.transfer_queue_idx.value(), 0);
+    context.presentation_queue = context.handle.getQueue(context.transfer_queue_idx.value(), 0);
   }
 
   return context;
@@ -246,13 +246,13 @@ WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& i
   auto device_context = WIND_TRY(create_logical_device(std::move(candidate)));
 
   device_context.graphics_pool =
-      WIND_TRY(create_command_pool(device_context.device, device_context.graphics_queue_idx.value()));
+      WIND_TRY(create_command_pool(device_context.handle, device_context.graphics_queue_idx.value()));
 
   if(device_context.has_transfer_queue()
      && device_context.transfer_queue_idx.value() != device_context.graphics_queue_idx.value())
   {
     device_context.transfer_pool =
-        WIND_TRY(create_command_pool(device_context.device, device_context.transfer_queue_idx.value()));
+        WIND_TRY(create_command_pool(device_context.handle, device_context.transfer_queue_idx.value()));
   }
 
   return device_context;

@@ -1,11 +1,16 @@
 #pragma once
 
-#include <array>
+#include "config.hpp"
+#include "error.hpp"
+#include "utils/expected_util.hpp"
+#include "vulkan/vulkan.hpp"
+#include <cstdint>
 #include <optional>
 #include <vulkan/vulkan_core.h>
 
 namespace wind::vulkan {
 
+// maybe use class ?
 struct FrameContext
 {
   vk::raii::CommandBuffer                graphics_command_buffer{nullptr};
@@ -13,6 +18,41 @@ struct FrameContext
   vk::raii::Semaphore                    image_available{nullptr};
   vk::raii::Semaphore                    render_finished{nullptr};
   vk::raii::Fence                        in_flight{nullptr};
+
+  WIND_NODISCARD auto wait(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
+  {
+    auto result = device.waitForFences(*this->in_flight, vk::True, UINT64_MAX);
+    if(result != vk::Result::eSuccess)
+      WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+
+    return {};
+  };
+
+  WIND_NODISCARD auto reset_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
+  {
+    WIND_TRY(device.resetFences(*this->in_flight));
+    return {};
+  }
+
+  WIND_NODISCARD auto reset_cmd_buffer() const WIND_NOEXCEPT -> WindResult<void>
+  {
+    WIND_TRY(graphics_command_buffer.reset());
+    return {};
+  }
+
+  WIND_NODISCARD auto begin() const WIND_NOEXCEPT -> WindResult<void>
+  {
+    WIND_TRY(graphics_command_buffer.begin(vk::CommandBufferBeginInfo{}));
+
+    return {};
+  }
+
+  WIND_NODISCARD auto end() const WIND_NOEXCEPT -> WindResult<void>
+  {
+    WIND_TRY(graphics_command_buffer.end());
+
+    return {};
+  }
 };
 
 namespace frame {

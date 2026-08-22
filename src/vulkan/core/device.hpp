@@ -13,7 +13,7 @@ namespace wind::vulkan {
 struct DeviceContext
 {
   vk::raii::PhysicalDevice             physical_device{nullptr};
-  vk::raii::Device                     device{nullptr};
+  vk::raii::Device                     handle{nullptr};
   vk::raii::Queue                      graphics_queue{nullptr};
   vk::raii::Queue                      presentation_queue{nullptr};
   std::optional<vk::raii::Queue>       transfer_queue;

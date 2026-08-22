@@ -10,7 +10,7 @@
 #include "utils/expected_util.hpp"
 
 namespace wind::platform {
-WIND_NODISCARD auto Window::init() WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto Window::create() WIND_NOEXCEPT -> WindResult<void>
 {
   if(m_config.width == 0 || m_config.height == 0 || m_config.name.empty())
   {

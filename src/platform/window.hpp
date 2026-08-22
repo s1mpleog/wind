@@ -55,7 +55,7 @@ public:
     return *this;
   };
 
-  WIND_NODISCARD auto init() WIND_NOEXCEPT -> WindResult<void>;
+  WIND_NODISCARD auto create() WIND_NOEXCEPT -> WindResult<void>;
   WIND_NODISCARD auto extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char*>>;
   WIND_NODISCARD auto create_surface(const vk::Instance& instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>;
   auto                get_config() const WIND_NOEXCEPT -> const WindowConfiguration&;
