@@ -197,9 +197,9 @@ enum class ShaderStage : u8
 
 struct ShaderInfo
 {
-  ShaderStage            stage{ShaderStage::Vertex};
-  std::string_view       entry_point{"main"};
-  vk::raii::ShaderModule module{nullptr};
+  ShaderStage                   stage{ShaderStage::Vertex};
+  std::string_view              entry_point{"main"};
+  const vk::raii::ShaderModule* module{nullptr};
 };
 
 struct RasterizationState
