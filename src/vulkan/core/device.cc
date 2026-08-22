@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
+#include "vulkan/types.hpp"
 
 namespace wind::vulkan::device {
 

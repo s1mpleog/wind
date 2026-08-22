@@ -61,6 +61,7 @@ add_executable(wind
   src/vulkan/core/swapchain.cc
   src/vulkan/frame/frame_context.cc
   src/resources/resource_manager.cc
+  src/vulkan/graphics/pipeline.cc
 )
 
 target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)

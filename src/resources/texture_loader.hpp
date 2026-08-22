@@ -7,6 +7,7 @@
 #include "utils/expected_util.hpp"
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -22,7 +23,7 @@ struct WindTexture
 {
   u32             width{};
   u32             height{};
-  u8              format{};
+  u32             format{};
   std::vector<u8> data;
 };
 
@@ -75,9 +76,16 @@ WIND_NODISCARD WIND_INLINE auto decode(std::span<const u8> buffer) WIND_NOEXCEPT
     return value;
   };
 
-  u32 version     = read_u32(buffer, cursor);
+  auto read_f32 = [](std::span<const u8> buf, size_t& cursor) -> float {
+    float value{};
+    std::memcpy(&value, buf.data() + cursor, sizeof(float));
+    cursor += sizeof(float);
+    return value;
+  };
+
+  // u32 version     = read_u32(buffer, cursor);
+  cursor += sizeof(u32);
   u32 chunk_count = read_u32(buffer, cursor);
-  spdlog::info("version: {}, chunk_count: {}", version, chunk_count);
 
   if(chunk_count < 2)
     WIND_ERR(WindError::internal());
@@ -86,60 +94,115 @@ WIND_NODISCARD WIND_INLINE auto decode(std::span<const u8> buffer) WIND_NOEXCEPT
   constexpr u32 CHUNK_INDC = 0x43444E49;  // "INDC"
   constexpr u32 CHUNK_TEXT = 0x54584554;  // "TEXT"
   constexpr u32 CHUNK_MATE = 0x4554414D;  // "MATE"
-  constexpr u32 CHUNK_END  = 0x4554414D;  // "IEND"
+  constexpr u32 CHUNK_END  = 0x444E4549;  // "IEND"
 
   // at this point we have read the header now comes the data
 
-
-  spdlog::info("cursor before loop: {}", cursor);
+  WindAsset asset{};
 
   for(u32 i = 0; i < chunk_count; i++)
   {
     auto type = read_u32(buffer, cursor);
-    spdlog::info("cursor after reading type: {}", cursor);
 
     switch(type)
     {
       case CHUNK_VERT: {
-        auto size = read_u64(buffer, cursor);
-        spdlog::info("vertices size: {} cursor: {}", size, cursor);
-        // advance cursor
+        auto size     = read_u64(buffer, cursor);
+        auto vertices = buffer.subspan(cursor, size);
+
+        asset.vertices.resize(vertices.size());
+
+        std::memcpy(asset.vertices.data(), vertices.data(), vertices.size());
+
+        WIND_ASSERT(vertices.size() == asset.vertices.size() && "Memcpy failed");
+
         cursor += size;
-        spdlog::info("cursor after advancing vertices size: {}", cursor);
         break;
       }
 
       case CHUNK_INDC: {
-        spdlog::info("cursor before reading indices size: {}", cursor);
-        auto size = read_u64(buffer, cursor);
-        spdlog::info("cursor after reading indices size: {}", cursor);
-        spdlog::info("indices size: {}, cursor: {}", size, cursor);
+        auto size    = read_u64(buffer, cursor);
+        auto indices = buffer.subspan(cursor, size);
+
+        asset.indices.resize(indices.size());
+
+        std::memcpy(asset.indices.data(), indices.data(), indices.size());
+
+        WIND_ASSERT(indices.size() == asset.indices.size() && "Memcpy failed");
+
         cursor += size;
         break;
       }
 
       case CHUNK_TEXT: {
-        auto size   = read_u64(buffer, cursor);
         auto width  = read_u32(buffer, cursor);
         auto height = read_u32(buffer, cursor);
-        spdlog::info("texture size: {}, cursor: {}", size, cursor);
-        cursor += size - 8;
+        auto format = read_u32(buffer, cursor);
+
+        WIND_ASSERT(format > 0 || format < 7 && "invalid texture format");
+
+        auto size = read_u64(buffer, cursor);
+
+        auto texture_data = buffer.subspan(cursor, size);
+
+        auto texture = WindTexture{.width = width, .height = height, .format = format, .data{}};
+        texture.data.resize(texture_data.size());
+
+        std::memcpy(texture.data.data(), texture_data.data(), texture_data.size());
+
+        WIND_ASSERT(texture.data.size() == texture_data.size() && "MEMCPY failed");
+
+        asset.textures.push_back(std::move(texture));
+
+        cursor += size;
+
         break;
       }
 
-        // case CHUNK_MATE: {
-        //   auto size = read_u64(buffer, cursor);
-        //   spdlog::info("material size: {}, cursor", size, cursor);
-        //   cursor += size;
-        //   break;
-        // }
+      case CHUNK_MATE: {
+        // auto size = read_u64(buffer, cursor);
+        cursor += sizeof(u64);
+        // skip if index == U32::MAX that means there is no index
+        auto albedo_index             = read_u32(buffer, cursor);
+        auto normal_index             = read_u32(buffer, cursor);
+        auto metallic_roughness_index = read_u32(buffer, cursor);
+
+        auto metallic  = read_f32(buffer, cursor);
+        auto roughness = read_f32(buffer, cursor);
+
+        auto base_r = read_f32(buffer, cursor);
+        auto base_g = read_f32(buffer, cursor);
+        auto base_b = read_f32(buffer, cursor);
+        auto base_a = read_f32(buffer, cursor);
+
+        WIND_ASSERT(base_r > 0 || base_r < 1 || base_g > 0 || base_g < 1 || base_b > 0 || base_b < 1 || base_a > 0
+                    || base_a < 1 && "invalid color");
+
+        asset.materials.emplace_back(WindMaterial{
+            .albedo_index = albedo_index == UINT32_MAX ? std::optional<u32>{std::nullopt} : std::optional{albedo_index},
+            .normal_index = normal_index == UINT32_MAX ? std::optional<u32>{std::nullopt} : std::optional{normal_index},
+            .metallic_roughness_index = metallic_roughness_index == UINT32_MAX ? std::optional<u32>{std::nullopt} :
+                                                                                 std::optional{metallic_roughness_index},
+            .metallic   = metallic,
+            .roughness  = roughness,
+            .base_color = {base_r, base_g, base_b, base_a},
+        });
+
+        break;
+      }
 
       default:
+        spdlog::info("unknown type: {}", type);
         break;
     }
   }
 
-  return {};
+  auto type = read_u32(buffer, cursor);
+
+  if(type != CHUNK_END)
+    WIND_ERR(WindError::internal());
+
+  return asset;
 }
 
 WIND_NODISCARD WIND_INLINE auto load_asset(std::string_view name) WIND_NOEXCEPT -> WindResult<WindAsset>
@@ -174,10 +237,30 @@ WIND_NODISCARD WIND_INLINE auto load_asset(std::string_view name) WIND_NOEXCEPT 
 
   spdlog::info("read {} bytes", buffer.size());
 
-  auto data = WIND_TRY(decode(buffer));
+  auto asset = WIND_TRY(decode(buffer));
 
-  return {};
+  spdlog::info("read vertices: {}, indices: {}", asset.vertices.size(), asset.indices.size());
+
+  spdlog::info("total textures: {}", asset.textures.size());
+  for(const auto& texture : asset.textures)
+  {
+    spdlog::info("width: {}, height: {}, format: {}, data length: {}", texture.width, texture.height, texture.format,
+                 texture.data.size());
+  }
+
+  spdlog::info("total materials: {}", asset.materials.size());
+
+  for(const auto& material : asset.materials)
+  {
+    spdlog::info("albedo: {}, normal: {}, metallic_roughness: {}, roughness: {}, metallic {}, base_color: {}, {}, {}, {}",
+                 !material.albedo_index || material.albedo_index.value(),
+                 !material.normal_index || material.normal_index.value(),
+                 !material.metallic_roughness_index || material.metallic_roughness_index.value(), material.roughness,
+                 material.metallic, material.base_color[0], material.base_color[1], material.base_color[2],
+                 material.base_color[3]);
+  }
+
+  return asset;
 };
-
 
 };  // namespace wind::asset

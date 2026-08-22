@@ -13,10 +13,8 @@
 // load the file -> cache it -> increment handle data -> return handle
 
 
-#include "error.hpp"
 #include "resources/texture_loader.hpp"
 #include "utils/expected_util.hpp"
-#include <filesystem>
 #include <string_view>
 
 namespace wind {
@@ -46,7 +44,6 @@ public:
   template <typename T>
   WIND_NODISCARD auto load(std::string_view path) WIND_NOEXCEPT -> WindResult<Handle<T>>
   {
-
     auto asset = WIND_TRY(asset::load_asset(path));
 
     // do validation, cache check loading and all
@@ -61,11 +58,3 @@ private:
 };
 
 };  // namespace wind
-
-inline auto test() -> WindResult<void>
-{
-  wind::ResourceManager manager{};
-  auto                  texture = WIND_TRY(manager.load<wind::TextureHandle>("src/main.cc"));
-
-  return {};
-}
