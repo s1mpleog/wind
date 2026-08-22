@@ -3,7 +3,7 @@
 #include "types.hpp"
 #include <vector>
 
-namespace wind::vulkan::graphics {
+namespace wind::vulkan {
 
 enum class PrimitiveTopology : uint8_t
 {
@@ -293,6 +293,7 @@ struct ColorBlendState
   }
 };
 
+namespace graphics {
 struct GraphicsConfig
 {
   std::vector<ShaderInfo> shader;
@@ -305,4 +306,6 @@ struct GraphicsConfig
   Format                  depth_format{Format::Undefined};
 };
 
-};  // namespace wind::vulkan::graphics
+};  // namespace graphics
+
+};  // namespace wind::vulkan

@@ -7,6 +7,7 @@
 #include "vulkan/core/validation_layer.hpp"
 #include "swapchain.hpp"
 #include "vulkan/graphics/pipeline.hpp"
+#include "vulkan/graphics/pipeline_config.hpp"
 
 namespace wind::vulkan {
 auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<Context>
@@ -36,12 +37,29 @@ auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> 
   ctx.frame_context =
       (WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, ctx.device_ctx.device, ctx.device_ctx.graphics_pool, nullptr)));
 
+  // testing
   wind::ResourceManager manager{};
   auto                  texture = WIND_TRY(manager.load<wind::TextureHandle>("test.wind"));
 
   spdlog::info("got texture handle: idx: {}, generation: {}", texture.index, texture.generation);
 
-  auto pipeline = WIND_TRY(graphics::create(ctx.device_ctx.device));
+  auto graphics_config = graphics::GraphicsConfig{.shader = {},
+                                                  .rasterization{
+                                                      .cull_mode    = CullMode::Back,
+                                                      .polygon_mode = PolygonMode::Fill,
+                                                      .front_face   = FrontFace::CounterClockwise,
+                                                      .discard      = false,
+                                                  },
+                                                  .vertex_input_state{
+                                                      .attributes{},
+                                                      .bindings{},
+                                                  },
+                                                  .depth_stencil{
+                                                      .depth_test = false,
+                                                  },
+                                                  .color_format = Format::RGBA8_SRGB};
+
+  auto pipeline_info = WIND_TRY(graphics::create(ctx.device_ctx.device, std::move(graphics_config)));
 
   return ctx;
 }
