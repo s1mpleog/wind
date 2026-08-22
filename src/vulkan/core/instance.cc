@@ -11,6 +11,7 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
 #include <spdlog/spdlog.h>
+#include <vulkan/types.hpp>
 
 namespace wind::vulkan::instance {
 static auto query_instance_layer_support(std::string_view requested_layer) -> WindResult<void>

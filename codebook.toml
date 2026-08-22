@@ -1,5 +1,6 @@
 words = [
     "KHRONOS",
+    "Memcpy",
     "Shader",
     "raii",
     "swapchain",

@@ -6,6 +6,7 @@
 #include "vulkan/core/instance.hpp"
 #include "vulkan/core/validation_layer.hpp"
 #include "swapchain.hpp"
+#include "vulkan/graphics/pipeline.hpp"
 
 namespace wind::vulkan {
 auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<Context>
@@ -39,6 +40,8 @@ auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> 
   auto                  texture = WIND_TRY(manager.load<wind::TextureHandle>("test.wind"));
 
   spdlog::info("got texture handle: idx: {}, generation: {}", texture.index, texture.generation);
+
+  auto pipeline = WIND_TRY(graphics::create(ctx.device_ctx.device));
 
   return ctx;
 }

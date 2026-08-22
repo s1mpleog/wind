@@ -1,7 +1,7 @@
 #include "validation_layer.hpp"
 #include "error.hpp"
-#include "vulkan/core/configuration.hpp"
 #include <vulkan/vulkan_core.h>
+#include "vulkan/types.hpp"
 
 namespace wind::vulkan {
 auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) WIND_NOEXCEPT
