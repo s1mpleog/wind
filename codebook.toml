@@ -3,5 +3,6 @@ words = [
     "Memcpy",
     "Shader",
     "raii",
+    "shaders",
     "swapchain",
 ]

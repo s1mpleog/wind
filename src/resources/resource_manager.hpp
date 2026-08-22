@@ -13,9 +13,18 @@
 // load the file -> cache it -> increment handle data -> return handle
 
 
+#include "config.hpp"
+#include "error.hpp"
 #include "resources/texture_loader.hpp"
 #include "utils/expected_util.hpp"
+#include "vulkan/vulkan.hpp"
+#include <filesystem>
+#include <fstream>
+#include <string>
 #include <string_view>
+#include <unordered_map>
+#include <vector>
+#include <vulkan/vulkan_raii.hpp>
 
 namespace wind {
 
@@ -51,10 +60,66 @@ public:
     return Handle<T>{.index = 1, .generation = 0};
   }
 
+  WIND_NODISCARD auto load_shader(const vk::raii::Device& device, std::string_view shader_path) WIND_NOEXCEPT
+      -> WindResult<ShaderHandle>
+  {
+    auto it = m_shader_cache.find(std::string{shader_path});
+
+    if(it != m_shader_cache.end())
+      return it->second;
+
+    // cache miss create new shader
+
+    auto path = std::filesystem::path(shader_path);
+
+    if(!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
+      WIND_ERR(WindError::internal(ErrorCode::FailedToLoadShader));
+
+    auto file_size = std::filesystem::file_size(path);
+
+    if(file_size == 0)
+      WIND_ERR(WindError::internal(ErrorCode::FailedToLoadShader));
+
+    std::ifstream file_stream(path, std::ios::binary);
+
+    if(!file_stream.is_open())
+      WIND_ERR(WindError::internal());
+
+    std::vector<u32> buffer(file_size);
+
+    if(!file_stream.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(file_size)))
+      WIND_ERR(WindError::internal());
+
+    vk::ShaderModuleCreateInfo shader_module_info{};
+    shader_module_info.codeSize = buffer.size();
+    shader_module_info.pCode    = buffer.data();
+
+    u32 index = static_cast<u32>(m_shaders.size());
+
+    m_shaders.emplace_back(WIND_TRY(device.createShaderModule(shader_module_info)));
+
+    ShaderHandle handle{.index = index, .generation = 0};
+
+    m_shader_cache.emplace(std::string{shader_path}, handle);
+
+    return handle;
+  };
+
+  WIND_NODISCARD auto get_shader(ShaderHandle handle) WIND_NOEXCEPT -> WindResult<vk::raii::ShaderModule*>
+  {
+    if(handle.index > m_shaders.size())
+      WIND_ERR(WindError::internal());
+
+    return &m_shaders[handle.index];
+  }
+
   template <typename T>
-  WIND_NODISCARD auto load() WIND_NOEXCEPT -> WindResult<T*>;
+  WIND_NODISCARD auto get() WIND_NOEXCEPT -> WindResult<T*>;
 
 private:
+  std::vector<asset::WindAsset>                 m_assets;
+  std::vector<vk::raii::ShaderModule>           m_shaders;
+  std::unordered_map<std::string, ShaderHandle> m_shader_cache;
 };
 
 };  // namespace wind

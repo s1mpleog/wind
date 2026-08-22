@@ -2,7 +2,6 @@
 #include "resources/resource_manager.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/device.hpp"
-#include "vulkan/frame/frame_context.hpp"
 #include "vulkan/core/instance.hpp"
 #include "vulkan/core/validation_layer.hpp"
 #include "swapchain.hpp"
@@ -10,7 +9,7 @@
 #include "vulkan/graphics/pipeline_config.hpp"
 
 namespace wind::vulkan {
-auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<Context>
+auto create_context(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<Context>
 {
   Context ctx{};
 
@@ -31,11 +30,6 @@ auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> 
 
   ctx.swapchain_ctx =
       WIND_TRY(swapchain::create(cfg, window.get_config().width, window.get_config().height, ctx.surface, ctx.device_ctx));
-
-  ctx.frame_context.reserve(MAX_FRAME_IN_FLIGHT);
-
-  ctx.frame_context =
-      (WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, ctx.device_ctx.device, ctx.device_ctx.graphics_pool, nullptr)));
 
   // testing
   wind::ResourceManager manager{};
