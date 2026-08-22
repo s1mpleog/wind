@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 project(wind VERSION 0.1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -62,6 +62,7 @@ add_executable(wind
   src/vulkan/frame/frame_context.cc
   src/resources/resource_manager.cc
   src/vulkan/graphics/pipeline.cc
+  src/vulkan/renderer.cc
 )
 
 target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -122,9 +123,17 @@ if(RENDERER_WARNINGS_AS_ERRORS)
   target_compile_options(wind PRIVATE -Werror)
 endif()
 
+add_custom_command(TARGET wind POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/assets"
+            "$<TARGET_FILE_DIR:wind>/assets"
+    COMMENT "Copying assets to build directory..."
+    VERBATIM
+)
+
 message(STATUS "=== Build Configuration ===")
 message(STATUS "Compiler        : ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
-message(STATUS "C++ Standard    : c++23")
+message(STATUS "C++ Standard    : c++26")
 message(STATUS "Build type      : ${CMAKE_BUILD_TYPE}")
 message(STATUS "Vulkan          : ${Vulkan_VERSION}")
 message(STATUS "Validation      : ${VALIDATION}")

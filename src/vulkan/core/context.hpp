@@ -21,14 +21,11 @@ struct Context
 #ifdef WIND_VULKAN_VALIDATION
   vk::raii::DebugUtilsMessengerEXT messenger{nullptr};
 #endif
-  vk::raii::SurfaceKHR      surface{nullptr};
-  DeviceContext             device_ctx{};
-  SwapchainContext          swapchain_ctx{};
-  std::vector<FrameContext> frame_context;
-
-  u32 current_frame{};
+  vk::raii::SurfaceKHR surface{nullptr};
+  DeviceContext        device_ctx{};
+  SwapchainContext     swapchain_ctx{};
 };
 
-auto create(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<Context>;
+auto create_context(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<Context>;
 
 }  // namespace wind::vulkan

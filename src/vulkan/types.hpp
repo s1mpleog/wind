@@ -366,14 +366,10 @@ WIND_INLINE auto to_vk(const VertexInputState& vertex_input) WIND_NOEXCEPT
   bindings.reserve(vertex_input.bindings.size());
 
   for(const auto& attr : vertex_input.attributes)
-  {
     attributes.push_back(to_vk(attr));
-  }
 
   for(const auto& bind : vertex_input.bindings)
-  {
     bindings.push_back(to_vk(bind));
-  }
 
   return {std::move(attributes), std::move(bindings)};
 }
