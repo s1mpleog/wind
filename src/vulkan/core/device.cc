@@ -11,6 +11,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
 #include "vulkan/types.hpp"
 
@@ -103,8 +104,12 @@ WIND_NODISCARD auto check_hard_requirements(const Configuration& cfg, const vk::
   auto features_2   = device.getFeatures2().features;
   auto properties_2 = device.getProperties2().properties;
 
-  auto features13 =
-      device.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features>().get<vk::PhysicalDeviceVulkan13Features>();
+  auto chain =
+      device.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR>();
+
+  auto& features_13 = chain.get<vk::PhysicalDeviceVulkan13Features>();
+
+  auto& maintainance_feature = chain.get<vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR>();
 
   auto available_extensions = device.enumerateDeviceExtensionProperties();
 
@@ -112,7 +117,8 @@ WIND_NODISCARD auto check_hard_requirements(const Configuration& cfg, const vk::
   if(!available_extensions || available_extensions->empty())
     return false;
 
-  const std::array<std::string_view, 2> required_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+  const std::array<std::string_view, 3> required_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+                                                               VK_KHR_MAINTENANCE1_EXTENSION_NAME};
 
   // for all required extensions:
   // does any of available extensions matches the requirement
@@ -128,7 +134,8 @@ WIND_NODISCARD auto check_hard_requirements(const Configuration& cfg, const vk::
   });
 
   return (features_2.geometryShader == vk::True) && properties_2.apiVersion >= to_vk(cfg.api_version)
-         && (features13.dynamicRendering == vk::True) && (features13.synchronization2 == vk::True) && supported;
+         && (features_13.dynamicRendering == vk::True) && (features_13.synchronization2 == vk::True)
+         && (maintainance_feature.swapchainMaintenance1 == vk::True) && supported;
 }
 
 // responsible for selecting the preferred physical device
@@ -173,6 +180,11 @@ WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candida
   features_13.dynamicRendering = vk::True;
   features_13.synchronization2 = vk::True;
 
+  vk::PhysicalDeviceSwapchainMaintenance1FeaturesEXT maintenance_feature{};
+  maintenance_feature.swapchainMaintenance1 = vk::True;
+
+  features_13.pNext = &maintenance_feature;
+
   float queue_priorities = 1.0F;
 
   std::set unique_queues{candidate.graphics_queue_index.value(), candidate.present_queue_index.value()};
@@ -193,7 +205,8 @@ WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candida
 #endif
 
   // NOTE: i am using this same array in two places i should put this somewhere maybe some DeviceConfiguration or something
-  const std::array<const char*, 2> enabled_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+  const std::array<const char*, 3> enabled_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+                                                         VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME};
 
   vk::DeviceCreateInfo create_info{};
   create_info.pNext                   = &features_13;

@@ -1,4 +1,5 @@
 #include "application.hpp"
+#include "SDL3/SDL_events.h"
 #include "platform/window.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/renderer.hpp"
@@ -38,69 +39,29 @@ WIND_NODISCARD auto Application::create(platform::WindowConfiguration window_cfg
 
 auto Application::run() WIND_NOEXCEPT -> WindResult<void>
 {
-  WIND_TRY(m_renderer.begin());
+  bool running = true;
 
-  return {};
-}
+  //TODO: abstract this
+  while(running)
+  {
+    SDL_Event event{};
 
-auto test() -> WindResult<void>
-{
-  // auto vert_shader = WIND_TRY(m_resource_manager.load_shader(m_context.device.handle, "assets/shaders/vert.spv"));
+    while(SDL_PollEvent(&event))
+    {
+      if(event.type == SDL_EVENT_QUIT)
+        running = false;
+    }
 
-  // auto frag_shader = WIND_TRY(m_resource_manager.load_shader(m_context.device.handle, "assets/shaders/frag.spv"));
+    auto [width, height] = m_window.drawable_size();
 
-  // spdlog::info("got shader handle: {}", vert_shader.index);
-  // spdlog::info("got shader handle: {}", frag_shader.index);
+    WIND_TRY(m_renderer.begin(width, height));
 
-  // auto* shader_data = WIND_TRY(m_resource_manager.get_shader(vert_shader));
+    m_renderer.draw();
 
-  // spdlog::info("{}", (void*)shader_data);
+    m_renderer.end();
+  }
 
-  // // Testing
-  // auto graphics_config = graphics::GraphicsConfig{.shader = {},
-  //                                                 .rasterization{
-  //                                                     .cull_mode    = CullMode::Back,
-  //                                                     .polygon_mode = PolygonMode::Fill,
-  //                                                     .front_face   = FrontFace::CounterClockwise,
-  //                                                     .discard      = false,
-  //                                                 },
-  //                                                 .vertex_input_state{
-  //                                                     .attributes{},
-  //                                                     .bindings{},
-  //                                                 },
-  //                                                 .depth_stencil{
-  //                                                     .depth_test = false,
-  //                                                 },
-  //                                                 .color_format = Format::RGBA8_SRGB};
-
-  // auto handle = WIND_TRY(m_pipeline_manager.create(std::move(graphics_config), m_context.device.handle));
-
-  // auto graphics_config_2 = graphics::GraphicsConfig{.shader = {},
-  //                                                   .rasterization{
-  //                                                       .cull_mode    = CullMode::Back,
-  //                                                       .polygon_mode = PolygonMode::Fill,
-  //                                                       .front_face   = FrontFace::CounterClockwise,
-  //                                                       .discard      = false,
-  //                                                   },
-  //                                                   .vertex_input_state{
-  //                                                       .attributes{},
-  //                                                       .bindings{},
-  //                                                   },
-  //                                                   .depth_stencil{
-  //                                                       .depth_test = false,
-  //                                                   },
-  //                                                   .color_format = Format::RGBA8_SRGB};
-
-  // auto handle2 = WIND_TRY(m_pipeline_manager.create(std::move(graphics_config_2), m_context.device.handle));
-
-  // auto p1 = WIND_TRY(m_pipeline_manager.get(handle));
-  // auto p2 = WIND_TRY(m_pipeline_manager.get(handle2));
-
-  // spdlog::info("pipeline handle: {}", handle);
-  // spdlog::info("pipeline handle: {}", handle2);
-  // spdlog::info("pipeline : {}", (void*)*p1->graphics_pipeline);
-  // spdlog::info("pipeline : {}", (void*)*p2->graphics_pipeline);
-
+  WIND_TRY(m_renderer.shutdown());
 
   return {};
 }

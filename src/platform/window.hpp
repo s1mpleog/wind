@@ -3,6 +3,7 @@
 /* responsible to create platfrom agnostic window and expose functions for vulkan */
 
 #include "SDL3/SDL_video.h"
+#include "config.hpp"
 #include "types.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/vulkan.hpp"
@@ -59,6 +60,10 @@ public:
   WIND_NODISCARD auto extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char*>>;
   WIND_NODISCARD auto create_surface(const vk::Instance& instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>;
   auto                get_config() const WIND_NOEXCEPT -> const WindowConfiguration&;
+
+  WIND_NODISCARD auto drawable_size() WIND_NOEXCEPT -> std::pair<u32, u32> { return {m_config.width, m_config.height}; }
+
+  WIND_NODISCARD auto handle() WIND_NOEXCEPT -> SDL_Window* { return m_handle; }
 
   ~Window()
   {

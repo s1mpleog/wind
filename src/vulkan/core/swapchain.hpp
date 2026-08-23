@@ -22,7 +22,8 @@ WIND_NODISCARD auto create(const Configuration&        cfg,
                            u32                         window_width,
                            u32                         window_height,
                            const vk::raii::SurfaceKHR& surface,
-                           const DeviceContext&        device_context) WIND_NOEXCEPT -> WindResult<SwapchainContext>;
+                           const DeviceContext&        device_context,
+                           const vk::raii::SwapchainKHR* old_swapchain = nullptr) WIND_NOEXCEPT -> WindResult<SwapchainContext>;
 };
 
 };  // namespace wind::vulkan

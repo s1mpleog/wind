@@ -6,15 +6,33 @@
 #include "utils/expected_util.hpp"
 #include "vulkan/core/configuration.hpp"
 #include "vulkan/core/context.hpp"
+#include "vulkan/core/swapchain.hpp"
 #include "vulkan/frame/frame_context.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/vulkan.hpp"
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
 namespace wind::vulkan {
+struct Vertex
+{
+  glm::vec4 position;
+  glm::vec4 color;
+};
+
+static_assert(sizeof(Vertex) == 32);
+static_assert(offsetof(Vertex, position) == 0);
+static_assert(offsetof(Vertex, color) == 16);
+
+static std::array<Vertex, 3> vertices{{
+    {{0.0f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+    {{0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+}};
 
 WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& window) WIND_NOEXCEPT -> WindResult<Renderer>
 {
@@ -41,7 +59,7 @@ WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& 
 
   auto pipeline_manager = graphics::PipelineManager{};
 
-  auto graphics_config = graphics::GraphicsConfig{.shader = {std::move(vert_info), std::move(frag_info)},
+  auto graphics_config = graphics::GraphicsConfig{.shader = {vert_info, frag_info},
                                                   .rasterization{
                                                       .cull_mode    = CullMode::Back,
                                                       .polygon_mode = PolygonMode::Fill,
@@ -51,41 +69,67 @@ WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& 
                                                   .vertex_input_state{
                                                       .attributes{},
                                                       .bindings{},
+                                                      // .attributes = {{
+                                                      //                    .location = 0,
+                                                      //                    .binding  = 0,
+                                                      //                    .format   = VertexFormat::Float4,
+                                                      //                    .offset   = offsetof(Vertex, position),
+                                                      //                },
+                                                      //                {
+                                                      //                    .location = 1,
+                                                      //                    .binding  = 0,
+                                                      //                    .format   = VertexFormat::Float4,
+                                                      //                    .offset   = offsetof(Vertex, color),
+                                                      //                }},
+                                                      // .bindings{{.binding = 0, .stride = sizeof(Vertex), .input_rate = VertexInputRate::Vertex}},
                                                   },
+                                                  .input_assembly{.topology = PrimitiveTopology::TriangleList},
                                                   .depth_stencil{
                                                       .depth_test = false,
                                                   },
-                                                  .color_format = Format::RGBA8_SRGB};
+                                                  .color_blend  = ColorBlendState::opaque(),
+                                                  .color_format = Format::BGRA8_SRGB};
 
   auto pipeline_handle = WIND_TRY(pipeline_manager.create(std::move(graphics_config), context.device.handle));
 
   spdlog::info("pipeline handle: {}", pipeline_handle);
 
-  return Renderer(std::move(context), std::move(frame_context));
+  return Renderer(std::move(cfg), std::move(context), std::move(frame_context), std::move(pipeline_manager));
 }
 
-WIND_NODISCARD auto Renderer::begin() WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
 {
   // get a frame
   auto* frame = &m_frame_context[m_current_frame];
 
   // wait for fences (previous frame to complete)
-  WIND_TRY(frame->wait(m_context.device.handle));
+  WIND_TRY(frame->wait_in_flight_fence(m_context.device.handle));
+  WIND_TRY(frame->wait_present_fence(m_context.device.handle));
 
   // acquire the next image index
   auto [swapchain_result, swapchain_image] =
       m_context.swapchain.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
 
-  if(swapchain_result == vk::Result::eErrorOutOfDateKHR)
+  if(swapchain_result == vk::Result::eErrorOutOfDateKHR || swapchain_result == vk::Result::eSuboptimalKHR)
   {
+    WIND_TRY(m_context.device.handle.waitIdle());
+
+    auto old_swapchain = std::move(m_context.swapchain);
+
+    auto new_swapchain = WIND_TRY(swapchain::create(m_config, width, height, m_context.surface, m_context.device));
+
+    m_context.swapchain = std::move(new_swapchain);
+
     // create new swapchain
     spdlog::info("out of date swapchain");
   }
 
-  if(swapchain_result != vk::Result::eSuccess && swapchain_result != vk::Result::eSuboptimalKHR)
+  if(swapchain_result != vk::Result::eSuccess && swapchain_result != vk::Result::eSuboptimalKHR
+     && swapchain_result != vk::Result::eErrorOutOfDateKHR)
     WIND_ERR(WindError::vulkan(ErrorCode::SwapchainSuboptimal, swapchain_result));
 
-  WIND_TRY(frame->reset_fence(m_context.device.handle));
+  WIND_TRY(frame->reset_in_flight_fence(m_context.device.handle));
+  WIND_TRY(frame->reset_present_fence(m_context.device.handle));
 
   m_current_image = swapchain_image;
 
@@ -110,7 +154,7 @@ WIND_NODISCARD auto Renderer::begin() WIND_NOEXCEPT -> WindResult<void>
   color_barrier.srcStageMask                = vk::PipelineStageFlagBits2::eTopOfPipe;
   color_barrier.srcAccessMask               = vk::AccessFlagBits2::eNone;
 
-  std::array<float, 4> clear_color{0.5F, 0.2F, 1.0F, 1.0F};
+  std::array<float, 4> clear_color{0.5F, 0.2F, 0.2F, 0.2F};
 
   vk::ClearColorValue color{};
   color.setFloat32(clear_color);
@@ -139,6 +183,121 @@ WIND_NODISCARD auto Renderer::begin() WIND_NOEXCEPT -> WindResult<void>
   frame->graphics_command_buffer.beginRendering(rendering_info);
 
   return {};
+}
+
+auto Renderer::draw() WIND_NOEXCEPT -> void
+{
+  // vk::Viewport view_port{};
+  // view_port.width    = static_cast<float>(m_context.swapchain.extent.width);
+  // view_port.height   = static_cast<float>(m_context.swapchain.extent.height);
+  // view_port.minDepth = 0.0f;
+  // view_port.maxDepth = 1.0f;
+  vk::Rect2D scissor{0};
+  scissor.extent = m_context.swapchain.extent;
+
+  vk::Viewport viewport{};
+  viewport.x     = 0.0f;
+  viewport.y     = static_cast<float>(m_context.swapchain.extent.height);
+  viewport.width = static_cast<float>(m_context.swapchain.extent.width);
+  // upside down triangle fix
+  viewport.height   = -static_cast<float>(m_context.swapchain.extent.height);
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  auto* frame = &m_frame_context[m_current_frame];
+
+  frame->graphics_command_buffer.setViewport(0, viewport);
+  frame->graphics_command_buffer.setScissor(0, scissor);
+
+  auto pipeline = m_pipeline_manager.get(0);
+
+  if(!pipeline.has_value())
+  {
+    spdlog::info("failed to get pipeline");
+  }
+
+  frame->graphics_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline.value()->graphics_pipeline);
+
+  frame->graphics_command_buffer.draw(3, 1, 0, 0);
+}
+
+
+auto Renderer::end() WIND_NOEXCEPT -> void
+{
+  auto* frame = &m_frame_context[m_current_frame];
+
+  frame->graphics_command_buffer.endRendering();
+
+
+  vk::ImageMemoryBarrier2 barrier{};
+  barrier.oldLayout     = vk::ImageLayout::eColorAttachmentOptimal;
+  barrier.newLayout     = vk::ImageLayout::ePresentSrcKHR;
+  barrier.image         = m_context.swapchain.images[m_current_image];
+  barrier.srcStageMask  = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+  barrier.srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite;
+  barrier.dstStageMask  = vk::PipelineStageFlagBits2::eNone;
+  barrier.dstAccessMask = vk::AccessFlagBits2::eNone;
+
+  barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+  barrier.subresourceRange.levelCount = 1;
+  barrier.subresourceRange.layerCount = 1;
+
+  barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+  barrier.subresourceRange.layerCount = 1;
+  barrier.subresourceRange.levelCount = 1;
+
+  vk::DependencyInfo dep_info{};
+  dep_info.imageMemoryBarrierCount = 1;
+  dep_info.pImageMemoryBarriers    = &barrier;
+
+  frame->graphics_command_buffer.pipelineBarrier2(dep_info);
+
+  if(!frame->end())
+    return;
+
+  vk::CommandBufferSubmitInfo cmd_buffer_submit_info{};
+  cmd_buffer_submit_info.commandBuffer = frame->graphics_command_buffer;
+
+  vk::SemaphoreSubmitInfo wait_semaphore_info{};
+  wait_semaphore_info.semaphore = *frame->image_available;
+  wait_semaphore_info.stageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+
+  vk::SemaphoreSubmitInfo render_finished_semaphore_info{};
+  render_finished_semaphore_info.semaphore = *frame->render_finished;
+  render_finished_semaphore_info.stageMask = vk::PipelineStageFlagBits2::eAllGraphics;
+
+  vk::SubmitInfo2 submit_info{};
+
+  submit_info.commandBufferInfoCount = 1;
+  submit_info.pCommandBufferInfos    = &cmd_buffer_submit_info;
+
+  submit_info.waitSemaphoreInfoCount = 1;
+  submit_info.pWaitSemaphoreInfos    = &wait_semaphore_info;
+
+  submit_info.signalSemaphoreInfoCount = 1;
+  submit_info.pSignalSemaphoreInfos    = &render_finished_semaphore_info;
+
+  if(auto result = m_context.device.graphics_queue.submit2(submit_info, frame->in_flight); !result.has_value())
+    spdlog::info("Failed to submit queue");
+
+  auto swapchain_handle = *m_context.swapchain.handle;
+
+  vk::SwapchainPresentFenceInfoKHR present_fence_info{};
+  present_fence_info.swapchainCount = 1;
+  present_fence_info.pFences        = &*frame->present_fence;
+
+  vk::PresentInfoKHR present_info{};
+  present_info.pNext              = &present_fence_info;
+  present_info.swapchainCount     = 1;
+  present_info.pSwapchains        = &swapchain_handle;
+  present_info.waitSemaphoreCount = 1;
+  present_info.pWaitSemaphores    = &*frame->render_finished;
+  present_info.pImageIndices      = &m_current_image;
+
+  if(m_context.device.presentation_queue.presentKHR(present_info) != vk::Result::eSuccess)
+    spdlog::info("Failed to present");
+
+  m_current_frame = (m_current_frame + 1) % MAX_FRAME_IN_FLIGHT;
 }
 
 }  // namespace wind::vulkan
