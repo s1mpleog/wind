@@ -20,7 +20,7 @@ struct VulkanContext
   vk::raii::DebugUtilsMessengerEXT messenger{nullptr};
 #endif
   vk::raii::SurfaceKHR surface{nullptr};
-  DeviceContext        device{};
+  GpuDevice            gpu_device{};
   SwapchainContext     swapchain{};
 };
 

@@ -22,7 +22,7 @@ public:
 
   WIND_NODISCARD auto shutdown() const WIND_NOEXCEPT -> WindResult<void>
   {
-    WIND_TRY(m_context.device.handle.waitIdle());
+    WIND_TRY(m_context.gpu_device.device.waitIdle());
     return {};
   }
 

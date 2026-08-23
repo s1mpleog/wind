@@ -1,5 +1,4 @@
 #include "context.hpp"
-#include "resources/resource_manager.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/device.hpp"
 #include "vulkan/core/instance.hpp"
@@ -24,16 +23,10 @@ auto create_context(const platform::Window& window, Configuration cfg) WIND_NOEX
   auto* surface_raw = WIND_TRY(window.create_surface(ctx.instance));
   ctx.surface       = vk::raii::SurfaceKHR(ctx.instance, surface_raw);
 
-  ctx.device = WIND_TRY(device::create(cfg, ctx.instance, ctx.surface));
+  ctx.gpu_device = WIND_TRY(device::create(cfg, ctx.instance, ctx.surface));
 
   ctx.swapchain =
-      WIND_TRY(swapchain::create(cfg, window.get_config().width, window.get_config().height, ctx.surface, ctx.device));
-
-  // testing
-  wind::ResourceManager manager{};
-  auto                  texture = WIND_TRY(manager.load<wind::TextureHandle>("test.wind"));
-
-  spdlog::info("got texture handle: idx: {}, generation: {}", texture.index, texture.generation);
+      WIND_TRY(swapchain::create(cfg, window.get_config().width, window.get_config().height, ctx.surface, ctx.gpu_device));
 
   return ctx;
 }

@@ -1,4 +1,4 @@
-#include "application.hpp"
+#include "engine.hpp"
 #include "platform/window.hpp"
 #include "types.hpp"
 #include "vulkan/core/configuration.hpp"
@@ -15,17 +15,17 @@ auto main() -> i32
   auto vulkan_cfg = wind::vulkan::presets::Development;
   vulkan_cfg.app_name = "Wind";
 
-  auto app = wind::Application::create(std::move(window_cfg), std::move(vulkan_cfg));
+  auto engine = wind::Engine::create(std::move(window_cfg), std::move(vulkan_cfg));
 
-  if(!app)
+  if(!engine)
   {
-    spdlog::error("{}", app.error().to_string());
+    spdlog::error("{}", engine.error().to_string());
     return EXIT_FAILURE;
   }
 
-  if(!app->run())
+  if(!engine->run())
   {
-    spdlog::error("{}", app.error().to_string());
+    spdlog::error("{}", engine.error().to_string());
     return EXIT_FAILURE;
   }
 
