@@ -16,18 +16,16 @@
 #include "config.hpp"
 #include "error.hpp"
 #include "resources/texture_loader.hpp"
-#include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
-#include "vulkan/vulkan.hpp"
-#include <filesystem>
-#include <fstream>
+#include "vulkan/core/context.hpp"
+#include "vulkan/memory/allocator.hpp"
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 
-namespace wind {
+namespace wind::resources {
 
 template <typename T>
 struct Handle
@@ -50,64 +48,19 @@ static_assert(!std::is_same_v<TextureHandle, ShaderHandle>);
 class ResourceManager
 {
 public:
-  //TODO: constrain T
-  template <typename T>
-  WIND_NODISCARD auto load(std::string_view path) WIND_NOEXCEPT -> WindResult<Handle<T>>
-  {
-    auto asset = WIND_TRY(asset::load_asset(path));
+  ResourceManager(const ResourceManager&)                    = delete;
+  auto operator=(const ResourceManager&) -> ResourceManager& = delete;
 
-    // do validation, cache check loading and all
+  ResourceManager(ResourceManager&&)                    = default;
+  auto operator=(ResourceManager&&) -> ResourceManager& = default;
 
-    return Handle<T>{.index = 1, .generation = 0};
-  }
+  WIND_NODISCARD static auto create(const vulkan::VulkanContext& context) WIND_NOEXCEPT -> WindResult<ResourceManager>;
 
   WIND_NODISCARD auto load_shader(const vk::raii::Device& device, std::string_view shader_path) WIND_NOEXCEPT
-      -> WindResult<ShaderHandle>
-  {
-    auto it = m_shader_cache.find(std::string{shader_path});
+      -> WindResult<ShaderHandle>;
 
-    if(it != m_shader_cache.end())
-      return it->second;
-
-    // cache miss create new shader
-
-    auto path = std::filesystem::path(shader_path);
-
-    if(!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
-      WIND_ERR(WindError::internal(ErrorCode::FailedToLoadShader));
-
-    auto file_size = std::filesystem::file_size(path);
-
-    if(file_size == 0)
-      WIND_ERR(WindError::internal(ErrorCode::FailedToLoadShader));
-
-    if(file_size % sizeof(u32) != 0)
-      WIND_ERR(WindError::internal());
-
-    std::ifstream file_stream(path, std::ios::binary);
-
-    if(!file_stream.is_open())
-      WIND_ERR(WindError::internal());
-
-    std::vector<u32> buffer(file_size / sizeof(u32));
-
-    if(!file_stream.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(file_size)))
-      WIND_ERR(WindError::internal());
-
-    vk::ShaderModuleCreateInfo shader_module_info{};
-    shader_module_info.codeSize = buffer.size() * sizeof(u32);
-    shader_module_info.pCode    = buffer.data();
-
-    u32 index = static_cast<u32>(m_shaders.size());
-
-    m_shaders.emplace_back(WIND_TRY(device.createShaderModule(shader_module_info)));
-
-    ShaderHandle handle{.index = index, .generation = 0};
-
-    m_shader_cache.emplace(std::string{shader_path}, handle);
-
-    return handle;
-  };
+  WIND_NODISCARD auto load_texture(const vk::raii::Device& device, std::string_view texture_path) WIND_NOEXCEPT
+      -> WindResult<TextureHandle>;
 
   WIND_NODISCARD auto get_shader(ShaderHandle handle) WIND_NOEXCEPT -> WindResult<vk::raii::ShaderModule*>
   {
@@ -121,9 +74,13 @@ public:
   WIND_NODISCARD auto get() WIND_NOEXCEPT -> WindResult<T*>;
 
 private:
+  explicit ResourceManager(vulkan::memory::GpuAllocator allocator)
+      : m_allocator{std::move(allocator)} {};
+
   std::vector<asset::WindAsset>                 m_assets;
   std::vector<vk::raii::ShaderModule>           m_shaders;
   std::unordered_map<std::string, ShaderHandle> m_shader_cache;
+  vulkan::memory::GpuAllocator                  m_allocator;
 };
 
-};  // namespace wind
+};  // namespace wind::resources

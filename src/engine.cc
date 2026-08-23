@@ -1,28 +1,30 @@
-#include "application.hpp"
+#include "engine.hpp"
 #include "SDL3/SDL_events.h"
 #include "platform/window.hpp"
 #include "utils/expected_util.hpp"
+#include "vulkan/graphics/pipeline_config.hpp"
+#include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/renderer.hpp"
 #include <spdlog/spdlog.h>
 
 namespace wind {
 
 //current life-cycle is following:
-// at lower level vulkan::context owns instance, debug messenger, DeviceContext and Swapchain
+// at lower level vulkan::context owns instance, debug messenger, GpuDevice and Swapchain
 // FrameContext owns N semaphores, fences and cmd buffers
 // Renderer owns vulkan::context and Frame context
 // Window owns its internal handler nothing else
-// Application owns window and renderer
-// main creates Application
+// Engine owns window and renderer
+// main createsEngine
 // Renderer -> frame context and vulkan context
-// Application -> Window and Renderer
-// main -> calls Application
+// Engine -> Window and Renderer
+// main -> callsEngine
 
-WIND_NODISCARD auto Application::create(platform::WindowConfiguration window_cfg, wind::vulkan::Configuration vulkan_cfg) WIND_NOEXCEPT
-    -> WindResult<Application>
+WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, wind::vulkan::Configuration vulkan_cfg) WIND_NOEXCEPT
+    -> WindResult<Engine>
 {
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("initializing application...");
+  spdlog::info("initializing Engine...");
 #endif
 
   auto window = platform::Window{std::move(window_cfg)};
@@ -31,13 +33,13 @@ WIND_NODISCARD auto Application::create(platform::WindowConfiguration window_cfg
   auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window));
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("application created successfully");
+  spdlog::info("Engine created successfully");
 #endif
 
-  return Application(std::move(window), std::move(renderer));
+  return Engine(std::move(window), std::move(renderer));
 }
 
-auto Application::run() WIND_NOEXCEPT -> WindResult<void>
+auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
 {
   bool running = true;
 

@@ -46,14 +46,21 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(SDL3 spdlog cpptrace glm)
+FetchContent_Declare(
+    VulkanMemoryAllocator
+    GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+    GIT_TAG       v3.4.0
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(SDL3 spdlog cpptrace glm VulkanMemoryAllocator)
 
 find_package(Vulkan REQUIRED)
 
 add_executable(wind
   src/main.cc
   src/platform/window.cc
-  src/application.cc
+  src/engine.cc
   src/vulkan/core/context.cc
   src/vulkan/core/instance.cc
   src/vulkan/core/validation_layer.cc
@@ -63,6 +70,8 @@ add_executable(wind
   src/resources/resource_manager.cc
   src/vulkan/graphics/pipeline.cc
   src/vulkan/renderer.cc
+  src/vulkan/memory/allocator.cc
+  src/vma_impl.cc
 )
 
 target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)
@@ -75,6 +84,7 @@ target_link_libraries(wind PRIVATE
   cpptrace::cpptrace
   Vulkan::Vulkan
   glm::glm
+  GPUOpen::VulkanMemoryAllocator
 )
 
 target_precompile_headers(wind PRIVATE
@@ -89,7 +99,6 @@ target_precompile_headers(wind PRIVATE
 target_compile_options(wind PRIVATE
   -Wall -Wextra -Wpedantic
   -fno-exceptions
-  -fno-omit-frame-pointer
   -Wno-gnu-statement-expression-from-macro-expansion
 )
 

@@ -1,7 +1,9 @@
 words = [
+    "Gpu",
     "KHRONOS",
     "Memcpy",
     "Shader",
+    "VMA",
     "raii",
     "shaders",
     "swapchain",

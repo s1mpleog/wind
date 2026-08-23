@@ -10,10 +10,10 @@
 
 namespace wind::vulkan {
 
-struct DeviceContext
+struct GpuDevice
 {
   vk::raii::PhysicalDevice             physical_device{nullptr};
-  vk::raii::Device                     handle{nullptr};
+  vk::raii::Device                     device{nullptr};
   vk::raii::Queue                      graphics_queue{nullptr};
   vk::raii::Queue                      presentation_queue{nullptr};
   std::optional<vk::raii::Queue>       transfer_queue;
@@ -32,7 +32,7 @@ struct DeviceContext
 
 namespace device {
 WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
-    -> WindResult<DeviceContext>;
+    -> WindResult<GpuDevice>;
 };
 
 };  // namespace wind::vulkan

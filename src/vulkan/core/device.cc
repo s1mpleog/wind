@@ -173,7 +173,7 @@ WIND_NODISCARD static auto select_physical_device(const Configuration&      cfg,
   return selected_gpu;
 };
 
-WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candidate) WIND_NOEXCEPT -> WindResult<DeviceContext>
+WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candidate) WIND_NOEXCEPT -> WindResult<GpuDevice>
 {
   // candidate already have all the hard requirements check just create device here
   vk::PhysicalDeviceVulkan13Features features_13{};
@@ -223,23 +223,23 @@ WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candida
   spdlog::info("Creating logical device, enabled extensions: {}", enabled_extensions.size());
 #endif
 
-  DeviceContext context{};
+  GpuDevice gpu_device{};
 
-  context.handle                 = std::move(device);
-  context.physical_device        = std::move(candidate.device);
-  context.physical_device_props  = candidate.device_props;
-  context.graphics_queue_idx     = candidate.graphics_queue_index;
-  context.presentation_queue_idx = candidate.present_queue_index;
-  context.graphics_queue         = context.handle.getQueue(context.graphics_queue_idx.value(), 0);
-  context.presentation_queue     = context.handle.getQueue(context.presentation_queue_idx.value(), 0);
+  gpu_device.device                 = std::move(device);
+  gpu_device.physical_device        = std::move(candidate.device);
+  gpu_device.physical_device_props  = candidate.device_props;
+  gpu_device.graphics_queue_idx     = candidate.graphics_queue_index;
+  gpu_device.presentation_queue_idx = candidate.present_queue_index;
+  gpu_device.graphics_queue         = gpu_device.device.getQueue(gpu_device.graphics_queue_idx.value(), 0);
+  gpu_device.presentation_queue     = gpu_device.device.getQueue(gpu_device.presentation_queue_idx.value(), 0);
 
   if(candidate.transfer_queue_index) [[likely]]
   {
-    context.transfer_queue_idx = candidate.transfer_queue_index;
-    context.presentation_queue = context.handle.getQueue(context.transfer_queue_idx.value(), 0);
+    gpu_device.transfer_queue_idx = candidate.transfer_queue_index;
+    gpu_device.presentation_queue = gpu_device.device.getQueue(gpu_device.transfer_queue_idx.value(), 0);
   }
 
-  return context;
+  return gpu_device;
 };
 
 WIND_NODISCARD static auto create_command_pool(const vk::raii::Device& device, u32 queue_index) WIND_NOEXCEPT
@@ -253,22 +253,19 @@ WIND_NODISCARD static auto create_command_pool(const vk::raii::Device& device, u
 }
 
 WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
-    -> WindResult<DeviceContext>
+    -> WindResult<GpuDevice>
 {
-  auto candidate      = WIND_TRY(select_physical_device(cfg, instance, surface));
-  auto device_context = WIND_TRY(create_logical_device(std::move(candidate)));
+  auto candidate  = WIND_TRY(select_physical_device(cfg, instance, surface));
+  auto gpu_device = WIND_TRY(create_logical_device(std::move(candidate)));
 
-  device_context.graphics_pool =
-      WIND_TRY(create_command_pool(device_context.handle, device_context.graphics_queue_idx.value()));
+  gpu_device.graphics_pool = WIND_TRY(create_command_pool(gpu_device.device, gpu_device.graphics_queue_idx.value()));
 
-  if(device_context.has_transfer_queue()
-     && device_context.transfer_queue_idx.value() != device_context.graphics_queue_idx.value())
+  if(gpu_device.has_transfer_queue() && gpu_device.transfer_queue_idx.value() != gpu_device.graphics_queue_idx.value())
   {
-    device_context.transfer_pool =
-        WIND_TRY(create_command_pool(device_context.handle, device_context.transfer_queue_idx.value()));
+    gpu_device.transfer_pool = WIND_TRY(create_command_pool(gpu_device.device, gpu_device.transfer_queue_idx.value()));
   }
 
-  return device_context;
+  return gpu_device;
 }
 
 };  // namespace wind::vulkan::device
