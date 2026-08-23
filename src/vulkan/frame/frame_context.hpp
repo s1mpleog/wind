@@ -18,8 +18,9 @@ struct FrameContext
   vk::raii::Semaphore                    image_available{nullptr};
   vk::raii::Semaphore                    render_finished{nullptr};
   vk::raii::Fence                        in_flight{nullptr};
+  vk::raii::Fence                        present_fence{nullptr};
 
-  WIND_NODISCARD auto wait(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
+  WIND_NODISCARD auto wait_in_flight_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
   {
     auto result = device.waitForFences(*this->in_flight, vk::True, UINT64_MAX);
     if(result != vk::Result::eSuccess)
@@ -28,15 +29,30 @@ struct FrameContext
     return {};
   };
 
-  WIND_NODISCARD auto reset_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
+  WIND_NODISCARD auto wait_present_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
+  {
+    auto result = device.waitForFences(*this->present_fence, vk::True, UINT64_MAX);
+    if(result != vk::Result::eSuccess)
+      WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+
+    return {};
+  };
+
+  WIND_NODISCARD auto reset_in_flight_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
   {
     WIND_TRY(device.resetFences(*this->in_flight));
     return {};
   }
 
+  WIND_NODISCARD auto reset_present_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
+  {
+    WIND_TRY(device.resetFences(*this->present_fence));
+    return {};
+  }
+
   WIND_NODISCARD auto reset_cmd_buffer() const WIND_NOEXCEPT -> WindResult<void>
   {
-    WIND_TRY(graphics_command_buffer.reset());
+    WIND_TRY(this->graphics_command_buffer.reset());
     return {};
   }
 

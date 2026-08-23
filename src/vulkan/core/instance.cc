@@ -18,7 +18,7 @@ static auto query_instance_layer_support(std::string_view requested_layer) -> Wi
 {
   auto layers = WIND_TRY(vk::enumerateInstanceLayerProperties());
 
-  // any_of checks if atlease one element in given range statisfies e.g. layers need to have atleast one requested_layer
+  // any_of checks if atlease one element in given range satisfies e.g. layers need to have at least one requested_layer
   auto layer_found = std::ranges::any_of(layers, [requested_layer](const vk::LayerProperties& lp) -> bool {
     return std::string_view{lp.layerName} == requested_layer;
   });
@@ -62,6 +62,14 @@ WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Context& ct
 
   vk::InstanceCreateInfo inst_info{};
   inst_info.pApplicationInfo = &app_info;
+
+  WIND_TRY_VOID(query_instance_extension_support(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME));
+  WIND_TRY_VOID(query_instance_extension_support(VK_KHR_SURFACE_EXTENSION_NAME));
+  WIND_TRY_VOID(query_instance_extension_support(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME));
+
+  extensions.emplace_back(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+  extensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
+  extensions.emplace_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
 
 #ifdef WIND_VULKAN_VALIDATION
   std::array layers{"VK_LAYER_KHRONOS_validation"};

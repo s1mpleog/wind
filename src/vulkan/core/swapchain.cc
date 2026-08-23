@@ -95,8 +95,12 @@ WIND_NODISCARD static auto create_image_views(std::span<const vk::Image> images,
 }
 
 WIND_NODISCARD
-auto create(const Configuration& cfg, u32 window_width, u32 window_height, const vk::raii::SurfaceKHR& surface, const DeviceContext& device_context) WIND_NOEXCEPT
-    -> WindResult<SwapchainContext>
+auto create(const Configuration&          cfg,
+            u32                           window_width,
+            u32                           window_height,
+            const vk::raii::SurfaceKHR&   surface,
+            const DeviceContext&          device_context,
+            const vk::raii::SwapchainKHR* old_swapchain) WIND_NOEXCEPT -> WindResult<SwapchainContext>
 {
   auto surface_capabilities = WIND_TRY(get_surface_capabilities(surface, device_context.physical_device));
   auto surface_format       = WIND_TRY(get_surface_format(surface, device_context.physical_device));
@@ -152,6 +156,8 @@ auto create(const Configuration& cfg, u32 window_width, u32 window_height, const
     create_info.queueFamilyIndexCount = 0;
     create_info.pQueueFamilyIndices   = nullptr;
   }
+
+  create_info.oldSwapchain = (old_swapchain != nullptr) ? **old_swapchain : vk::SwapchainKHR{};
 
   auto swapchain   = WIND_TRY(device_context.handle.createSwapchainKHR(create_info));
   auto images      = WIND_TRY(get_images(swapchain));

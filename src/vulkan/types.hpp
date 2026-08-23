@@ -1,8 +1,12 @@
 #pragma once
 
 #include "config.hpp"
+#include "spdlog/spdlog.h"
 #include "vulkan/core/configuration.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
+#include "vulkan/vulkan.hpp"
+#include <span>
+#include <vector>
 #include <vulkan/vulkan.hpp>
 
 namespace wind::vulkan {
@@ -82,8 +86,10 @@ WIND_INLINE auto to_vk(CullMode cull_mode) WIND_NOEXCEPT -> vk::CullModeFlagBits
       return vk::CullModeFlagBits::eBack;
     case CullMode::FontAndBack:
       return vk::CullModeFlagBits::eFrontAndBack;
+    case CullMode::None:
+      return vk::CullModeFlagBits::eNone;
     default:
-      return vk::CullModeFlagBits::eBack;
+      return vk::CullModeFlagBits::eNone;
   }
 }
 
@@ -351,9 +357,35 @@ WIND_INLINE auto to_vk(const VertexAttribute& attribute) WIND_NOEXCEPT -> vk::Ve
   return vk::VertexInputAttributeDescription{attribute.location, attribute.binding, to_vk(attribute.format), attribute.offset};
 }
 
+WIND_INLINE auto to_vk(std::span<const VertexAttribute> attributes) WIND_NOEXCEPT -> std::vector<vk::VertexInputAttributeDescription>
+{
+  std::vector<vk::VertexInputAttributeDescription> vertex_attributes;
+  vertex_attributes.reserve(attributes.size());
+
+  for(const auto& attribute : attributes)
+  {
+    vertex_attributes.emplace_back(attribute.location, attribute.binding, to_vk(attribute.format), attribute.offset);
+  }
+
+  return vertex_attributes;
+}
+
 WIND_INLINE auto to_vk(const VertexBinding& binding) WIND_NOEXCEPT -> vk::VertexInputBindingDescription
 {
   return vk::VertexInputBindingDescription{binding.binding, binding.stride, to_vk(binding.input_rate)};
+}
+
+WIND_INLINE auto to_vk(std::span<const VertexBinding> bindings) WIND_NOEXCEPT -> std::vector<vk::VertexInputBindingDescription>
+{
+  std::vector<vk::VertexInputBindingDescription> vertex_bindings;
+  vertex_bindings.reserve(bindings.size());
+
+  for(const auto& binding : bindings)
+  {
+    vertex_bindings.emplace_back(binding.binding, binding.stride, to_vk(binding.input_rate));
+  }
+
+  return vertex_bindings;
 }
 
 WIND_INLINE auto to_vk(const VertexInputState& vertex_input) WIND_NOEXCEPT
@@ -545,14 +577,16 @@ WIND_INLINE auto to_vk(const ColorBlendState& color_blend) WIND_NOEXCEPT -> vk::
 // Helper function to convert entire GraphicsConfig
 struct PipelineCreateInfo
 {
-  vk::PipelineShaderStageCreateInfo        shader_stages;
-  vk::PipelineVertexInputStateCreateInfo   vertex_input;
-  vk::PipelineInputAssemblyStateCreateInfo input_assembly;
-  vk::PipelineRasterizationStateCreateInfo rasterization;
-  vk::PipelineDepthStencilStateCreateInfo  depth_stencil;
-  vk::PipelineColorBlendStateCreateInfo    color_blend;
-  vk::PipelineViewportStateCreateInfo      viewport_state;
-  vk::PipelineMultisampleStateCreateInfo   multisample;
+  std::vector<vk::PipelineShaderStageCreateInfo>   shader_stages;
+  std::vector<vk::VertexInputAttributeDescription> attributes;
+  std::vector<vk::VertexInputBindingDescription>   bindings;
+  vk::PipelineInputAssemblyStateCreateInfo         input_assembly;
+  vk::PipelineRasterizationStateCreateInfo         rasterization;
+  vk::PipelineDepthStencilStateCreateInfo          depth_stencil;
+  // vk::PipelineColorBlendStateCreateInfo            color_blend;
+  vk::PipelineColorBlendAttachmentState  color_blend_attachment;
+  vk::PipelineViewportStateCreateInfo    viewport_state;
+  vk::PipelineMultisampleStateCreateInfo multisample;
 };
 
 WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> PipelineCreateInfo
@@ -569,28 +603,21 @@ WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> 
     info.stage  = to_vk(shader_info.stage);
     info.module = *shader_info.module;
     info.pName  = shader_info.entry_point.data();
-    shader_stages.push_back(std::move(info));
+
+    shader_stages.push_back(info);
   }
 
-  // Convert vertex input
-  auto [attributes, bindings] = to_vk(config.vertex_input_state);
-
-  vk::PipelineVertexInputStateCreateInfo vertex_input{};
-  vertex_input.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
-  vertex_input.pVertexAttributeDescriptions    = attributes.data();
-  vertex_input.vertexBindingDescriptionCount   = static_cast<uint32_t>(bindings.size());
-  vertex_input.pVertexBindingDescriptions      = bindings.data();
+  result.bindings   = to_vk(config.vertex_input_state.bindings);
+  result.attributes = to_vk(config.vertex_input_state.attributes);
 
   // Convert other states
-  auto input_assembly         = to_vk(config.input_assembly);
-  auto rasterization          = to_vk(config.rasterization);
-  auto depth_stencil          = to_vk(config.depth_stencil);
-  auto color_blend_attachment = to_vk(config.color_blend);
+  auto input_assembly           = to_vk(config.input_assembly);
+  auto rasterization            = to_vk(config.rasterization);
+  auto depth_stencil            = to_vk(config.depth_stencil);
+  result.color_blend_attachment = to_vk(config.color_blend);
 
   // Color blend state
-  vk::PipelineColorBlendStateCreateInfo color_blend{};
-  color_blend.attachmentCount = 1;
-  color_blend.pAttachments    = &color_blend_attachment;
+
 
   // Viewport state (default)
   vk::PipelineViewportStateCreateInfo viewport_state{};
@@ -601,12 +628,11 @@ WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> 
   vk::PipelineMultisampleStateCreateInfo multisample{};
   multisample.rasterizationSamples = vk::SampleCountFlagBits::e1;
 
-  result.shader_stages  = shader_stages.empty() ? vk::PipelineShaderStageCreateInfo{} : shader_stages[0];
-  result.vertex_input   = vertex_input;
+  result.shader_stages  = std::move(shader_stages);
   result.input_assembly = input_assembly;
   result.rasterization  = rasterization;
   result.depth_stencil  = depth_stencil;
-  result.color_blend    = color_blend;
+  // result.color_blend    = color_blend;
   result.viewport_state = viewport_state;
   result.multisample    = multisample;
 

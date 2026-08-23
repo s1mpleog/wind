@@ -19,6 +19,7 @@ enum class CullMode : u8
 {
   Back,
   FontAndBack,
+  None,
 };
 
 enum class PolygonMode : u8
@@ -263,6 +264,16 @@ enum class BlendOp : u8
   Max,
 };
 
+enum class ColorWrite : u8
+{
+  None = 0,
+  R    = 1 << 0,
+  G    = 1 << 1,
+  B    = 1 << 2,
+  A    = 1 << 3,
+  RGBA = R | G | B | A
+};
+
 struct ColorBlendState
 {
   bool enabled{false};
@@ -275,20 +286,21 @@ struct ColorBlendState
   BlendFactor dst_alpha{BlendFactor::Zero};
   BlendOp     alpha_op{BlendOp::Add};
 
+  ColorWrite write_mask{ColorWrite::RGBA};
+
   static constexpr auto opaque() noexcept -> ColorBlendState { return {}; }
 
   static constexpr auto alpha_blend() noexcept -> ColorBlendState
   {
     return {
-        .enabled = true,
-
-        .src_color = BlendFactor::SrcAlpha,
-        .dst_color = BlendFactor::OneMinusSrcAlpha,
-        .color_op  = BlendOp::Add,
-
-        .src_alpha = BlendFactor::One,
-        .dst_alpha = BlendFactor::OneMinusSrcAlpha,
-        .alpha_op  = BlendOp::Add,
+        .enabled    = true,
+        .src_color  = BlendFactor::SrcAlpha,
+        .dst_color  = BlendFactor::OneMinusSrcAlpha,
+        .color_op   = BlendOp::Add,
+        .src_alpha  = BlendFactor::One,
+        .dst_alpha  = BlendFactor::OneMinusSrcAlpha,
+        .alpha_op   = BlendOp::Add,
+        .write_mask = ColorWrite::RGBA,
     };
   }
 };

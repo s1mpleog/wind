@@ -89,6 +89,7 @@ target_precompile_headers(wind PRIVATE
 target_compile_options(wind PRIVATE
   -Wall -Wextra -Wpedantic
   -fno-exceptions
+  -fno-omit-frame-pointer
   -Wno-gnu-statement-expression-from-macro-expansion
 )
 

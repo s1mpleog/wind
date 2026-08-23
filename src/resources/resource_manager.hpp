@@ -98,8 +98,6 @@ public:
     shader_module_info.codeSize = buffer.size() * sizeof(u32);
     shader_module_info.pCode    = buffer.data();
 
-    spdlog::info("code size: {}", buffer.size() * 4);
-
     u32 index = static_cast<u32>(m_shaders.size());
 
     m_shaders.emplace_back(WIND_TRY(device.createShaderModule(shader_module_info)));
