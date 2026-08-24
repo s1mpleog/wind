@@ -8,16 +8,18 @@
 #include <span>
 
 namespace wind::resources {
-WIND_NODISCARD auto ResourceManager::create(const vulkan::VulkanContext& context) WIND_NOEXCEPT -> WindResult<ResourceManager>
+WIND_NODISCARD auto ResourceManager::create(const vulkan::VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>
 {
   auto allocator = WIND_TRY(vulkan::memory::GpuAllocator::create(context));
-  return ResourceManager{std::move(allocator)};
+  return ResourceManager{std::move(allocator), context};
 }
 
 WIND_NODISCARD auto ResourceManager::load_shader(const vk::raii::Device& device, std::string_view shader_path) WIND_NOEXCEPT
     -> WindResult<ShaderHandle>
 {
   auto it = m_shader_cache.find(std::string{shader_path});
+
+  spdlog::info("context in resource manager: {}", (void*)m_context);
 
   if(it != m_shader_cache.end())
     return it->second;
@@ -95,8 +97,11 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
   // TODO: instead of two buffers use one buffer
   // |---------------------------|
   // vertex           index
-  auto vertices = WIND_TRY(m_allocator.create_buffer(std::move(wind_asset.vertices), vk::BufferUsageFlagBits::eVertexBuffer));
-  auto indices = WIND_TRY(m_allocator.create_buffer(std::move(wind_asset.indices), vk::BufferUsageFlagBits::eIndexBuffer));
+  auto vertices = WIND_TRY(m_allocator.create_buffer(m_context, std::as_bytes(std::span{wind_asset.vertices}),
+                                                     vk::BufferUsageFlagBits::eVertexBuffer));
+
+  auto indices = WIND_TRY(m_allocator.create_buffer(m_context, std::as_bytes(std::span{wind_asset.indices}),
+                                                    vk::BufferUsageFlagBits::eIndexBuffer));
 
   auto vertex_index = static_cast<u32>(m_vertex_buffer.size());
   // index_index yeah :(
@@ -121,12 +126,15 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
     }
   };
 
+  m_texture.reserve(wind_asset.textures.size());
+
   for(const auto& texture : wind_asset.textures)
   {
-    spdlog::info("width: {}, height: {}, format: {}", texture.width, texture.height, texture.format);
-    WIND_TRY(m_allocator.create_texture(std::as_bytes(std::span{texture.data}), texture.width, texture.height,
-                                        format(texture.format)));
+    m_texture.emplace_back(WIND_TRY(m_allocator.create_texture(m_context, std::as_bytes(std::span{texture.data}),
+                                                               texture.width, texture.height, format(texture.format))));
   }
+
+  spdlog::info("created textures: {}", m_texture.size());
 
   for(const auto& material : wind_asset.materials)
   {

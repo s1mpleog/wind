@@ -24,6 +24,6 @@ struct VulkanContext
   SwapchainContext     swapchain{};
 };
 
-auto create_context(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>;
+auto create_context(const platform::Window& window, const Configuration& cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>;
 
 }  // namespace wind::vulkan

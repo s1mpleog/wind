@@ -30,7 +30,10 @@ WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, win
   auto window = platform::Window{std::move(window_cfg)};
   WIND_TRY_VOID(window.create());
 
+  // let renderer the subsystems for render
   auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window));
+  // load textures, build pipelines, create shaders and all
+  WIND_TRY(renderer.initialize_resources());
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Engine created successfully");
