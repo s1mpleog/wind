@@ -12,8 +12,8 @@
 #include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/vulkan.hpp"
 #include <array>
-#include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace wind::vulkan {
@@ -35,30 +35,36 @@ namespace wind::vulkan {
 
 WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& window) WIND_NOEXCEPT -> WindResult<Renderer>
 {
-  auto context = WIND_TRY(create_context(window, std::move(cfg)));
+  auto context = std::make_unique<VulkanContext>(WIND_TRY(create_context(window, cfg)));
 
   // frame::create does not stores reference of device or graphics pool
-  auto frame_context = WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, context.gpu_device.device, context.gpu_device.graphics_pool));
+  auto frame_context =
+      WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, context->gpu_device.device, context->gpu_device.graphics_pool));
 
-  auto resource_manager = WIND_TRY(resources::ResourceManager::create(context));
+  // but resource_manager stores const Context* context internally
+  auto resource_manager =
+      std::make_unique<resources::ResourceManager>(WIND_TRY(resources::ResourceManager::create(context.get())));
 
+  return Renderer(std::move(cfg), std::move(context), std::move(frame_context), std::move(resource_manager));
+}
+
+auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
+{
   auto vertex_shader_handle =
-      WIND_TRY(resource_manager.load_shader(context.gpu_device.device, "assets/shaders/triangle.vert.spv"));
+      WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.vert.spv"));
 
   auto fragment_shader_handle =
-      WIND_TRY(resource_manager.load_shader(context.gpu_device.device, "assets/shaders/triangle.frag.spv"));
+      WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.frag.spv"));
 
   ShaderInfo vert_info{
       .stage  = ShaderStage::Vertex,
-      .module = WIND_TRY(resource_manager.get_shader(vertex_shader_handle)),
+      .module = WIND_TRY(m_resource_manager->get_shader(vertex_shader_handle)),
   };
 
   ShaderInfo frag_info{
       .stage  = ShaderStage::Fragment,
-      .module = WIND_TRY(resource_manager.get_shader(fragment_shader_handle)),
+      .module = WIND_TRY(m_resource_manager->get_shader(fragment_shader_handle)),
   };
-
-  auto pipeline_manager = graphics::PipelineManager{};
 
   auto graphics_config = graphics::GraphicsConfig{.shader = {vert_info, frag_info},
                                                   .rasterization{
@@ -78,18 +84,18 @@ WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& 
                                                   .color_blend  = ColorBlendState::opaque(),
                                                   .color_format = Format::BGRA8_SRGB};
 
-  auto pipeline_handle = WIND_TRY(pipeline_manager.create(std::move(graphics_config), context.gpu_device.device));
+  auto pipeline_handle = WIND_TRY(m_pipeline_manager.create(std::move(graphics_config), m_context->gpu_device.device));
 
   spdlog::info("pipeline handle: {}", pipeline_handle);
 
-  resource_manager.destroy_shader(vertex_shader_handle);
-  resource_manager.destroy_shader(fragment_shader_handle);
+  m_resource_manager->destroy_shader(vertex_shader_handle);
+  m_resource_manager->destroy_shader(fragment_shader_handle);
 
   {
-    auto mesh = WIND_TRY(resource_manager.load_asset("assets/models/chair.wind"));
+    auto mesh = WIND_TRY(m_resource_manager->load_asset("assets/models/chair.wind"));
   }
 
-  return Renderer(std::move(cfg), std::move(context), std::move(frame_context), std::move(pipeline_manager));
+  return {};
 }
 
 WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
@@ -98,23 +104,23 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   auto* frame = &m_frame_context[m_current_frame];
 
   // wait for fences (previous frame to complete)
-  WIND_TRY(frame->wait_in_flight_fence(m_context.gpu_device.device));
-  WIND_TRY(frame->wait_present_fence(m_context.gpu_device.device));
+  WIND_TRY(frame->wait_in_flight_fence(m_context->gpu_device.device));
+  WIND_TRY(frame->wait_present_fence(m_context->gpu_device.device));
 
   // acquire the next image index
   auto [swapchain_result, swapchain_image] =
-      m_context.swapchain.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
+      m_context->swapchain.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
 
   // TODO: fix this
   if(swapchain_result == vk::Result::eErrorOutOfDateKHR || swapchain_result == vk::Result::eSuboptimalKHR)
   {
-    WIND_TRY(m_context.gpu_device.device.waitIdle());
+    WIND_TRY(m_context->gpu_device.device.waitIdle());
 
-    auto old_swapchain = std::move(m_context.swapchain);
+    auto old_swapchain = std::move(m_context->swapchain);
 
-    auto new_swapchain = WIND_TRY(swapchain::create(m_config, width, height, m_context.surface, m_context.gpu_device));
+    auto new_swapchain = WIND_TRY(swapchain::create(m_config, width, height, m_context->surface, m_context->gpu_device));
 
-    m_context.swapchain = std::move(new_swapchain);
+    m_context->swapchain = std::move(new_swapchain);
 
     // create new swapchain
     spdlog::info("out of date swapchain");
@@ -124,8 +130,8 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
      && swapchain_result != vk::Result::eErrorOutOfDateKHR)
     WIND_ERR(WindError::vulkan(ErrorCode::SwapchainSuboptimal, swapchain_result));
 
-  WIND_TRY(frame->reset_in_flight_fence(m_context.gpu_device.device));
-  WIND_TRY(frame->reset_present_fence(m_context.gpu_device.device));
+  WIND_TRY(frame->reset_in_flight_fence(m_context->gpu_device.device));
+  WIND_TRY(frame->reset_present_fence(m_context->gpu_device.device));
 
   m_current_image = swapchain_image;
 
@@ -139,7 +145,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
   //TODO: abstract these
   vk::ImageMemoryBarrier2 color_barrier{};
-  color_barrier.image                       = m_context.swapchain.images[m_current_image];
+  color_barrier.image                       = m_context->swapchain.images[m_current_image];
   color_barrier.oldLayout                   = vk::ImageLayout::eUndefined;
   color_barrier.newLayout                   = vk::ImageLayout::eColorAttachmentOptimal;
   color_barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
@@ -157,12 +163,12 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
   vk::RenderingAttachmentInfo color_attach_info{};
   color_attach_info.imageLayout      = vk::ImageLayout::eColorAttachmentOptimal;
-  color_attach_info.imageView        = m_context.swapchain.image_views[m_current_image];
+  color_attach_info.imageView        = m_context->swapchain.image_views[m_current_image];
   color_attach_info.loadOp           = vk::AttachmentLoadOp::eClear;
   color_attach_info.storeOp          = vk::AttachmentStoreOp::eStore;
   color_attach_info.clearValue.color = color;
 
-  vk::Rect2D render_area{0, m_context.swapchain.extent};
+  vk::Rect2D render_area{0, m_context->swapchain.extent};
 
   vk::RenderingInfo rendering_info{};
   rendering_info.colorAttachmentCount = 1;
@@ -184,14 +190,14 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 auto Renderer::draw() WIND_NOEXCEPT -> void
 {
   vk::Rect2D scissor{0};
-  scissor.extent = m_context.swapchain.extent;
+  scissor.extent = m_context->swapchain.extent;
 
   vk::Viewport viewport{};
   viewport.x     = 0.0f;
-  viewport.y     = static_cast<float>(m_context.swapchain.extent.height);
-  viewport.width = static_cast<float>(m_context.swapchain.extent.width);
+  viewport.y     = static_cast<float>(m_context->swapchain.extent.height);
+  viewport.width = static_cast<float>(m_context->swapchain.extent.width);
   // upside down triangle fix
-  viewport.height   = -static_cast<float>(m_context.swapchain.extent.height);
+  viewport.height   = -static_cast<float>(m_context->swapchain.extent.height);
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
@@ -221,7 +227,7 @@ auto Renderer::end() WIND_NOEXCEPT -> void
   vk::ImageMemoryBarrier2 barrier{};
   barrier.oldLayout     = vk::ImageLayout::eColorAttachmentOptimal;
   barrier.newLayout     = vk::ImageLayout::ePresentSrcKHR;
-  barrier.image         = m_context.swapchain.images[m_current_image];
+  barrier.image         = m_context->swapchain.images[m_current_image];
   barrier.srcStageMask  = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
   barrier.srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite;
   barrier.dstStageMask  = vk::PipelineStageFlagBits2::eNone;
@@ -266,10 +272,10 @@ auto Renderer::end() WIND_NOEXCEPT -> void
   submit_info.signalSemaphoreInfoCount = 1;
   submit_info.pSignalSemaphoreInfos    = &render_finished_semaphore_info;
 
-  if(auto result = m_context.gpu_device.graphics_queue.submit2(submit_info, frame->in_flight); !result.has_value())
+  if(auto result = m_context->gpu_device.graphics_queue.submit2(submit_info, frame->in_flight); !result.has_value())
     spdlog::info("Failed to submit queue");
 
-  auto swapchain_handle = *m_context.swapchain.handle;
+  auto swapchain_handle = *m_context->swapchain.handle;
 
   vk::SwapchainPresentFenceInfoKHR present_fence_info{};
   present_fence_info.swapchainCount = 1;
@@ -283,7 +289,7 @@ auto Renderer::end() WIND_NOEXCEPT -> void
   present_info.pWaitSemaphores    = &*frame->render_finished;
   present_info.pImageIndices      = &m_current_image;
 
-  if(m_context.gpu_device.presentation_queue.presentKHR(present_info) != vk::Result::eSuccess)
+  if(m_context->gpu_device.presentation_queue.presentKHR(present_info) != vk::Result::eSuccess)
     spdlog::info("Failed to present");
 
   m_current_frame = (m_current_frame + 1) % MAX_FRAME_IN_FLIGHT;

@@ -5,12 +5,12 @@
 #include "utils/expected_util.hpp"
 #include "vulkan/core/context.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
-#include <ranges>
+#include "vulkan/vulkan.hpp"
 #include <span>
-#include <type_traits>
 #include <utility>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_raii.hpp>
 
 namespace wind::vulkan::memory {
 struct AllocatedBuffer
@@ -70,6 +70,87 @@ struct AllocatedBuffer
   }
 };
 
+
+struct AllocatedTexture
+{
+  VkImage             image{VK_NULL_HANDLE};
+  vk::raii::ImageView image_view{nullptr};
+  vk::raii::Sampler   sampler{nullptr};
+  VmaAllocator        allocator{VK_NULL_HANDLE};
+  VmaAllocation       allocation{VK_NULL_HANDLE};
+  vk::Format          format{};
+  u32                 width{};
+  u32                 height{};
+
+  AllocatedTexture(VkImage             image,
+                   vk::raii::ImageView image_view,
+                   vk::raii::Sampler   sampler,
+                   VmaAllocator        allocator,
+                   VmaAllocation       allocation,
+                   vk::Format          format,
+                   u32                 height,
+                   u32                 width)
+      : image{image}
+      , image_view{std::move(image_view)}
+      , sampler{std::move(sampler)}
+      , allocator{allocator}
+      , allocation{allocation}
+      , format{format}
+      , width{width}
+      , height{height}
+  {
+  }
+
+  AllocatedTexture()                                           = default;
+  AllocatedTexture(const AllocatedTexture&)                    = delete;
+  auto operator=(const AllocatedTexture&) -> AllocatedTexture& = delete;
+
+  AllocatedTexture(AllocatedTexture&& other) noexcept
+      : image{std::exchange(other.image, VK_NULL_HANDLE)}
+      , image_view{std::move(other.image_view)}
+      , sampler{std::move(other.sampler)}
+      , allocator{std::exchange(other.allocator, VK_NULL_HANDLE)}
+      , allocation{std::exchange(other.allocation, VK_NULL_HANDLE)}
+      , format{other.format}
+      , width{other.width}
+      , height{other.height}
+  {
+  }
+
+  auto operator=(AllocatedTexture&& other) noexcept -> AllocatedTexture&
+  {
+    if(this == &other)
+      return *this;
+
+    // Destroy our current VMA-owned image first.
+    if(allocation != VK_NULL_HANDLE && allocator != VK_NULL_HANDLE)
+    {
+      vmaDestroyImage(allocator, image, allocation);
+    }
+
+    image      = std::exchange(other.image, VK_NULL_HANDLE);
+    allocation = std::exchange(other.allocation, VK_NULL_HANDLE);
+    allocator  = std::exchange(other.allocator, VK_NULL_HANDLE);
+
+    image_view = std::move(other.image_view);
+    sampler    = std::move(other.sampler);
+
+    format = other.format;
+    width  = other.width;
+    height = other.height;
+
+    return *this;
+  }
+
+  ~AllocatedTexture()
+  {
+    if(allocation != VK_NULL_HANDLE && allocator != VK_NULL_HANDLE)
+    {
+      vmaDestroyImage(allocator, image, allocation);
+    }
+  }
+};
+
 class GpuAllocator
 {
 public:
@@ -100,27 +181,32 @@ public:
     }
   }
 
-  WIND_NODISCARD static auto create(const VulkanContext& context) WIND_NOEXCEPT -> WindResult<GpuAllocator>;
+  WIND_NODISCARD static auto create(const VulkanContext* context) WIND_NOEXCEPT -> WindResult<GpuAllocator>;
 
   WIND_NODISCARD auto upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<AllocatedBuffer>;
 
   // TODO: use my custom types for flags
-  WIND_NODISCARD auto create_buffer_bytes(std::span<const std::byte> data,
-                                          vk::BufferUsageFlagBits flags = vk::BufferUsageFlagBits::eVertexBuffer) WIND_NOEXCEPT
+  WIND_NODISCARD auto create_buffer(const VulkanContext*       context,
+                                    std::span<const std::byte> data,
+                                    vk::BufferUsageFlagBits flags = vk::BufferUsageFlagBits::eVertexBuffer) WIND_NOEXCEPT
       -> WindResult<AllocatedBuffer>;
 
   // TODO: get rid of this
-  template <std::ranges::contiguous_range R>
-  WIND_NODISCARD auto create_buffer(R&& range, vk::BufferUsageFlagBits flags = vk::BufferUsageFlagBits::eVertexBuffer) WIND_NOEXCEPT
-      -> WindResult<AllocatedBuffer>
-    requires std::is_trivially_copyable_v<std::ranges::range_value_t<R>>
-  {
-    auto bytes = std::as_bytes(std::span{range});
-    return WIND_TRY(create_buffer_bytes(bytes, flags));
-  }
+  // template <std::ranges::contiguous_range R>
+  // WIND_NODISCARD auto create_buffer(R&& range, vk::BufferUsageFlagBits flags = vk::BufferUsageFlagBits::eVertexBuffer) WIND_NOEXCEPT
+  //     -> WindResult<AllocatedBuffer>
+  //   requires std::is_trivially_copyable_v<std::ranges::range_value_t<R>>
+  // {
+  //   auto bytes = std::as_bytes(std::span{range});
+  //   return WIND_TRY(create_buffer_bytes(bytes, flags));
+  // }
 
-  WIND_NODISCARD auto create_texture(std::span<const std::byte> data, u32 width, u32 height, Format format) WIND_NOEXCEPT
-      -> WindResult<u32>;
+  //TODO: this will go somewhere else
+  auto transition_image(vk::raii::CommandBuffer& cmd, VkImage& image, vk::ImageLayout old_layout, vk::ImageLayout new_layout) WIND_NOEXCEPT
+      -> void;
+
+  WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const std::byte> pixels, u32 width, u32 height, Format format) WIND_NOEXCEPT
+      -> WindResult<AllocatedTexture>;
 
 private:
   explicit GpuAllocator(VmaAllocator allocator)
@@ -128,5 +214,4 @@ private:
 
   VmaAllocator m_allocator{VK_NULL_HANDLE};
 };
-
 };  // namespace wind::vulkan::memory

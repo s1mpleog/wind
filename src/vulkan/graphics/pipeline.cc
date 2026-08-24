@@ -33,7 +33,6 @@ WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) W
   viewport_state.viewportCount = 1;
   viewport_state.scissorCount  = 1;
 
-
   vk::Format color_attachment_format = to_vk(cfg.color_format);
 
   vk::PipelineRenderingCreateInfo rendering_info{};

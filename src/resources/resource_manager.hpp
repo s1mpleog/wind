@@ -58,8 +58,7 @@ public:
   ResourceManager(ResourceManager&&)                    = default;
   auto operator=(ResourceManager&&) -> ResourceManager& = default;
 
-  WIND_NODISCARD static auto create(const vulkan::VulkanContext& context) WIND_NOEXCEPT -> WindResult<ResourceManager>;
-
+  WIND_NODISCARD static auto create(const vulkan::VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>;
 
   WIND_NODISCARD auto load_shader(const vk::raii::Device& device, std::string_view shader_path) WIND_NOEXCEPT
       -> WindResult<ShaderHandle>;
@@ -70,15 +69,18 @@ public:
   WIND_NODISCARD auto load_asset(std::string_view texture_path) WIND_NOEXCEPT -> WindResult<MeshHandle>;
 
 private:
-  explicit ResourceManager(vulkan::memory::GpuAllocator allocator)
-      : m_allocator{std::move(allocator)} {};
+  ResourceManager(vulkan::memory::GpuAllocator allocator, const vulkan::VulkanContext* context)
+      : m_context{context}
+      , m_allocator{std::move(allocator)} {};
 
+  const vulkan::VulkanContext*                  m_context;
   std::vector<vk::raii::ShaderModule>           m_shaders;
   std::unordered_map<std::string, ShaderHandle> m_shader_cache;
   vulkan::memory::GpuAllocator                  m_allocator;
   std::vector<vulkan::memory::AllocatedBuffer>  m_vertex_buffer;
   std::vector<vulkan::memory::AllocatedBuffer>  m_index_buffer;
   std::unordered_map<std::string, MeshHandle>   m_asset_cache;
+  std::vector<vulkan::memory::AllocatedTexture> m_texture;
 };
 
 };  // namespace wind::resources

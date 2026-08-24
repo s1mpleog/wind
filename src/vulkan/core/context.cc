@@ -6,7 +6,7 @@
 #include "swapchain.hpp"
 
 namespace wind::vulkan {
-auto create_context(const platform::Window& window, Configuration cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>
+auto create_context(const platform::Window& window, const Configuration& cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>
 {
   VulkanContext ctx{};
 
