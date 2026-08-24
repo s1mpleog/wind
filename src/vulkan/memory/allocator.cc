@@ -37,6 +37,7 @@ WIND_NODISCARD auto GpuAllocator::create(const VulkanContext* context) WIND_NOEX
   return GpuAllocator{temp_allocator};
 }
 
+// TODO: this does not belongs here
 auto GpuAllocator::transition_image(vk::raii::CommandBuffer& cmd, VkImage& image, vk::ImageLayout old_layout, vk::ImageLayout new_layout) WIND_NOEXCEPT
     -> void
 {
@@ -82,6 +83,32 @@ auto GpuAllocator::transition_image(vk::raii::CommandBuffer& cmd, VkImage& image
 
     barrier.dstStageMask  = vk::PipelineStageFlagBits2::eFragmentShader;
     barrier.dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead;
+
+    vk::DependencyInfo dep_info{};
+    dep_info.imageMemoryBarrierCount = 1;
+    dep_info.pImageMemoryBarriers    = &barrier;
+
+    cmd.pipelineBarrier2(dep_info);
+    return;
+  }
+
+  if(old_layout == vk::ImageLayout::eUndefined && new_layout == vk::ImageLayout::eDepthAttachmentOptimal)
+  {
+    vk::ImageMemoryBarrier2 barrier{};
+    barrier.image            = image;
+    barrier.subresourceRange = {vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1};
+
+    barrier.oldLayout = old_layout;
+    barrier.newLayout = new_layout;
+
+    spdlog::info("TRANSTION IMAGE TO DEPTH BUFFER");
+
+    // i will not pretend that i understand these
+    barrier.srcStageMask  = {};
+    barrier.srcAccessMask = {};
+
+    barrier.dstStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests;
+    barrier.dstAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
 
     vk::DependencyInfo dep_info{};
     dep_info.imageMemoryBarrierCount = 1;
@@ -213,26 +240,19 @@ WIND_NODISCARD auto GpuAllocator::create_buffer(const VulkanContext*       conte
   return AllocatedBuffer{device_buffer, allocation, m_allocator};
 }
 
-WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       context,
-                                                 std::span<const std::byte> pixels,
-                                                 u32                        width,
-                                                 u32                        height,
-                                                 Format format) WIND_NOEXCEPT -> WindResult<AllocatedTexture>
+WIND_NODISCARD auto GpuAllocator::create_vk_image(u32 width, u32 height, Format format, vk::ImageUsageFlags usage) WIND_NOEXCEPT
+    -> WindResult<std::pair<VkImage, VmaAllocation>>
 {
-  WIND_ASSERT(m_allocator != VK_NULL_HANDLE && "VMA allocator is null");
-  WIND_ASSERT(context != VK_NULL_HANDLE && "context is null");
-
-  auto staging_buffer = WIND_TRY(upload_staging_buffer(pixels));
-
   vk::ImageCreateInfo image_create_info{};
-  image_create_info.imageType   = vk::ImageType::e2D;
-  image_create_info.extent      = {.width = width, .height = height, .depth = 1};
-  image_create_info.format      = to_vk(format);
-  image_create_info.tiling      = vk::ImageTiling::eOptimal;
-  image_create_info.samples     = vk::SampleCountFlagBits::e1;
-  image_create_info.usage       = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-  image_create_info.mipLevels   = 1;
-  image_create_info.arrayLayers = 1;
+  image_create_info.imageType     = vk::ImageType::e2D;
+  image_create_info.extent        = {.width = width, .height = height, .depth = 1};
+  image_create_info.format        = to_vk(format);
+  image_create_info.tiling        = vk::ImageTiling::eOptimal;
+  image_create_info.samples       = vk::SampleCountFlagBits::e1;
+  image_create_info.usage         = usage;
+  image_create_info.mipLevels     = 1;
+  image_create_info.arrayLayers   = 1;
+  image_create_info.initialLayout = vk::ImageLayout::eUndefined;
 
   spdlog::info(
       "creating image: {}x{}, format={}, tiling={}, usage={:#x}, "
@@ -252,6 +272,23 @@ WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       cont
   if(auto result = vmaCreateImage(m_allocator, &vk_image_create_info, &image_allocation_info, &image, &image_allocation, nullptr);
      result != VK_SUCCESS)
     WIND_ERR(WindError::vulkan(ErrorCode::FailedToCreateImage, static_cast<vk::Result>(result)));
+
+  return std::pair{image, image_allocation};
+}
+
+WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       context,
+                                                 std::span<const std::byte> pixels,
+                                                 u32                        width,
+                                                 u32                        height,
+                                                 Format format) WIND_NOEXCEPT -> WindResult<AllocatedTexture>
+{
+  WIND_ASSERT(m_allocator != VK_NULL_HANDLE && "VMA allocator is null");
+  WIND_ASSERT(context != VK_NULL_HANDLE && "context is null");
+
+  auto staging_buffer = WIND_TRY(upload_staging_buffer(pixels));
+
+  auto [image, image_allocation] =
+      WIND_TRY(create_vk_image(width, height, format, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled));
 
   spdlog::info("image created successfully: {}", (void*)image);
 
@@ -320,8 +357,66 @@ WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       cont
 
   auto sampler = WIND_TRY(context->gpu_device.device.createSampler(sampler_create_info));
 
-  return AllocatedTexture{
-      image, std::move(image_view), std::move(sampler), m_allocator, image_allocation, to_vk(format), height, width};
+  return AllocatedTexture{AllocatedImage{image, std::move(image_view), m_allocator, image_allocation, to_vk(format), height, width},
+                          std::move(sampler)};
+}
+
+
+WIND_NODISCARD auto GpuAllocator::create_depth_buffer(const VulkanContext* context, u32 width, u32 height) WIND_NOEXCEPT
+    -> WindResult<AllocatedImage>
+{
+  auto [image, image_allocation] =
+      WIND_TRY(create_vk_image(width, height, Format::D32_FLOAT, vk::ImageUsageFlagBits::eDepthStencilAttachment));
+
+  vk::ImageViewCreateInfo image_view_create_info{};
+  image_view_create_info.image            = image;
+  image_view_create_info.format           = to_vk(Format::D32_FLOAT);
+  image_view_create_info.subresourceRange = {vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1};
+  image_view_create_info.viewType         = vk::ImageViewType::e2D;
+
+  // create image view
+  auto image_view = WIND_TRY(context->gpu_device.device.createImageView(image_view_create_info));
+
+  spdlog::info("============DEPTH image_view: {}=========", (void*)*image_view);
+
+  // ================Upload the data to GPU===============
+  vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
+  command_buffer_alloc_info.commandBufferCount = 1;
+  command_buffer_alloc_info.commandPool        = context->gpu_device.graphics_pool;
+  command_buffer_alloc_info.level              = vk::CommandBufferLevel::ePrimary;
+
+  auto command_buffers = WIND_TRY(context->gpu_device.device.allocateCommandBuffers(command_buffer_alloc_info),
+                                  ErrorCode::FailedToAllocateCommandBuffer);
+
+  WIND_ENSURE_NOT_EMPTY(command_buffers, WindError::vulkan());
+
+  vk::CommandBufferBeginInfo command_buffer_begin_info{};
+  command_buffer_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+  auto wait_fence = WIND_TRY(context->gpu_device.device.createFence(vk::FenceCreateInfo{}), ErrorCode::FailedToCreateFence);
+
+  // set command buffer to recording state
+  WIND_TRY(command_buffers[0].begin(command_buffer_begin_info), ErrorCode::FailedToBeginCommandBuffer);
+
+  // transition from undefined dst to depth optimal
+  transition_image(command_buffers[0], image, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal);
+
+  // end the command buffer no more recording :(
+  WIND_TRY(command_buffers[0].end(), ErrorCode::FailedToEndCommandBuffer);
+
+  vk::SubmitInfo submit_info{};
+  submit_info.commandBufferCount = 1;
+  submit_info.pCommandBuffers    = &*command_buffers[0];
+
+  WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, *wait_fence), ErrorCode::FailedToSubmitQueue);
+
+  if(auto result = context->gpu_device.device.waitForFences(*wait_fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess)
+    WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+
+  spdlog::info("===================DEPTH_IMAGE_FORMAT_AFTER_TRANSITION===== {}", vk::to_string(to_vk(Format::D32_FLOAT)));
+
+  return AllocatedImage{image, std::move(image_view), m_allocator, image_allocation, to_vk(Format::D32_FLOAT), height,
+                        width};
 }
 
 };  // namespace wind::vulkan::memory

@@ -12,26 +12,28 @@
 #include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/vulkan.hpp"
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <glm/glm.hpp>
 
 namespace wind::vulkan {
-// struct Vertex
-// {
-//   glm::vec4 position;
-//   glm::vec4 color;
-// };
+struct Vertex
+{
+  glm::vec4 position;
+  glm::vec4 color;
+};
 
-// static_assert(sizeof(Vertex) == 32);
-// static_assert(offsetof(Vertex, position) == 0);
-// static_assert(offsetof(Vertex, color) == 16);
+static_assert(sizeof(Vertex) == 32);
+static_assert(offsetof(Vertex, position) == 0);
+static_assert(offsetof(Vertex, color) == 16);
 
-// static std::array<Vertex, 3> vertices{{
-//     {{0.0f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-//     {{0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-//     {{-0.5f, 0.5f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-// }};
+static std::array<Vertex, 3> vertices{{
+    {{0.0F, 0.5F, 0.0F, 1.0F}, {1.0F, 0.0F, 0.0F, 1.0F}},
+    {{0.5F, -0.5F, 0.0F, 1.0F}, {0.0F, 1.0F, 0.0F, 1.0F}},
+    {{-0.5F, -0.5F, 0.0F, 1.0F}, {0.0F, 0.0F, 1.0F, 1.0F}},
+}};
 
 WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& window) WIND_NOEXCEPT -> WindResult<Renderer>
 {
@@ -50,11 +52,16 @@ WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& 
 
 auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
 {
+  // create depth image
+  WIND_TRY(m_resource_manager->create_depth_image(m_context->swapchain.extent.width, m_context->swapchain.extent.height));
+
   auto vertex_shader_handle =
       WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.vert.spv"));
 
   auto fragment_shader_handle =
       WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.frag.spv"));
+
+  m_test_vertex_buffer = WIND_TRY(m_resource_manager->create_vertices(std::as_bytes(std::span{vertices})));
 
   ShaderInfo vert_info{
       .stage  = ShaderStage::Vertex,
@@ -70,19 +77,37 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
                                                   .rasterization{
                                                       .cull_mode    = CullMode::Back,
                                                       .polygon_mode = PolygonMode::Fill,
-                                                      .front_face   = FrontFace::CounterClockwise,
+                                                      .front_face   = FrontFace::ClockWise,
                                                       .discard      = false,
                                                   },
                                                   .vertex_input_state{
-                                                      .attributes{},
-                                                      .bindings{},
+                                                      .attributes{{
+                                                                      .location = 0,
+                                                                      .binding  = 0,
+                                                                      .format   = VertexFormat::Float4,
+                                                                      .offset   = offsetof(Vertex, position),
+                                                                  },
+                                                                  {
+                                                                      .location = 1,
+                                                                      .binding  = 0,
+                                                                      .format   = VertexFormat::Float4,
+                                                                      .offset   = offsetof(Vertex, color),
+                                                                  }},
+                                                      .bindings{{
+                                                          .binding    = 0,
+                                                          .stride     = sizeof(Vertex),
+                                                          .input_rate = VertexInputRate::Vertex,
+                                                      }},
                                                   },
                                                   .input_assembly{.topology = PrimitiveTopology::TriangleList},
                                                   .depth_stencil{
-                                                      .depth_test = false,
+                                                      .depth_test    = true,
+                                                      .depth_write   = true,
+                                                      .depth_compare = CompareOp::Less,
                                                   },
-                                                  .color_blend  = ColorBlendState::opaque(),
-                                                  .color_format = Format::BGRA8_SRGB};
+                                                  .color_blend  = {.enabled = false},
+                                                  .color_format = Format::BGRA8_SRGB,
+                                                  .depth_format = Format::D32_FLOAT};
 
   auto pipeline_handle = WIND_TRY(m_pipeline_manager.create(std::move(graphics_config), m_context->gpu_device.device));
 
@@ -168,11 +193,19 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   color_attach_info.storeOp          = vk::AttachmentStoreOp::eStore;
   color_attach_info.clearValue.color = color;
 
+  vk::RenderingAttachmentInfo depth_attach_info{};
+  depth_attach_info.imageView   = m_resource_manager->get_depth_image_view();
+  depth_attach_info.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
+  depth_attach_info.loadOp      = vk::AttachmentLoadOp::eClear;
+  depth_attach_info.storeOp     = vk::AttachmentStoreOp::eDontCare;
+  depth_attach_info.clearValue.depthStencil.setDepth(1.0F);
+
   vk::Rect2D render_area{0, m_context->swapchain.extent};
 
   vk::RenderingInfo rendering_info{};
   rendering_info.colorAttachmentCount = 1;
   rendering_info.pColorAttachments    = &color_attach_info;
+  rendering_info.pDepthAttachment     = &depth_attach_info;
   rendering_info.renderArea           = render_area;
   rendering_info.layerCount           = 1;
 
@@ -193,7 +226,7 @@ auto Renderer::draw() WIND_NOEXCEPT -> void
   scissor.extent = m_context->swapchain.extent;
 
   vk::Viewport viewport{};
-  viewport.x     = 0.0f;
+  viewport.x     = 0.0F;
   viewport.y     = static_cast<float>(m_context->swapchain.extent.height);
   viewport.width = static_cast<float>(m_context->swapchain.extent.width);
   // upside down triangle fix
@@ -214,6 +247,13 @@ auto Renderer::draw() WIND_NOEXCEPT -> void
   }
 
   frame->graphics_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline.value()->graphics_pipeline);
+
+
+  std::array<vk::Buffer, 1> vertex_buffers{m_test_vertex_buffer.buffer};
+
+  std::array<vk::DeviceSize, 1> offsets{0};
+
+  frame->graphics_command_buffer.bindVertexBuffers(0, vertex_buffers, offsets);
 
   frame->graphics_command_buffer.draw(3, 1, 0, 0);
 }
