@@ -1,13 +1,11 @@
 #pragma once
 
 #include "config.hpp"
-#include "spdlog/spdlog.h"
 #include "vulkan/core/configuration.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
-#include "vulkan/vulkan.hpp"
+#include "vulkan/vulkan_core.h"
 #include <span>
 #include <vector>
-#include <vulkan/vulkan.hpp>
 
 namespace wind::vulkan {
 
@@ -555,13 +553,13 @@ WIND_INLINE auto to_vk(const ColorBlendState& color_blend) WIND_NOEXCEPT -> vk::
 
   if(!color_blend.enabled)
   {
-    state.blendEnable    = VK_FALSE;
+    state.blendEnable    = vk::True;
     state.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
                            | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
     return state;
   }
 
-  state.blendEnable         = VK_TRUE;
+  state.blendEnable         = vk::True;
   state.srcColorBlendFactor = to_vk(color_blend.src_color);
   state.dstColorBlendFactor = to_vk(color_blend.dst_color);
   state.colorBlendOp        = to_vk(color_blend.color_op);
@@ -583,10 +581,9 @@ struct PipelineCreateInfo
   vk::PipelineInputAssemblyStateCreateInfo         input_assembly;
   vk::PipelineRasterizationStateCreateInfo         rasterization;
   vk::PipelineDepthStencilStateCreateInfo          depth_stencil;
-  // vk::PipelineColorBlendStateCreateInfo            color_blend;
-  vk::PipelineColorBlendAttachmentState  color_blend_attachment;
-  vk::PipelineViewportStateCreateInfo    viewport_state;
-  vk::PipelineMultisampleStateCreateInfo multisample;
+  vk::PipelineColorBlendAttachmentState            color_blend_attachment;
+  vk::PipelineViewportStateCreateInfo              viewport_state;
+  vk::PipelineMultisampleStateCreateInfo           multisample;
 };
 
 WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> PipelineCreateInfo
@@ -616,9 +613,6 @@ WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> 
   auto depth_stencil            = to_vk(config.depth_stencil);
   result.color_blend_attachment = to_vk(config.color_blend);
 
-  // Color blend state
-
-
   // Viewport state (default)
   vk::PipelineViewportStateCreateInfo viewport_state{};
   viewport_state.viewportCount = 1;
@@ -632,7 +626,6 @@ WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> 
   result.input_assembly = input_assembly;
   result.rasterization  = rasterization;
   result.depth_stencil  = depth_stencil;
-  // result.color_blend    = color_blend;
   result.viewport_state = viewport_state;
   result.multisample    = multisample;
 

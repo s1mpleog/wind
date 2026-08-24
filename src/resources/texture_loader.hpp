@@ -45,17 +45,17 @@ struct WindAsset
   std::vector<WindMaterial> materials;
 };
 
-WIND_NODISCARD WIND_INLINE auto decode(std::span<const u8> buffer) WIND_NOEXCEPT -> WindResult<WindAsset>
+WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WIND_NOEXCEPT -> WindResult<WindAsset>
 {
   size_t cursor{0};
 
-  std::array<const u8, 8> VALID_MAGIC{
+  std::array<const u8, 8> WIND_MAGIC{
       u8{87}, u8{73}, u8{78}, u8{68}, 0, 0, 0, 0,
   };
 
   auto magic = buffer.subspan(0, 8);
 
-  if(!std::ranges::equal(magic, VALID_MAGIC))
+  if(!std::ranges::equal(magic, WIND_MAGIC))
   {
     WIND_ERR(WindError::internal());
   }
@@ -205,39 +205,38 @@ WIND_NODISCARD WIND_INLINE auto decode(std::span<const u8> buffer) WIND_NOEXCEPT
   return asset;
 }
 
-WIND_NODISCARD WIND_INLINE auto load_asset(std::string_view name) WIND_NOEXCEPT -> WindResult<WindAsset>
+WIND_NODISCARD WIND_INLINE auto read_file(std::string_view name) WIND_NOEXCEPT -> WindResult<std::vector<u8>>
 {
   auto path = std::filesystem::path(name);
 
   if(!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
-  {
     WIND_ERR(WindError::internal(ErrorCode::ResourceNotFound));
-  }
 
   auto file_size = std::filesystem::file_size(path);
 
   if(file_size == 0)
-  {
     WIND_ERR(WindError::internal());
-  }
 
   std::ifstream file_stream(path, std::ios::binary);
 
   if(!file_stream.is_open())
-  {
     WIND_ERR(WindError::internal());
-  }
 
   std::vector<u8> buffer(file_size);
 
   if(!file_stream.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(file_size)))
-  {
     WIND_ERR(WindError::internal());
-  }
+
+  return buffer;
+}
+
+WIND_NODISCARD WIND_INLINE auto open(std::string_view name) WIND_NOEXCEPT -> WindResult<WindAsset>
+{
+  auto buffer = WIND_TRY(read_file(name));
 
   // spdlog::info("read {} bytes", buffer.size());
 
-  auto asset = WIND_TRY(decode(buffer));
+  auto asset = WIND_TRY(decode_wind_asset(buffer));
 
   // spdlog::info("read vertices: {}, indices: {}", asset.vertices.size(), asset.indices.size());
 

@@ -12,9 +12,8 @@ namespace wind::vulkan {
 class Renderer
 {
 public:
-  Renderer(const Renderer&)                    = delete;
-  auto operator=(const Renderer&) -> Renderer& = delete;
-
+  Renderer(const Renderer&)                        = delete;
+  auto operator=(const Renderer&) -> Renderer&     = delete;
   Renderer(Renderer&&) noexcept                    = default;
   auto operator=(Renderer&&) noexcept -> Renderer& = default;
 

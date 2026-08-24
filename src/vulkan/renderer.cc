@@ -17,15 +17,15 @@
 #include <vector>
 
 namespace wind::vulkan {
-struct Vertex
-{
-  glm::vec4 position;
-  glm::vec4 color;
-};
+// struct Vertex
+// {
+//   glm::vec4 position;
+//   glm::vec4 color;
+// };
 
-static_assert(sizeof(Vertex) == 32);
-static_assert(offsetof(Vertex, position) == 0);
-static_assert(offsetof(Vertex, color) == 16);
+// static_assert(sizeof(Vertex) == 32);
+// static_assert(offsetof(Vertex, position) == 0);
+// static_assert(offsetof(Vertex, color) == 16);
 
 // static std::array<Vertex, 3> vertices{{
 //     {{0.0f, -0.5f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
@@ -82,6 +82,13 @@ WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& 
 
   spdlog::info("pipeline handle: {}", pipeline_handle);
 
+  resource_manager.destroy_shader(vertex_shader_handle);
+  resource_manager.destroy_shader(fragment_shader_handle);
+
+  {
+    auto mesh = WIND_TRY(resource_manager.load_asset("assets/models/chair.wind"));
+  }
+
   return Renderer(std::move(cfg), std::move(context), std::move(frame_context), std::move(pipeline_manager));
 }
 
@@ -98,6 +105,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   auto [swapchain_result, swapchain_image] =
       m_context.swapchain.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
 
+  // TODO: fix this
   if(swapchain_result == vk::Result::eErrorOutOfDateKHR || swapchain_result == vk::Result::eSuboptimalKHR)
   {
     WIND_TRY(m_context.gpu_device.device.waitIdle());
@@ -209,7 +217,6 @@ auto Renderer::end() WIND_NOEXCEPT -> void
   auto* frame = &m_frame_context[m_current_frame];
 
   frame->graphics_command_buffer.endRendering();
-
 
   vk::ImageMemoryBarrier2 barrier{};
   barrier.oldLayout     = vk::ImageLayout::eColorAttachmentOptimal;
