@@ -14,8 +14,6 @@
 
 
 #include "config.hpp"
-#include "error.hpp"
-#include "resources/texture_loader.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/context.hpp"
 #include "vulkan/memory/allocator.hpp"
@@ -26,12 +24,10 @@
 #include <vulkan/vulkan_raii.hpp>
 
 namespace wind::resources {
-
 template <typename T>
 struct Handle
 {
   u32 index{};
-  u32 generation{};
 };
 
 struct Texture;
@@ -39,11 +35,19 @@ struct Shader;
 
 using TextureHandle = Handle<Texture>;
 using ShaderHandle  = Handle<Shader>;
+using VertexHandle  = Handle<u32>;
+using IndexHandle   = Handle<u32>;
 
-static_assert(sizeof(TextureHandle) == 8);
-static_assert(sizeof(ShaderHandle) == 8);
+static_assert(sizeof(TextureHandle) == 4);
+static_assert(sizeof(ShaderHandle) == 4);
 
 static_assert(!std::is_same_v<TextureHandle, ShaderHandle>);
+
+struct MeshHandle
+{
+  VertexHandle vertex_handle{};
+  IndexHandle  index_handle{};
+};
 
 class ResourceManager
 {
@@ -56,31 +60,25 @@ public:
 
   WIND_NODISCARD static auto create(const vulkan::VulkanContext& context) WIND_NOEXCEPT -> WindResult<ResourceManager>;
 
+
   WIND_NODISCARD auto load_shader(const vk::raii::Device& device, std::string_view shader_path) WIND_NOEXCEPT
       -> WindResult<ShaderHandle>;
+  WIND_NODISCARD auto get_shader(ShaderHandle handle) WIND_NOEXCEPT -> WindResult<vk::raii::ShaderModule*>;
+  WIND_NODISCARD auto get_shader_unchecked(ShaderHandle handle) WIND_NOEXCEPT -> vk::raii::ShaderModule*;
+  auto                destroy_shader(ShaderHandle handle) WIND_NOEXCEPT -> void;
 
-  WIND_NODISCARD auto load_texture(const vk::raii::Device& device, std::string_view texture_path) WIND_NOEXCEPT
-      -> WindResult<TextureHandle>;
-
-  WIND_NODISCARD auto get_shader(ShaderHandle handle) WIND_NOEXCEPT -> WindResult<vk::raii::ShaderModule*>
-  {
-    if(handle.index > m_shaders.size())
-      WIND_ERR(WindError::internal());
-
-    return &m_shaders[handle.index];
-  }
-
-  template <typename T>
-  WIND_NODISCARD auto get() WIND_NOEXCEPT -> WindResult<T*>;
+  WIND_NODISCARD auto load_asset(std::string_view texture_path) WIND_NOEXCEPT -> WindResult<MeshHandle>;
 
 private:
   explicit ResourceManager(vulkan::memory::GpuAllocator allocator)
       : m_allocator{std::move(allocator)} {};
 
-  std::vector<asset::WindAsset>                 m_assets;
   std::vector<vk::raii::ShaderModule>           m_shaders;
   std::unordered_map<std::string, ShaderHandle> m_shader_cache;
   vulkan::memory::GpuAllocator                  m_allocator;
+  std::vector<vulkan::memory::AllocatedBuffer>  m_vertex_buffer;
+  std::vector<vulkan::memory::AllocatedBuffer>  m_index_buffer;
+  std::unordered_map<std::string, MeshHandle>   m_asset_cache;
 };
 
 };  // namespace wind::resources
