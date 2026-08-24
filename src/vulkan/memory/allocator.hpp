@@ -65,34 +65,25 @@ struct AllocatedBuffer
     if(buffer != VK_NULL_HANDLE)
     {
       vmaDestroyBuffer(allocator, buffer, allocation);
-      spdlog::info("cleanup buffer");
+      spdlog::info("VkBuffer destroyed successfully");
     }
   }
 };
 
 
-struct AllocatedTexture
+struct AllocatedImage
 {
   VkImage             image{VK_NULL_HANDLE};
   vk::raii::ImageView image_view{nullptr};
-  vk::raii::Sampler   sampler{nullptr};
   VmaAllocator        allocator{VK_NULL_HANDLE};
   VmaAllocation       allocation{VK_NULL_HANDLE};
   vk::Format          format{};
   u32                 width{};
   u32                 height{};
 
-  AllocatedTexture(VkImage             image,
-                   vk::raii::ImageView image_view,
-                   vk::raii::Sampler   sampler,
-                   VmaAllocator        allocator,
-                   VmaAllocation       allocation,
-                   vk::Format          format,
-                   u32                 height,
-                   u32                 width)
+  AllocatedImage(VkImage image, vk::raii::ImageView image_view, VmaAllocator allocator, VmaAllocation allocation, vk::Format format, u32 height, u32 width)
       : image{image}
       , image_view{std::move(image_view)}
-      , sampler{std::move(sampler)}
       , allocator{allocator}
       , allocation{allocation}
       , format{format}
@@ -101,23 +92,21 @@ struct AllocatedTexture
   {
   }
 
-  AllocatedTexture()                                           = default;
-  AllocatedTexture(const AllocatedTexture&)                    = delete;
-  auto operator=(const AllocatedTexture&) -> AllocatedTexture& = delete;
+  AllocatedImage()                                         = default;
+  AllocatedImage(const AllocatedImage&)                    = delete;
+  auto operator=(const AllocatedImage&) -> AllocatedImage& = delete;
 
-  AllocatedTexture(AllocatedTexture&& other) noexcept
-      : image{std::exchange(other.image, VK_NULL_HANDLE)}
-      , image_view{std::move(other.image_view)}
-      , sampler{std::move(other.sampler)}
-      , allocator{std::exchange(other.allocator, VK_NULL_HANDLE)}
-      , allocation{std::exchange(other.allocation, VK_NULL_HANDLE)}
-      , format{other.format}
-      , width{other.width}
-      , height{other.height}
+  AllocatedImage(AllocatedImage&& other) WIND_NOEXCEPT : image{std::exchange(other.image, VK_NULL_HANDLE)},
+                                                         image_view{std::move(other.image_view)},
+                                                         allocator{std::exchange(other.allocator, VK_NULL_HANDLE)},
+                                                         allocation{std::exchange(other.allocation, VK_NULL_HANDLE)},
+                                                         format{other.format},
+                                                         width{other.width},
+                                                         height{other.height}
   {
   }
 
-  auto operator=(AllocatedTexture&& other) noexcept -> AllocatedTexture&
+  auto operator=(AllocatedImage&& other) WIND_NOEXCEPT->AllocatedImage&
   {
     if(this == &other)
       return *this;
@@ -133,7 +122,6 @@ struct AllocatedTexture
     allocator  = std::exchange(other.allocator, VK_NULL_HANDLE);
 
     image_view = std::move(other.image_view);
-    sampler    = std::move(other.sampler);
 
     format = other.format;
     width  = other.width;
@@ -142,13 +130,34 @@ struct AllocatedTexture
     return *this;
   }
 
-  ~AllocatedTexture()
+  ~AllocatedImage()
   {
     if(allocation != VK_NULL_HANDLE && allocator != VK_NULL_HANDLE)
     {
       vmaDestroyImage(allocator, image, allocation);
+      spdlog::info("texture destroyed successfully");
     }
   }
+};
+
+struct AllocatedTexture
+{
+  AllocatedImage    image{};
+  vk::raii::Sampler sampler{nullptr};
+
+  AllocatedTexture(AllocatedImage image, vk::raii::Sampler sampler)
+      : image{std::move(image)}
+      , sampler{std::move(sampler)}
+  {
+  }
+
+  AllocatedTexture(const AllocatedTexture&)                    = delete;
+  auto operator=(const AllocatedTexture&) -> AllocatedTexture& = delete;
+
+  AllocatedTexture(AllocatedTexture&&) WIND_NOEXCEPT                  = default;
+  auto operator=(AllocatedTexture&&) WIND_NOEXCEPT->AllocatedTexture& = default;
+
+  ~AllocatedTexture() = default;
 };
 
 class GpuAllocator
@@ -207,6 +216,16 @@ public:
 
   WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const std::byte> pixels, u32 width, u32 height, Format format) WIND_NOEXCEPT
       -> WindResult<AllocatedTexture>;
+
+  WIND_NODISCARD auto create_vk_image(u32                 width,
+                                      u32                 height,
+                                      Format              format,
+                                      vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eTransferDst
+                                                                  | vk::ImageUsageFlagBits::eSampled) WIND_NOEXCEPT
+      -> WindResult<std::pair<VkImage, VmaAllocation>>;
+
+  WIND_NODISCARD auto create_depth_buffer(const VulkanContext* context, u32 width, u32 height) WIND_NOEXCEPT
+      -> WindResult<AllocatedImage>;
 
 private:
   explicit GpuAllocator(VmaAllocator allocator)

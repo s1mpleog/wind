@@ -17,6 +17,8 @@
 #include "utils/expected_util.hpp"
 #include "vulkan/core/context.hpp"
 #include "vulkan/memory/allocator.hpp"
+#include <cstddef>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -68,6 +70,16 @@ public:
 
   WIND_NODISCARD auto load_asset(std::string_view texture_path) WIND_NOEXCEPT -> WindResult<MeshHandle>;
 
+  WIND_NODISCARD auto create_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
+  WIND_NODISCARD auto get_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&;
+
+  // just for testing
+  WIND_NODISCARD auto create_vertices(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<vulkan::memory::AllocatedBuffer>
+  {
+    auto allocated_buffer = WIND_TRY(m_allocator.create_buffer(m_context, vertices));
+    return allocated_buffer;
+  }
+
 private:
   ResourceManager(vulkan::memory::GpuAllocator allocator, const vulkan::VulkanContext* context)
       : m_context{context}
@@ -81,6 +93,7 @@ private:
   std::vector<vulkan::memory::AllocatedBuffer>  m_index_buffer;
   std::unordered_map<std::string, MeshHandle>   m_asset_cache;
   std::vector<vulkan::memory::AllocatedTexture> m_texture;
+  vulkan::memory::AllocatedImage                m_depth_image;
 };
 
 };  // namespace wind::resources

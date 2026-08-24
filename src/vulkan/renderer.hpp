@@ -47,6 +47,7 @@ private:
   std::unique_ptr<VulkanContext>              m_context;
   std::vector<FrameContext>                   m_frame_context;
   graphics::PipelineManager                   m_pipeline_manager;
+  vulkan::memory::AllocatedBuffer             m_test_vertex_buffer;
   std::unique_ptr<resources::ResourceManager> m_resource_manager;
 
   u32 m_current_frame{0};

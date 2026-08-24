@@ -6,6 +6,7 @@
 #include "vulkan/vulkan_core.h"
 #include <span>
 #include <vector>
+#include <vulkan/vulkan.hpp>
 
 namespace wind::vulkan {
 
@@ -553,7 +554,7 @@ WIND_INLINE auto to_vk(const ColorBlendState& color_blend) WIND_NOEXCEPT -> vk::
 
   if(!color_blend.enabled)
   {
-    state.blendEnable    = vk::True;
+    state.blendEnable    = vk::False;
     state.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
                            | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
     return state;

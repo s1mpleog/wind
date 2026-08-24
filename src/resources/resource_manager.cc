@@ -1,4 +1,5 @@
 #include "resource_manager.hpp"
+#include "config.hpp"
 #include "resources/texture_loader.hpp"
 #include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
@@ -100,6 +101,7 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
   auto vertices = WIND_TRY(m_allocator.create_buffer(m_context, std::as_bytes(std::span{wind_asset.vertices}),
                                                      vk::BufferUsageFlagBits::eVertexBuffer));
 
+
   auto indices = WIND_TRY(m_allocator.create_buffer(m_context, std::as_bytes(std::span{wind_asset.indices}),
                                                     vk::BufferUsageFlagBits::eIndexBuffer));
 
@@ -142,6 +144,18 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
   }
 
   return MeshHandle{.vertex_handle = VertexHandle{vertex_index}, .index_handle = IndexHandle{index_index}};
+}
+
+WIND_NODISCARD auto ResourceManager::create_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
+{
+  m_depth_image = WIND_TRY(m_allocator.create_depth_buffer(m_context, width, height));
+  return {};
+}
+
+WIND_NODISCARD auto ResourceManager::get_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&
+{
+  WIND_ASSERT(m_depth_image.image_view != nullptr && "Depth image view is nullptr create depth image first");
+  return m_depth_image.image_view;
 }
 
 };  // namespace wind::resources
