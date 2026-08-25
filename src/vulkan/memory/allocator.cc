@@ -4,6 +4,7 @@
 #include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
+#include "vulkan/memory/resource_types.hpp"
 #include "vulkan/types.hpp"
 #include "vulkan/vulkan.hpp"
 #include "vulkan/vulkan_core.h"
@@ -34,7 +35,20 @@ WIND_NODISCARD auto GpuAllocator::create(const VulkanContext* context) WIND_NOEX
   spdlog::info("VMA allocator created successfully");
 #endif
 
-  return GpuAllocator{temp_allocator};
+  vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
+  command_buffer_alloc_info.commandBufferCount = 1;
+  command_buffer_alloc_info.level              = vk::CommandBufferLevel::ePrimary;
+  // use transfer pool if available otherwise use fallback to graphics pool
+  command_buffer_alloc_info.commandPool =
+      context->gpu_device.has_transfer_queue() ? context->gpu_device.transfer_pool.value() : context->gpu_device.graphics_pool;
+
+  auto command_buffers = WIND_TRY(context->gpu_device.device.allocateCommandBuffers(command_buffer_alloc_info),
+                                  ErrorCode::FailedToAllocateCommandBuffer);
+
+  auto fence = WIND_TRY(context->gpu_device.device.createFence(vk::FenceCreateInfo{vk::FenceCreateFlagBits::eSignaled}),
+                        ErrorCode::FailedToCreateFence);
+
+  return GpuAllocator{temp_allocator, std::move(command_buffers[0]), std::move(fence)};
 }
 
 // TODO: this does not belongs here
@@ -101,8 +115,6 @@ auto GpuAllocator::transition_image(vk::raii::CommandBuffer& cmd, VkImage& image
     barrier.oldLayout = old_layout;
     barrier.newLayout = new_layout;
 
-    spdlog::info("TRANSTION IMAGE TO DEPTH BUFFER");
-
     // i will not pretend that i understand these
     barrier.srcStageMask  = {};
     barrier.srcAccessMask = {};
@@ -119,7 +131,7 @@ auto GpuAllocator::transition_image(vk::raii::CommandBuffer& cmd, VkImage& image
   }
 }
 
-WIND_NODISCARD auto GpuAllocator::upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<AllocatedBuffer>
+WIND_NODISCARD auto GpuAllocator::upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>
 {
   const vk::DeviceSize size = data.size();
 
@@ -145,16 +157,53 @@ WIND_NODISCARD auto GpuAllocator::upload_staging_buffer(std::span<const std::byt
   // copy our data to staging buffer
   std::memcpy(alloc_info.pMappedData, data.data(), size);
 
-  return AllocatedBuffer{
+  return gpu::AllocatedBuffer{
       buffer,
       allocation,
       m_allocator,
   };
 }
 
+WIND_NODISCARD auto GpuAllocator::begin_command_buffer() WIND_NOEXCEPT -> WindResult<void>
+{
+  WIND_ASSERT(m_command_buffer != nullptr && "Command buffer is null");
+
+  vk::CommandBufferBeginInfo begin_info{};
+  begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+  WIND_TRY(m_command_buffer.begin(begin_info), ErrorCode::FailedToBeginCommandBuffer);
+
+  return {};
+}
+
+WIND_NODISCARD auto GpuAllocator::end_command_buffer() WIND_NOEXCEPT -> WindResult<void>
+{
+  WIND_ASSERT(m_command_buffer != nullptr && "Command buffer is null");
+
+  WIND_TRY(m_command_buffer.end());
+  return {};
+}
+
+WIND_NODISCARD auto GpuAllocator::wait_for_fence(const vk::raii::Device& device) WIND_NOEXCEPT -> WindResult<void>
+{
+  WIND_ASSERT(m_fence != nullptr && "fence is null");
+  auto result = device.waitForFences(*m_fence, vk::True, UINT64_MAX);
+
+  if(result != vk::Result::eSuccess)
+    WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+
+  return {};
+}
+
+
+WIND_NODISCARD auto GpuAllocator::reset_fence(const vk::raii::Device& device) WIND_NOEXCEPT -> WindResult<void>
+{
+  WIND_TRY(device.resetFences(*m_fence));
+  return {};
+}
+
 WIND_NODISCARD auto GpuAllocator::create_buffer(const VulkanContext*       context,
                                                 std::span<const std::byte> data,
-                                                vk::BufferUsageFlagBits flags) WIND_NOEXCEPT -> WindResult<AllocatedBuffer>
+                                                vk::BufferUsageFlagBits flags) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>
 {
   WIND_ASSERT(m_allocator != VK_NULL_HANDLE && "VMA allocator is null");
   WIND_ASSERT(context != VK_NULL_HANDLE && "context is null");
@@ -196,21 +245,9 @@ WIND_NODISCARD auto GpuAllocator::create_buffer(const VulkanContext*       conte
   spdlog::info("buffer created: {}", (void*)device_buffer);
 
   // ================Upload the data to GPU===============
-  vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
-  command_buffer_alloc_info.commandBufferCount = 1;
-  command_buffer_alloc_info.commandPool        = context->gpu_device.graphics_pool;
-  command_buffer_alloc_info.level              = vk::CommandBufferLevel::ePrimary;
-
-  auto command_buffers = WIND_TRY(context->gpu_device.device.allocateCommandBuffers(command_buffer_alloc_info),
-                                  ErrorCode::FailedToAllocateCommandBuffer);
-
-  WIND_ENSURE_NOT_EMPTY(command_buffers, WindError::vulkan());
-
-  vk::CommandBufferBeginInfo command_buffer_begin_info{};
-  command_buffer_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 
   // set command buffer to recording state
-  WIND_TRY(command_buffers[0].begin(command_buffer_begin_info), ErrorCode::FailedToBeginCommandBuffer);
+  WIND_TRY(begin_command_buffer());
 
   vk::BufferCopy copy_region{};
   copy_region.size      = size;
@@ -218,26 +255,39 @@ WIND_NODISCARD auto GpuAllocator::create_buffer(const VulkanContext*       conte
   copy_region.srcOffset = 0;
 
   // copy the buffer
-  command_buffers[0].copyBuffer(staging_buffer_info.buffer, device_buffer, copy_region);
+  m_command_buffer.copyBuffer(staging_buffer_info.buffer, device_buffer, copy_region);
 
   //set command buffer to executable state
-  WIND_TRY(command_buffers[0].end(), ErrorCode::FailedToEndCommandBuffer);
-
-  // wait for GPU to read the data before cleaning it up
-  auto wait_fence = WIND_TRY(context->gpu_device.device.createFence(vk::FenceCreateInfo{}), ErrorCode::FailedToCreateFence);
+  WIND_TRY(end_command_buffer());
 
   vk::SubmitInfo submit_info{};
   submit_info.commandBufferCount = 1;
-  submit_info.pCommandBuffers    = &*command_buffers[0];
+  submit_info.pCommandBuffers    = &*m_command_buffer;
 
-  // TODO: see if we can transfer pool here
-  WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, wait_fence), ErrorCode::FailedToSubmitQueue);
+  // wait for previous submission to complete since we created m_fence in signaled state
+  // on first call it will just return aka it will not hang during first call
+  // otherwise it will wait for the previous buffer submission to finished regardless of that
+  // the new state of m_fence will be SIGNALED
+  WIND_TRY(wait_for_fence(context->gpu_device.device));
+  // reset_fence changes m_fence from signaled to unsigned we need this because vulkan says
+  // that we should no submit using signaled fence state: UN-SIGNALED
+  WIND_TRY(reset_fence(context->gpu_device.device));
 
-  // wait for GPU
-  if(auto result = context->gpu_device.device.waitForFences(*wait_fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess)
-    WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+  if(context->gpu_device.has_transfer_queue())
+  {
+    WIND_TRY(context->gpu_device.transfer_queue->submit(submit_info, m_fence), ErrorCode::FailedToSubmitQueue);
+  }
+  else
+  {
+    WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, m_fence), ErrorCode::FailedToSubmitQueue);
+  }
 
-  return AllocatedBuffer{device_buffer, allocation, m_allocator};
+  // why are we waiting here also umm is it because of staging buffer cleanup and stopping
+  // RAII invocation until GPU process staging buffer ? i think so cause queue.submit()
+  // is async call so we need a synchronization
+  WIND_TRY(wait_for_fence(context->gpu_device.device));
+
+  return gpu::AllocatedBuffer{device_buffer, allocation, m_allocator};
 }
 
 WIND_NODISCARD auto GpuAllocator::create_vk_image(u32 width, u32 height, Format format, vk::ImageUsageFlags usage) WIND_NOEXCEPT
@@ -280,7 +330,7 @@ WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       cont
                                                  std::span<const std::byte> pixels,
                                                  u32                        width,
                                                  u32                        height,
-                                                 Format format) WIND_NOEXCEPT -> WindResult<AllocatedTexture>
+                                                 Format format) WIND_NOEXCEPT -> WindResult<gpu::AllocatedTexture>
 {
   WIND_ASSERT(m_allocator != VK_NULL_HANDLE && "VMA allocator is null");
   WIND_ASSERT(context != VK_NULL_HANDLE && "context is null");
@@ -304,47 +354,42 @@ WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       cont
   spdlog::info("image_view: {}", (void*)*image_view);
 
   // ================Upload the data to GPU===============
-  vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
-  command_buffer_alloc_info.commandBufferCount = 1;
-  command_buffer_alloc_info.commandPool        = context->gpu_device.graphics_pool;
-  command_buffer_alloc_info.level              = vk::CommandBufferLevel::ePrimary;
-
-  auto command_buffers = WIND_TRY(context->gpu_device.device.allocateCommandBuffers(command_buffer_alloc_info),
-                                  ErrorCode::FailedToAllocateCommandBuffer);
-
-  WIND_ENSURE_NOT_EMPTY(command_buffers, WindError::vulkan());
-
-  vk::CommandBufferBeginInfo command_buffer_begin_info{};
-  command_buffer_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-
-  auto wait_fence = WIND_TRY(context->gpu_device.device.createFence(vk::FenceCreateInfo{}), ErrorCode::FailedToCreateFence);
-
-  // set command buffer to recording state
-  WIND_TRY(command_buffers[0].begin(command_buffer_begin_info), ErrorCode::FailedToBeginCommandBuffer);
+  WIND_TRY(begin_command_buffer());
 
   vk::BufferImageCopy region{};
   region.imageSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
   region.imageExtent      = {.width = width, .height = height, .depth = 1};
 
   // transition from undefined to TransferDst
-  transition_image(command_buffers[0], image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+  transition_image(m_command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-  command_buffers[0].copyBufferToImage(staging_buffer.buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
+  m_command_buffer.copyBufferToImage(staging_buffer.buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
 
   // transition from Transfer dst to shader read
-  transition_image(command_buffers[0], image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+  transition_image(m_command_buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 
   // end the command buffer no more recording :(
-  WIND_TRY(command_buffers[0].end(), ErrorCode::FailedToEndCommandBuffer);
+  WIND_TRY(end_command_buffer());
 
   vk::SubmitInfo submit_info{};
   submit_info.commandBufferCount = 1;
-  submit_info.pCommandBuffers    = &*command_buffers[0];
+  submit_info.pCommandBuffers    = &*m_command_buffer;
 
-  WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, *wait_fence), ErrorCode::FailedToSubmitQueue);
+  // return iff STATE == SIGNALED
+  WIND_TRY(wait_for_fence(context->gpu_device.device));
+  // reset state to UN-SIGNALED
+  WIND_TRY(reset_fence(context->gpu_device.device));
 
-  if(auto result = context->gpu_device.device.waitForFences(*wait_fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess)
-    WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+  if(context->gpu_device.has_transfer_queue())
+  {
+    WIND_TRY(context->gpu_device.transfer_queue->submit(submit_info, *m_fence), ErrorCode::FailedToSubmitQueue);
+  }
+  else
+  {
+    WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, *m_fence), ErrorCode::FailedToSubmitQueue);
+  }
+
+  WIND_TRY(wait_for_fence(context->gpu_device.device));
 
   vk::SamplerCreateInfo sampler_create_info{};
   sampler_create_info.anisotropyEnable = vk::False;
@@ -357,13 +402,13 @@ WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       cont
 
   auto sampler = WIND_TRY(context->gpu_device.device.createSampler(sampler_create_info));
 
-  return AllocatedTexture{AllocatedImage{image, std::move(image_view), m_allocator, image_allocation, to_vk(format), height, width},
-                          std::move(sampler)};
+  return gpu::AllocatedTexture{gpu::AllocatedImage{image, std::move(image_view), m_allocator, image_allocation,
+                                                   to_vk(format), height, width},
+                               std::move(sampler)};
 }
 
-
 WIND_NODISCARD auto GpuAllocator::create_depth_buffer(const VulkanContext* context, u32 width, u32 height) WIND_NOEXCEPT
-    -> WindResult<AllocatedImage>
+    -> WindResult<gpu::AllocatedImage>
 {
   auto [image, image_allocation] =
       WIND_TRY(create_vk_image(width, height, Format::D32_FLOAT, vk::ImageUsageFlagBits::eDepthStencilAttachment));
@@ -377,46 +422,37 @@ WIND_NODISCARD auto GpuAllocator::create_depth_buffer(const VulkanContext* conte
   // create image view
   auto image_view = WIND_TRY(context->gpu_device.device.createImageView(image_view_create_info));
 
-  spdlog::info("============DEPTH image_view: {}=========", (void*)*image_view);
-
   // ================Upload the data to GPU===============
-  vk::CommandBufferAllocateInfo command_buffer_alloc_info{};
-  command_buffer_alloc_info.commandBufferCount = 1;
-  command_buffer_alloc_info.commandPool        = context->gpu_device.graphics_pool;
-  command_buffer_alloc_info.level              = vk::CommandBufferLevel::ePrimary;
-
-  auto command_buffers = WIND_TRY(context->gpu_device.device.allocateCommandBuffers(command_buffer_alloc_info),
-                                  ErrorCode::FailedToAllocateCommandBuffer);
-
-  WIND_ENSURE_NOT_EMPTY(command_buffers, WindError::vulkan());
-
-  vk::CommandBufferBeginInfo command_buffer_begin_info{};
-  command_buffer_begin_info.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-
-  auto wait_fence = WIND_TRY(context->gpu_device.device.createFence(vk::FenceCreateInfo{}), ErrorCode::FailedToCreateFence);
 
   // set command buffer to recording state
-  WIND_TRY(command_buffers[0].begin(command_buffer_begin_info), ErrorCode::FailedToBeginCommandBuffer);
+  WIND_TRY(begin_command_buffer());
 
   // transition from undefined dst to depth optimal
-  transition_image(command_buffers[0], image, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal);
+  transition_image(m_command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal);
 
   // end the command buffer no more recording :(
-  WIND_TRY(command_buffers[0].end(), ErrorCode::FailedToEndCommandBuffer);
+  WIND_TRY(end_command_buffer());
 
   vk::SubmitInfo submit_info{};
   submit_info.commandBufferCount = 1;
-  submit_info.pCommandBuffers    = &*command_buffers[0];
+  submit_info.pCommandBuffers    = &*m_command_buffer;
 
-  WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, *wait_fence), ErrorCode::FailedToSubmitQueue);
+  WIND_TRY(wait_for_fence(context->gpu_device.device));
+  WIND_TRY(reset_fence(context->gpu_device.device));
 
-  if(auto result = context->gpu_device.device.waitForFences(*wait_fence, vk::True, UINT64_MAX); result != vk::Result::eSuccess)
-    WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+  if(context->gpu_device.has_transfer_queue())
+  {
+    WIND_TRY(context->gpu_device.transfer_queue->submit(submit_info, *m_fence), ErrorCode::FailedToSubmitQueue);
+  }
+  else
+  {
+    WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, *m_fence), ErrorCode::FailedToSubmitQueue);
+  }
 
-  spdlog::info("===================DEPTH_IMAGE_FORMAT_AFTER_TRANSITION===== {}", vk::to_string(to_vk(Format::D32_FLOAT)));
+  WIND_TRY(wait_for_fence(context->gpu_device.device));
 
-  return AllocatedImage{image, std::move(image_view), m_allocator, image_allocation, to_vk(Format::D32_FLOAT), height,
-                        width};
+  return gpu::AllocatedImage{
+      image, std::move(image_view), m_allocator, image_allocation, to_vk(Format::D32_FLOAT), height, width};
 }
 
 };  // namespace wind::vulkan::memory

@@ -5,7 +5,9 @@
 #include "utils/expected_util.hpp"
 #include "vulkan/core/context.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
+#include "vulkan/memory/resource_types.hpp"
 #include "vulkan/vulkan.hpp"
+#include <cstddef>
 #include <span>
 #include <utility>
 #include <vk_mem_alloc.h>
@@ -13,152 +15,6 @@
 #include <vulkan/vulkan_raii.hpp>
 
 namespace wind::vulkan::memory {
-struct AllocatedBuffer
-{
-  VkBuffer      buffer{};
-  VmaAllocation allocation{};
-  VmaAllocator  allocator{};
-
-  AllocatedBuffer()                                          = default;
-  AllocatedBuffer(const AllocatedBuffer&)                    = delete;
-  auto operator=(const AllocatedBuffer&) -> AllocatedBuffer& = delete;
-
-  AllocatedBuffer(VkBuffer buffer, VmaAllocation allocation, VmaAllocator allocator)
-      : buffer(buffer)
-      , allocation(allocation)
-      , allocator(allocator)
-  {
-  }
-
-  AllocatedBuffer(AllocatedBuffer&& other) noexcept
-      : buffer(std::exchange(other.buffer, VK_NULL_HANDLE))
-      , allocation(std::exchange(other.allocation, nullptr))
-      , allocator(other.allocator) {};
-
-  auto reset() WIND_NOEXCEPT -> void
-  {
-    if(buffer != VK_NULL_HANDLE)
-    {
-      vmaDestroyBuffer(allocator, buffer, allocation);
-
-      buffer     = VK_NULL_HANDLE;
-      allocation = nullptr;
-    }
-  }
-
-  auto operator=(AllocatedBuffer&& other) noexcept -> AllocatedBuffer&
-  {
-    if(this != &other)
-    {
-      reset();
-
-      buffer     = std::exchange(other.buffer, VK_NULL_HANDLE);
-      allocation = std::exchange(other.allocation, nullptr);
-      allocator  = std::exchange(other.allocator, nullptr);
-    }
-
-    return *this;
-  }
-
-  ~AllocatedBuffer()
-  {
-    if(buffer != VK_NULL_HANDLE)
-    {
-      vmaDestroyBuffer(allocator, buffer, allocation);
-      spdlog::info("VkBuffer destroyed successfully");
-    }
-  }
-};
-
-
-struct AllocatedImage
-{
-  VkImage             image{VK_NULL_HANDLE};
-  vk::raii::ImageView image_view{nullptr};
-  VmaAllocator        allocator{VK_NULL_HANDLE};
-  VmaAllocation       allocation{VK_NULL_HANDLE};
-  vk::Format          format{};
-  u32                 width{};
-  u32                 height{};
-
-  AllocatedImage(VkImage image, vk::raii::ImageView image_view, VmaAllocator allocator, VmaAllocation allocation, vk::Format format, u32 height, u32 width)
-      : image{image}
-      , image_view{std::move(image_view)}
-      , allocator{allocator}
-      , allocation{allocation}
-      , format{format}
-      , width{width}
-      , height{height}
-  {
-  }
-
-  AllocatedImage()                                         = default;
-  AllocatedImage(const AllocatedImage&)                    = delete;
-  auto operator=(const AllocatedImage&) -> AllocatedImage& = delete;
-
-  AllocatedImage(AllocatedImage&& other) WIND_NOEXCEPT : image{std::exchange(other.image, VK_NULL_HANDLE)},
-                                                         image_view{std::move(other.image_view)},
-                                                         allocator{std::exchange(other.allocator, VK_NULL_HANDLE)},
-                                                         allocation{std::exchange(other.allocation, VK_NULL_HANDLE)},
-                                                         format{other.format},
-                                                         width{other.width},
-                                                         height{other.height}
-  {
-  }
-
-  auto operator=(AllocatedImage&& other) WIND_NOEXCEPT->AllocatedImage&
-  {
-    if(this == &other)
-      return *this;
-
-    // Destroy our current VMA-owned image first.
-    if(allocation != VK_NULL_HANDLE && allocator != VK_NULL_HANDLE)
-    {
-      vmaDestroyImage(allocator, image, allocation);
-    }
-
-    image      = std::exchange(other.image, VK_NULL_HANDLE);
-    allocation = std::exchange(other.allocation, VK_NULL_HANDLE);
-    allocator  = std::exchange(other.allocator, VK_NULL_HANDLE);
-
-    image_view = std::move(other.image_view);
-
-    format = other.format;
-    width  = other.width;
-    height = other.height;
-
-    return *this;
-  }
-
-  ~AllocatedImage()
-  {
-    if(allocation != VK_NULL_HANDLE && allocator != VK_NULL_HANDLE)
-    {
-      vmaDestroyImage(allocator, image, allocation);
-      spdlog::info("texture destroyed successfully");
-    }
-  }
-};
-
-struct AllocatedTexture
-{
-  AllocatedImage    image{};
-  vk::raii::Sampler sampler{nullptr};
-
-  AllocatedTexture(AllocatedImage image, vk::raii::Sampler sampler)
-      : image{std::move(image)}
-      , sampler{std::move(sampler)}
-  {
-  }
-
-  AllocatedTexture(const AllocatedTexture&)                    = delete;
-  auto operator=(const AllocatedTexture&) -> AllocatedTexture& = delete;
-
-  AllocatedTexture(AllocatedTexture&&) WIND_NOEXCEPT                  = default;
-  auto operator=(AllocatedTexture&&) WIND_NOEXCEPT->AllocatedTexture& = default;
-
-  ~AllocatedTexture() = default;
-};
 
 class GpuAllocator
 {
@@ -166,7 +22,11 @@ public:
   GpuAllocator(const GpuAllocator&)                    = delete;
   auto operator=(const GpuAllocator&) -> GpuAllocator& = delete;
 
-  GpuAllocator(GpuAllocator&& other) WIND_NOEXCEPT : m_allocator(std::exchange(other.m_allocator, VK_NULL_HANDLE)) {}
+  GpuAllocator(GpuAllocator&& other) WIND_NOEXCEPT : m_allocator{std::exchange(other.m_allocator, VK_NULL_HANDLE)},
+                                                     m_command_buffer{std::move(other.m_command_buffer)},
+                                                     m_fence{std::move(other.m_fence)}
+  {
+  }
 
   auto operator=(GpuAllocator&& other) WIND_NOEXCEPT->GpuAllocator&
   {
@@ -176,6 +36,9 @@ public:
         vmaDestroyAllocator(m_allocator);
 
       m_allocator = std::exchange(other.m_allocator, VK_NULL_HANDLE);
+
+      m_command_buffer = std::move(other.m_command_buffer);
+      m_fence          = std::move(other.m_fence);
     }
 
     return *this;
@@ -191,14 +54,13 @@ public:
   }
 
   WIND_NODISCARD static auto create(const VulkanContext* context) WIND_NOEXCEPT -> WindResult<GpuAllocator>;
-
-  WIND_NODISCARD auto upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<AllocatedBuffer>;
+  WIND_NODISCARD auto upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>;
 
   // TODO: use my custom types for flags
   WIND_NODISCARD auto create_buffer(const VulkanContext*       context,
                                     std::span<const std::byte> data,
                                     vk::BufferUsageFlagBits flags = vk::BufferUsageFlagBits::eVertexBuffer) WIND_NOEXCEPT
-      -> WindResult<AllocatedBuffer>;
+      -> WindResult<gpu::AllocatedBuffer>;
 
   // TODO: get rid of this
   // template <std::ranges::contiguous_range R>
@@ -215,7 +77,7 @@ public:
       -> void;
 
   WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const std::byte> pixels, u32 width, u32 height, Format format) WIND_NOEXCEPT
-      -> WindResult<AllocatedTexture>;
+      -> WindResult<gpu::AllocatedTexture>;
 
   WIND_NODISCARD auto create_vk_image(u32                 width,
                                       u32                 height,
@@ -225,12 +87,23 @@ public:
       -> WindResult<std::pair<VkImage, VmaAllocation>>;
 
   WIND_NODISCARD auto create_depth_buffer(const VulkanContext* context, u32 width, u32 height) WIND_NOEXCEPT
-      -> WindResult<AllocatedImage>;
+      -> WindResult<gpu::AllocatedImage>;
+
+  WIND_NODISCARD auto begin_command_buffer() WIND_NOEXCEPT -> WindResult<void>;
+  WIND_NODISCARD auto end_command_buffer() WIND_NOEXCEPT -> WindResult<void>;
+  WIND_NODISCARD auto wait_for_fence(const vk::raii::Device& device) WIND_NOEXCEPT -> WindResult<void>;
+  WIND_NODISCARD auto reset_fence(const vk::raii::Device& device) WIND_NOEXCEPT -> WindResult<void>;
+  auto                is_fence_signaled(const vk::raii::Device& device) WIND_NOEXCEPT -> bool;
 
 private:
-  explicit GpuAllocator(VmaAllocator allocator)
-      : m_allocator{allocator} {};
+  GpuAllocator(VmaAllocator allocator, vk::raii::CommandBuffer command_buffer, vk::raii::Fence fence)
+      : m_allocator{allocator}
+      , m_command_buffer{std::move(command_buffer)}
+      , m_fence{std::move(fence)} {};
 
-  VmaAllocator m_allocator{VK_NULL_HANDLE};
+  VmaAllocator            m_allocator{VK_NULL_HANDLE};
+  vk::raii::CommandBuffer m_command_buffer{nullptr};
+  vk::raii::Fence         m_fence{nullptr};
 };
+
 };  // namespace wind::vulkan::memory

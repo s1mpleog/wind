@@ -2,8 +2,6 @@
 #include "SDL3/SDL_events.h"
 #include "platform/window.hpp"
 #include "utils/expected_util.hpp"
-#include "vulkan/graphics/pipeline_config.hpp"
-#include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/renderer.hpp"
 #include <spdlog/spdlog.h>
 
