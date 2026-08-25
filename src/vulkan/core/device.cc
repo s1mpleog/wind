@@ -70,17 +70,14 @@ static auto make_physical_device_candidate(const vk::raii::PhysicalDevice& physi
       .device_props         = properties_2,
       .graphics_queue_index = graphics_queue,
       .present_queue_index  = present_queue,
-      .transfer_queue_index = {},
+      .transfer_queue_index = transfer_queue ? std::optional<u32>{transfer_queue} : std::nullopt,
   };
 
   if(transfer_queue)
-  {
     candidate.score += 100;
-    candidate.transfer_queue_index = transfer_queue;
-  }
 
-  if(features_2.samplerAnisotropy == vk::True)
-    candidate.score += 100;
+  // if(features_2.samplerAnisotropy == vk::True)
+  //   candidate.score += 100;
 
   if(properties_2.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
     candidate.score += 500;
@@ -189,8 +186,8 @@ WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candida
 
   std::set unique_queues{candidate.graphics_queue_index.value(), candidate.present_queue_index.value()};
 
-  if(candidate.present_queue_index)
-    unique_queues.insert(candidate.present_queue_index.value());
+  if(candidate.transfer_queue_index)
+    unique_queues.insert(candidate.transfer_queue_index.value());
 
   std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
   queue_create_infos.reserve(unique_queues.size());
@@ -260,7 +257,8 @@ WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& i
 
   gpu_device.graphics_pool = WIND_TRY(create_command_pool(gpu_device.device, gpu_device.graphics_queue_idx.value()));
 
-  if(gpu_device.has_transfer_queue() && gpu_device.transfer_queue_idx.value() != gpu_device.graphics_queue_idx.value())
+  // TODO: think about this
+  if(gpu_device.has_transfer_queue() /* && gpu_device.transfer_queue_idx.value() != gpu_device.graphics_queue_idx.value() */)
   {
     gpu_device.transfer_pool = WIND_TRY(create_command_pool(gpu_device.device, gpu_device.transfer_queue_idx.value()));
   }

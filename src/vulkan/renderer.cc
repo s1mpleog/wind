@@ -254,7 +254,6 @@ auto Renderer::draw() WIND_NOEXCEPT -> void
   std::array<vk::DeviceSize, 1> offsets{0};
 
   frame->graphics_command_buffer.bindVertexBuffers(0, vertex_buffers, offsets);
-
   frame->graphics_command_buffer.draw(3, 1, 0, 0);
 }
 
