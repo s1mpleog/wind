@@ -1,6 +1,7 @@
 #include "resource_manager.hpp"
 #include "config.hpp"
 #include "error.hpp"
+#include "resources/descriptor_manager.hpp"
 #include "resources/texture_loader.hpp"
 #include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
@@ -17,7 +18,38 @@ namespace wind::resources {
 WIND_NODISCARD auto ResourceManager::create(const vulkan::VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>
 {
   auto allocator = WIND_TRY(vulkan::memory::GpuAllocator::create(context));
-  return ResourceManager{std::move(allocator), context};
+
+  auto descriptor_manager =
+      WIND_TRY(vulkan::DescriptorManager::create(context->gpu_device.device, vk::DescriptorType::eCombinedImageSampler));
+
+  vk::DescriptorSetLayoutBinding binding{};
+  // slot 0 in texture
+  binding.binding = 0;
+  // image and sampler combined
+  binding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+  // max textures
+  binding.descriptorCount = 1024;
+  // fragment shader will use it
+  binding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+
+  vk::DescriptorSetLayoutBindingFlagsCreateInfo flags_info{};
+  // don't need all filled can add texture after binding
+  vk::DescriptorBindingFlags binding_flags =
+      vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind;
+
+  flags_info.bindingCount  = 1;
+  flags_info.pBindingFlags = &binding_flags;
+
+  vk::DescriptorSetLayoutCreateInfo layout_info{};
+  layout_info.pNext        = &flags_info;
+  layout_info.flags        = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
+  layout_info.bindingCount = 1;
+  layout_info.pBindings    = &binding;
+
+  WIND_TRY(descriptor_manager.create_layout(context->gpu_device.device, std::span{&binding, 1}));
+  WIND_TRY(descriptor_manager.create_set(context->gpu_device.device));
+
+  return ResourceManager{context, std::move(allocator), std::move(descriptor_manager)};
 }
 
 WIND_NODISCARD auto ResourceManager::load_shader(const vk::raii::Device& device, std::string_view shader_path) WIND_NOEXCEPT
@@ -139,6 +171,7 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
     }
   };
 
+  // only if texture and material is not empty
   m_texture.reserve(wind_asset.textures.size());
 
   std::vector<gpu::TextureData> texture_data;
@@ -159,9 +192,27 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
 
   spdlog::info("created textures: {}", m_texture.size());
 
+  // register GPU textures once
+  for(auto&& [index, texture] : std::views::enumerate(m_texture))
+  {
+    spdlog::info("================REGISTERING TEXTURE {}  format {}===================", index,
+                 vk::to_string(texture.image.format));
+    register_texture(texture, index);
+  }
+
   for(const auto& material : wind_asset.materials)
   {
-    // process materials
+    if(material.albedo_index)
+    {
+    }
+
+    if(material.normal_index)
+    {
+    }
+
+    if(material.metallic_roughness_index)
+    {
+    }
   }
 
   return MeshHandle{.index = mesh_index};

@@ -53,6 +53,9 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
     {
       if(event.type == SDL_EVENT_QUIT)
         running = false;
+
+      //TODO:
+      // m_process_event(event)
     }
 
     auto [width, height] = m_window.drawable_size();

@@ -14,6 +14,8 @@
 
 
 #include "config.hpp"
+#include "resources/descriptor_manager.hpp"
+#include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/context.hpp"
 #include "vulkan/memory/allocator.hpp"
@@ -89,10 +91,30 @@ public:
     return allocated_buffer;
   }
 
+
+  WIND_NODISCARD auto register_texture(const gpu::AllocatedTexture& texture, u32 index) WIND_NOEXCEPT -> void
+  {
+    vk::DescriptorImageInfo image_info{};
+    image_info.imageView   = texture.image.image_view;
+    image_info.sampler     = texture.sampler;
+    image_info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+    vk::WriteDescriptorSet write{};
+    write.descriptorCount = 1;
+    write.descriptorType  = vk::DescriptorType::eCombinedImageSampler;
+    write.dstBinding      = 0;
+    write.dstArrayElement = index;
+    write.pImageInfo      = &image_info;
+    write.dstSet          = *m_descriptor_manager.get_set();
+
+    m_context->gpu_device.device.updateDescriptorSets(write, {});
+  }
+
 private:
-  ResourceManager(vulkan::memory::GpuAllocator allocator, const vulkan::VulkanContext* context)
+  ResourceManager(const vulkan::VulkanContext* context, vulkan::memory::GpuAllocator allocator, vulkan::DescriptorManager descriptor_manager)
       : m_context{context}
-      , m_allocator{std::move(allocator)} {};
+      , m_allocator{std::move(allocator)}
+      , m_descriptor_manager{std::move(descriptor_manager)} {};
 
   const vulkan::VulkanContext*                  m_context;
   std::vector<vk::raii::ShaderModule>           m_shaders;
@@ -102,6 +124,7 @@ private:
   std::vector<gpu::Mesh>                        m_meshes;
   std::vector<gpu::AllocatedTexture>            m_texture;
   gpu::AllocatedImage                           m_depth_image;
+  vulkan::DescriptorManager                     m_descriptor_manager;
 };
 
 };  // namespace wind::resources
