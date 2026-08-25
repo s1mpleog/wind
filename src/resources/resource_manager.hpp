@@ -18,6 +18,7 @@
 #include "vulkan/core/context.hpp"
 #include "vulkan/memory/allocator.hpp"
 #include "vulkan/memory/resource_types.hpp"
+#include "vulkan/vulkan.hpp"
 #include <cstddef>
 #include <span>
 #include <string>
@@ -49,8 +50,7 @@ static_assert(!std::is_same_v<TextureHandle, ShaderHandle>);
 
 struct MeshHandle
 {
-  VertexHandle vertex_handle{};
-  IndexHandle  index_handle{};
+  u32 index{};
 };
 
 class ResourceManager
@@ -75,10 +75,17 @@ public:
   WIND_NODISCARD auto create_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
   WIND_NODISCARD auto get_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&;
 
+  //TODO: WindResult does not works with reference fix that for now return pointer
+  WIND_NODISCARD auto get_mesh(MeshHandle handle) WIND_NOEXCEPT -> WindResult<const gpu::Mesh*>;
+  WIND_NODISCARD auto get_mesh_unchecked(MeshHandle handle) WIND_NOEXCEPT -> const gpu::Mesh*;
+
   // just for testing
   WIND_NODISCARD auto create_vertices(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>
   {
-    auto allocated_buffer = WIND_TRY(m_allocator.create_buffer(m_context, vertices));
+    auto allocated_buffer = WIND_TRY(m_allocator.create_buffer(m_context, gpu::BufferData{
+                                                                              .data = vertices,
+                                                                              .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+                                                                          }));
     return allocated_buffer;
   }
 
@@ -91,9 +98,8 @@ private:
   std::vector<vk::raii::ShaderModule>           m_shaders;
   std::unordered_map<std::string, ShaderHandle> m_shader_cache;
   vulkan::memory::GpuAllocator                  m_allocator;
-  std::vector<gpu::AllocatedBuffer>             m_vertex_buffer;
-  std::vector<gpu::AllocatedBuffer>             m_index_buffer;
   std::unordered_map<std::string, MeshHandle>   m_asset_cache;
+  std::vector<gpu::Mesh>                        m_meshes;
   std::vector<gpu::AllocatedTexture>            m_texture;
   gpu::AllocatedImage                           m_depth_image;
 };

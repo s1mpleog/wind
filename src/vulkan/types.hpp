@@ -3,6 +3,7 @@
 #include "config.hpp"
 #include "vulkan/core/configuration.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
+#include "vulkan/vulkan.hpp"
 #include "vulkan/vulkan_core.h"
 #include <span>
 #include <vector>
@@ -546,6 +547,16 @@ WIND_INLINE auto to_vk(BlendOp blend_op) WIND_NOEXCEPT -> vk::BlendOp
     default:
       return vk::BlendOp::eAdd;
   }
+}
+
+
+WIND_INLINE auto to_vk(const PushConstantRange& push_constant) WIND_NOEXCEPT -> vk::PushConstantRange
+{
+  vk::PushConstantRange vk_push_constant{};
+  vk_push_constant.offset     = push_constant.offset;
+  vk_push_constant.size       = push_constant.size;
+  vk_push_constant.stageFlags = to_vk(push_constant.stage_flags);
+  return vk_push_constant;
 }
 
 WIND_INLINE auto to_vk(const ColorBlendState& color_blend) WIND_NOEXCEPT -> vk::PipelineColorBlendAttachmentState

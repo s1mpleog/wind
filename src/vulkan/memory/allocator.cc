@@ -11,7 +11,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <ranges>
 #include <span>
+#include <vector>
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
@@ -194,100 +196,97 @@ WIND_NODISCARD auto GpuAllocator::wait_for_fence(const vk::raii::Device& device)
   return {};
 }
 
-
 WIND_NODISCARD auto GpuAllocator::reset_fence(const vk::raii::Device& device) WIND_NOEXCEPT -> WindResult<void>
 {
   WIND_TRY(device.resetFences(*m_fence));
   return {};
 }
 
-WIND_NODISCARD auto GpuAllocator::create_buffer(const VulkanContext*       context,
-                                                std::span<const std::byte> data,
-                                                vk::BufferUsageFlagBits flags) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>
+WIND_NODISCARD auto GpuAllocator::create_buffers(const VulkanContext* context, std::span<const gpu::BufferData> buffers) WIND_NOEXCEPT
+    -> WindResult<std::vector<gpu::AllocatedBuffer>>
 {
   WIND_ASSERT(m_allocator != VK_NULL_HANDLE && "VMA allocator is null");
   WIND_ASSERT(context != VK_NULL_HANDLE && "context is null");
 
-  const vk::DeviceSize size = data.size();
+  std::vector<gpu::AllocatedBuffer> allocated_buffers;
+  allocated_buffers.reserve(buffers.size());
 
-  // the idea is that first upload the buffer to a memory location where gpu can cpu can both read and write
-  // it will be slow for gpu to access tho its called staging buffer so allocate a staging buffer and write
-  // vertices there then create another buffer that will be local_bit means cpu can not write to its the fastest
-  // for gpu and copy the buffer there through PCIe
-  // TlDr: staging buffer is for HOST (CPU) and final buffer is for GPU
+  std::vector<gpu::AllocatedBuffer> staging_buffers;
+  staging_buffers.reserve(buffers.size());
 
-  auto staging_buffer_info = WIND_TRY(upload_staging_buffer(data));
-
-  spdlog::info("staging buffer created: {}", (void*)staging_buffer_info.buffer);
-
-  // now actual buffer CPU can't able to write to this only GPU can it will be on VRAM
-
-  vk::BufferCreateInfo buffer_create_info{};
-  buffer_create_info.size = size;
-
-  // transferDst because we are copying from staging buffer and eVertexBuffer because we want to use this
-  // as what ever flags is
-  vk::BufferUsageFlags usage     = flags | vk::BufferUsageFlagBits::eTransferDst;
-  buffer_create_info.usage       = usage;
-  buffer_create_info.sharingMode = vk::SharingMode::eExclusive;
-
-  // prefer device aka GPU
-  VmaAllocationCreateInfo allocation_create_info{};
-  allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-
-  VmaAllocation allocation{};
-  VkBuffer      device_buffer{};
-
-  if(auto result = vmaCreateBuffer(m_allocator, buffer_create_info, &allocation_create_info, &device_buffer, &allocation, nullptr);
-     result != VK_SUCCESS)
-    WIND_ERR(WindError::vulkan(ErrorCode::FailedToCreateBuffer, static_cast<vk::Result>(result)));
-
-  spdlog::info("buffer created: {}", (void*)device_buffer);
-
-  // ================Upload the data to GPU===============
-
-  // set command buffer to recording state
   WIND_TRY(begin_command_buffer());
 
-  vk::BufferCopy copy_region{};
-  copy_region.size      = size;
-  copy_region.dstOffset = 0;
-  copy_region.srcOffset = 0;
+  WIND_TRY(wait_for_fence(context->gpu_device.device));
+  WIND_TRY(reset_fence(context->gpu_device.device));
 
-  // copy the buffer
-  m_command_buffer.copyBuffer(staging_buffer_info.buffer, device_buffer, copy_region);
+  for(auto&& [index, buffer] : std::views::enumerate(buffers))
+  {
+    const vk::DeviceSize size = buffer.data.size();
+    staging_buffers.emplace_back(WIND_TRY(upload_staging_buffer(buffer.data)));
 
-  //set command buffer to executable state
+    spdlog::info("staging buffer created: {}", (void*)staging_buffers[index].buffer);
+
+    vk::BufferCreateInfo buffer_create_info{};
+    buffer_create_info.size = size;
+
+    // transferDst because we are copying from staging buffer and eVertexBuffer because we want to use this
+    // as what ever flags is
+    vk::BufferUsageFlags usage     = buffer.usage | vk::BufferUsageFlagBits::eTransferDst;
+    buffer_create_info.usage       = usage;
+    buffer_create_info.sharingMode = vk::SharingMode::eExclusive;
+
+    VmaAllocationCreateInfo allocation_create_info{};
+    allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+    VmaAllocation image_allocation{};
+    VkBuffer      device_buffer{};
+
+    if(auto result = vmaCreateBuffer(m_allocator, buffer_create_info, &allocation_create_info, &device_buffer, &image_allocation, nullptr);
+       result != VK_SUCCESS)
+    {
+      WIND_ERR(WindError::vulkan(ErrorCode::FailedToCreateBuffer, static_cast<vk::Result>(result)));
+    }
+
+    spdlog::info("buffer created: {}", (void*)device_buffer);
+
+    vk::BufferCopy copy_region{};
+    copy_region.size      = size;
+    copy_region.dstOffset = 0;
+    copy_region.srcOffset = 0;
+
+    // copy the buffer
+    m_command_buffer.copyBuffer(staging_buffers[index].buffer, device_buffer, copy_region);
+
+    allocated_buffers.emplace_back(device_buffer, image_allocation, m_allocator);
+  }
+
   WIND_TRY(end_command_buffer());
 
   vk::SubmitInfo submit_info{};
   submit_info.commandBufferCount = 1;
   submit_info.pCommandBuffers    = &*m_command_buffer;
 
-  // wait for previous submission to complete since we created m_fence in signaled state
-  // on first call it will just return aka it will not hang during first call
-  // otherwise it will wait for the previous buffer submission to finished regardless of that
-  // the new state of m_fence will be SIGNALED
-  WIND_TRY(wait_for_fence(context->gpu_device.device));
-  // reset_fence changes m_fence from signaled to unsigned we need this because vulkan says
-  // that we should no submit using signaled fence state: UN-SIGNALED
-  WIND_TRY(reset_fence(context->gpu_device.device));
-
   if(context->gpu_device.has_transfer_queue())
   {
-    WIND_TRY(context->gpu_device.transfer_queue->submit(submit_info, m_fence), ErrorCode::FailedToSubmitQueue);
+    WIND_TRY(context->gpu_device.transfer_queue->submit(submit_info, *m_fence), ErrorCode::FailedToSubmitQueue);
   }
   else
   {
-    WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, m_fence), ErrorCode::FailedToSubmitQueue);
+    WIND_TRY(context->gpu_device.graphics_queue.submit(submit_info, *m_fence), ErrorCode::FailedToSubmitQueue);
   }
 
-  // why are we waiting here also umm is it because of staging buffer cleanup and stopping
-  // RAII invocation until GPU process staging buffer ? i think so cause queue.submit()
-  // is async call so we need a synchronization
   WIND_TRY(wait_for_fence(context->gpu_device.device));
 
-  return gpu::AllocatedBuffer{device_buffer, allocation, m_allocator};
+  return allocated_buffers;
+}
+
+WIND_NODISCARD auto GpuAllocator::create_buffer(const VulkanContext* context, const gpu::BufferData& buffer) WIND_NOEXCEPT
+    -> WindResult<gpu::AllocatedBuffer>
+{
+  auto result = WIND_TRY(create_buffers(context, std::span{&buffer, 1}));
+  WIND_ENSURE_NOT_EMPTY(result, WindError::vulkan());
+
+  return std::move(result.front());
 }
 
 WIND_NODISCARD auto GpuAllocator::create_vk_image(u32 width, u32 height, Format format, vk::ImageUsageFlags usage) WIND_NOEXCEPT
@@ -326,59 +325,79 @@ WIND_NODISCARD auto GpuAllocator::create_vk_image(u32 width, u32 height, Format 
   return std::pair{image, image_allocation};
 }
 
-WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       context,
-                                                 std::span<const std::byte> pixels,
-                                                 u32                        width,
-                                                 u32                        height,
-                                                 Format format) WIND_NOEXCEPT -> WindResult<gpu::AllocatedTexture>
+WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext* context, std::span<const gpu::TextureData> texture_data) WIND_NOEXCEPT
+    -> WindResult<std::vector<gpu::AllocatedTexture>>
 {
   WIND_ASSERT(m_allocator != VK_NULL_HANDLE && "VMA allocator is null");
   WIND_ASSERT(context != VK_NULL_HANDLE && "context is null");
 
-  auto staging_buffer = WIND_TRY(upload_staging_buffer(pixels));
+  std::vector<gpu::AllocatedBuffer> staging_buffers;
+  staging_buffers.reserve(texture_data.size());
 
-  auto [image, image_allocation] =
-      WIND_TRY(create_vk_image(width, height, format, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled));
+  std::vector<gpu::AllocatedTexture> textures;
+  textures.reserve(texture_data.size());
 
-  spdlog::info("image created successfully: {}", (void*)image);
-
-  vk::ImageViewCreateInfo image_view_create_info{};
-  image_view_create_info.image            = image;
-  image_view_create_info.format           = to_vk(format);
-  image_view_create_info.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
-  image_view_create_info.viewType         = vk::ImageViewType::e2D;
-
-  // create image view
-  auto image_view = WIND_TRY(context->gpu_device.device.createImageView(image_view_create_info));
-
-  spdlog::info("image_view: {}", (void*)*image_view);
-
-  // ================Upload the data to GPU===============
   WIND_TRY(begin_command_buffer());
-
-  vk::BufferImageCopy region{};
-  region.imageSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
-  region.imageExtent      = {.width = width, .height = height, .depth = 1};
-
-  // transition from undefined to TransferDst
-  transition_image(m_command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-
-  m_command_buffer.copyBufferToImage(staging_buffer.buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
-
-  // transition from Transfer dst to shader read
-  transition_image(m_command_buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-  // end the command buffer no more recording :(
-  WIND_TRY(end_command_buffer());
-
-  vk::SubmitInfo submit_info{};
-  submit_info.commandBufferCount = 1;
-  submit_info.pCommandBuffers    = &*m_command_buffer;
 
   // return iff STATE == SIGNALED
   WIND_TRY(wait_for_fence(context->gpu_device.device));
   // reset state to UN-SIGNALED
   WIND_TRY(reset_fence(context->gpu_device.device));
+
+  for(auto&& [index, data] : std::views::enumerate(texture_data))
+  {
+    // we can do that since we have to create staging buffer for each data
+    staging_buffers.emplace_back(WIND_TRY(upload_staging_buffer(data.pixels)));
+
+    auto [image, image_allocation] = WIND_TRY(create_vk_image(data.dimensions.width, data.dimensions.height, data.format));
+
+    spdlog::info("image created successfully: {}", (void*)image);
+
+    vk::ImageViewCreateInfo image_view_create_info{};
+    image_view_create_info.image            = image;
+    image_view_create_info.format           = to_vk(data.format);
+    image_view_create_info.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+    image_view_create_info.viewType         = vk::ImageViewType::e2D;
+
+    // create image view
+    auto image_view = WIND_TRY(context->gpu_device.device.createImageView(image_view_create_info));
+
+    vk::BufferImageCopy region{};
+    region.imageSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+    region.imageExtent = {.width = data.dimensions.width, .height = data.dimensions.height, .depth = data.dimensions.depth};
+
+    // transition from undefined to TransferDst
+    transition_image(m_command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+
+    m_command_buffer.copyBufferToImage(staging_buffers[index].buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
+
+    // transition from Transfer dst to shader read
+    transition_image(m_command_buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+
+    vk::SamplerCreateInfo sampler_create_info{};
+    sampler_create_info.anisotropyEnable = vk::False;
+    sampler_create_info.magFilter        = vk::Filter::eLinear;
+    sampler_create_info.minFilter        = vk::Filter::eLinear;
+    sampler_create_info.mipmapMode       = vk::SamplerMipmapMode::eLinear;
+    sampler_create_info.addressModeU     = vk::SamplerAddressMode::eRepeat;
+    sampler_create_info.addressModeV     = vk::SamplerAddressMode::eRepeat;
+    sampler_create_info.addressModeW     = vk::SamplerAddressMode::eRepeat;
+
+    auto sampler = WIND_TRY(context->gpu_device.device.createSampler(sampler_create_info));
+
+    textures.emplace_back(gpu::AllocatedImage{image, std::move(image_view), m_allocator, image_allocation, to_vk(data.format),
+                                              vk::Extent2D{
+                                                  data.dimensions.width,
+                                                  data.dimensions.height,
+                                              }},
+                          std::move(sampler));
+  }
+
+  WIND_TRY(end_command_buffer());
+
+  vk::SubmitInfo submit_info{};
+  submit_info.commandBufferCount = 1;
+  submit_info.pCommandBuffers    = &*m_command_buffer;
 
   if(context->gpu_device.has_transfer_queue())
   {
@@ -391,20 +410,7 @@ WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext*       cont
 
   WIND_TRY(wait_for_fence(context->gpu_device.device));
 
-  vk::SamplerCreateInfo sampler_create_info{};
-  sampler_create_info.anisotropyEnable = vk::False;
-  sampler_create_info.magFilter        = vk::Filter::eLinear;
-  sampler_create_info.minFilter        = vk::Filter::eLinear;
-  sampler_create_info.mipmapMode       = vk::SamplerMipmapMode::eLinear;
-  sampler_create_info.addressModeU     = vk::SamplerAddressMode::eRepeat;
-  sampler_create_info.addressModeV     = vk::SamplerAddressMode::eRepeat;
-  sampler_create_info.addressModeW     = vk::SamplerAddressMode::eRepeat;
-
-  auto sampler = WIND_TRY(context->gpu_device.device.createSampler(sampler_create_info));
-
-  return gpu::AllocatedTexture{gpu::AllocatedImage{image, std::move(image_view), m_allocator, image_allocation,
-                                                   to_vk(format), height, width},
-                               std::move(sampler)};
+  return textures;
 }
 
 WIND_NODISCARD auto GpuAllocator::create_depth_buffer(const VulkanContext* context, u32 width, u32 height) WIND_NOEXCEPT
@@ -451,8 +457,12 @@ WIND_NODISCARD auto GpuAllocator::create_depth_buffer(const VulkanContext* conte
 
   WIND_TRY(wait_for_fence(context->gpu_device.device));
 
-  return gpu::AllocatedImage{
-      image, std::move(image_view), m_allocator, image_allocation, to_vk(Format::D32_FLOAT), height, width};
+  return gpu::AllocatedImage{image,
+                             std::move(image_view),
+                             m_allocator,
+                             image_allocation,
+                             to_vk(Format::D32_FLOAT),
+                             vk::Extent2D{width, height}};
 }
 
 };  // namespace wind::vulkan::memory

@@ -305,17 +305,26 @@ struct ColorBlendState
   }
 };
 
+struct PushConstantRange
+{
+  // temporary introduce custom type
+  ShaderStage stage_flags{ShaderStage::Vertex};
+  u32         offset{};
+  u32         size{};
+};
+
 namespace graphics {
 struct GraphicsConfig
 {
-  std::vector<ShaderInfo> shader;
-  RasterizationState      rasterization{};
-  VertexInputState        vertex_input_state{};
-  InputAssemblyState      input_assembly{};
-  DepthStencilState       depth_stencil{};
-  ColorBlendState         color_blend{};
-  Format                  color_format{Format::RGBA8_UNORM};
-  Format                  depth_format{Format::Undefined};
+  std::vector<ShaderInfo>        shader;
+  RasterizationState             rasterization{};
+  VertexInputState               vertex_input_state{};
+  InputAssemblyState             input_assembly{};
+  DepthStencilState              depth_stencil{};
+  ColorBlendState                color_blend{};
+  std::vector<PushConstantRange> push_constants;
+  Format                         color_format{Format::RGBA8_UNORM};
+  Format                         depth_format{Format::Undefined};
 };
 
 };  // namespace graphics

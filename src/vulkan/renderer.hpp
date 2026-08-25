@@ -46,8 +46,9 @@ private:
   std::unique_ptr<VulkanContext>              m_context;
   std::vector<FrameContext>                   m_frame_context;
   graphics::PipelineManager                   m_pipeline_manager;
-  gpu::AllocatedBuffer                        m_test_vertex_buffer;
   std::unique_ptr<resources::ResourceManager> m_resource_manager;
+  gpu::AllocatedBuffer                        m_test_vertex_buffer;
+  resources::MeshHandle                       m_test_mesh{};
 
   u32 m_current_frame{0};
   u32 m_current_image{0};

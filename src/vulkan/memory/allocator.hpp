@@ -57,9 +57,10 @@ public:
   WIND_NODISCARD auto upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>;
 
   // TODO: use my custom types for flags
-  WIND_NODISCARD auto create_buffer(const VulkanContext*       context,
-                                    std::span<const std::byte> data,
-                                    vk::BufferUsageFlagBits flags = vk::BufferUsageFlagBits::eVertexBuffer) WIND_NOEXCEPT
+  WIND_NODISCARD auto create_buffers(const VulkanContext* context, std::span<const gpu::BufferData> buffers) WIND_NOEXCEPT
+      -> WindResult<std::vector<gpu::AllocatedBuffer>>;
+
+  WIND_NODISCARD auto create_buffer(const VulkanContext* context, const gpu::BufferData& buffer) WIND_NOEXCEPT
       -> WindResult<gpu::AllocatedBuffer>;
 
   // TODO: get rid of this
@@ -76,8 +77,9 @@ public:
   auto transition_image(vk::raii::CommandBuffer& cmd, VkImage& image, vk::ImageLayout old_layout, vk::ImageLayout new_layout) WIND_NOEXCEPT
       -> void;
 
-  WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const std::byte> pixels, u32 width, u32 height, Format format) WIND_NOEXCEPT
-      -> WindResult<gpu::AllocatedTexture>;
+  // TODO: maybe take ownership of data instead of view ?
+  WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const gpu::TextureData> texture_data) WIND_NOEXCEPT
+      -> WindResult<std::vector<gpu::AllocatedTexture>>;
 
   WIND_NODISCARD auto create_vk_image(u32                 width,
                                       u32                 height,

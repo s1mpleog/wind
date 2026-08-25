@@ -197,10 +197,10 @@ WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WI
     }
   }
 
-  auto type = read_u32(buffer, cursor);
+  // auto type = read_u32(buffer, cursor);
 
-  if(type != CHUNK_END)
-    WIND_ERR(WindError::internal());
+  // if(type != CHUNK_END)
+  //   WIND_ERR(WindError::internal());
 
   return asset;
 }
@@ -238,26 +238,31 @@ WIND_NODISCARD WIND_INLINE auto open(std::string_view name) WIND_NOEXCEPT -> Win
 
   auto asset = WIND_TRY(decode_wind_asset(buffer));
 
-  // spdlog::info("read vertices: {}, indices: {}", asset.vertices.size(), asset.indices.size());
+  spdlog::info("read vertex data: {} bytes, index data: {} bytes", asset.vertices.size(), asset.indices.size());
 
-  // spdlog::info("total textures: {}", asset.textures.size());
-  // for(const auto& texture : asset.textures)
-  // {
-  //   spdlog::info("width: {}, height: {}, format: {}, data length: {}", texture.width, texture.height, texture.format,
-  //                texture.data.size());
-  // }
+  if(!asset.textures.empty())
+  {
+    spdlog::info("total textures: {}", asset.textures.size());
+    for(const auto& texture : asset.textures)
+    {
+      spdlog::info("width: {}, height: {}, format: {}, data length: {}", texture.width, texture.height, texture.format,
+                   texture.data.size());
+    }
+  }
 
-  // spdlog::info("total materials: {}", asset.materials.size());
-
-  // for(const auto& material : asset.materials)
-  // {
-  //   spdlog::info("albedo: {}, normal: {}, metallic_roughness: {}, roughness: {}, metallic {}, base_color: {}, {}, {}, {}",
-  //                !material.albedo_index || material.albedo_index.value(),
-  //                !material.normal_index || material.normal_index.value(),
-  //                !material.metallic_roughness_index || material.metallic_roughness_index.value(), material.roughness,
-  //                material.metallic, material.base_color[0], material.base_color[1], material.base_color[2],
-  //                material.base_color[3]);
-  // }
+  if(!asset.materials.empty())
+  {
+    spdlog::info("total materials: {}", asset.materials.size());
+    for(const auto& material : asset.materials)
+    {
+      spdlog::info("albedo: {}, normal: {}, metallic_roughness: {}, roughness: {}, metallic {}, base_color: {}, {}, {}, {}",
+                   !material.albedo_index || material.albedo_index.value(),
+                   !material.normal_index || material.normal_index.value(),
+                   !material.metallic_roughness_index || material.metallic_roughness_index.value(), material.roughness,
+                   material.metallic, material.base_color[0], material.base_color[1], material.base_color[2],
+                   material.base_color[3]);
+    }
+  }
 
   return asset;
 };

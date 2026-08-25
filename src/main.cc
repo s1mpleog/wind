@@ -8,8 +8,8 @@
 
 auto main() -> i32
 {
-  constexpr u16 WINDOW_WIDTH  = 800;
-  constexpr u16 WINDOW_HEIGHT = 600;
+  constexpr u16 WINDOW_WIDTH  = 1280;
+  constexpr u16 WINDOW_HEIGHT = 720;
 
   auto window_cfg = wind::platform::WindowConfiguration{.name = "Wind", .width = WINDOW_WIDTH, .height = WINDOW_HEIGHT};
   auto vulkan_cfg = wind::vulkan::presets::Development;
