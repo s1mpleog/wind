@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include "camera.hpp"
 #include "error.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
@@ -49,7 +50,13 @@ WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& 
   auto resource_manager =
       std::make_unique<resources::ResourceManager>(WIND_TRY(resources::ResourceManager::create(context.get())));
 
-  return Renderer(std::move(cfg), std::move(context), std::move(frame_context), std::move(resource_manager));
+  const float aspect_ratio =
+      static_cast<float>(context->swapchain.extent.width) / static_cast<float>(context->swapchain.extent.height);
+
+  auto camera = Camera{};
+  camera.init_perspective(60.0F, aspect_ratio, 0.1F, 100.0F);
+
+  return Renderer(std::move(cfg), std::move(context), std::move(frame_context), std::move(resource_manager), std::move(camera));
 }
 
 auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
@@ -176,7 +183,7 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
   m_resource_manager->destroy_shader(suzanne_vert);
   m_resource_manager->destroy_shader(suzanne_frag);
 
-  m_test_mesh = WIND_TRY(m_resource_manager->load_asset("assets/models/suzanne.wind"));
+  m_test_mesh = WIND_TRY(m_resource_manager->load_asset("assets/models/chair.wind"));
 
   return {};
 }
@@ -280,6 +287,8 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
 auto Renderer::draw() WIND_NOEXCEPT -> void
 {
+  m_camera.update();
+
   vk::Rect2D scissor{0};
   scissor.extent = m_context->swapchain.extent;
 
@@ -308,13 +317,9 @@ auto Renderer::draw() WIND_NOEXCEPT -> void
   }
 
   // Temporary camera/object transform.
-  glm::mat4 model{1.0f};
+  const glm::mat4 model{1.0F};
 
-  glm::mat4 view = glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.0f, -3.0f});
-
-  glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
-
-  glm::mat4 transform = projection * view * model;
+  const glm::mat4 transform = m_camera.view_projection() * model;
 
   frame->graphics_command_buffer.pushConstants(*suzanne_pipeline.value()->pipeline_layout,
                                                vk::ShaderStageFlagBits::eVertex, 0, sizeof(transform), &transform);

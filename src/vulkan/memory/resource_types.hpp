@@ -3,10 +3,9 @@
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/vulkan.hpp"
 #include <vk_mem_alloc.h>
+#include <glm/glm.hpp>
 
 namespace wind::gpu {
-
-
 struct AllocatedBuffer
 {
   VkBuffer      buffer{};
@@ -71,6 +70,16 @@ struct Mesh
 
   u32 index_count{};
   u32 vertex_count{};
+};
+
+struct GpuMaterial
+{
+  std::optional<u32> albedo_idx;
+  std::optional<u32> normal_idx;
+  std::optional<u32> metallic_roughness_idx;
+  float              metallic{};
+  float              roughness{};
+  glm::vec4          base_color{};
 };
 
 struct AllocatedImage

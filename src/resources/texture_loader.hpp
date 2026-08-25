@@ -197,10 +197,10 @@ WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WI
     }
   }
 
-  // auto type = read_u32(buffer, cursor);
+  auto type = read_u32(buffer, cursor);
 
-  // if(type != CHUNK_END)
-  //   WIND_ERR(WindError::internal());
+  if(type != CHUNK_END)
+    WIND_ERR(WindError::internal());
 
   return asset;
 }

@@ -7,7 +7,9 @@
 #include "vulkan/core/context.hpp"
 #include "vulkan/frame/frame_context.hpp"
 #include "vulkan/graphics/pipeline_manager.hpp"
+#include <algorithm>
 #include <memory>
+#include "camera.hpp"
 
 namespace wind::vulkan {
 class Renderer
@@ -36,11 +38,13 @@ private:
   Renderer(Configuration                               cfg,
            std::unique_ptr<VulkanContext>              context,
            std::vector<FrameContext>                   frame_context,
-           std::unique_ptr<resources::ResourceManager> resource_manager)
+           std::unique_ptr<resources::ResourceManager> resource_manager,
+           Camera                                      camera)
       : m_config{std::move(cfg)}
       , m_context{std::move(context)}
       , m_frame_context(std::move(frame_context))
-      , m_resource_manager{std::move(resource_manager)} {};
+      , m_resource_manager{std::move(resource_manager)}
+      , m_camera{camera} {};
 
   Configuration                               m_config;
   std::unique_ptr<VulkanContext>              m_context;
@@ -49,6 +53,7 @@ private:
   std::unique_ptr<resources::ResourceManager> m_resource_manager;
   gpu::AllocatedBuffer                        m_test_vertex_buffer;
   resources::MeshHandle                       m_test_mesh{};
+  Camera                                      m_camera;
 
   u32 m_current_frame{0};
   u32 m_current_image{0};
