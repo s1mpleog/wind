@@ -1,5 +1,7 @@
 #include "renderer.hpp"
 #include "error.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_transform.hpp"
 #include "platform/window.hpp"
 #include "resources/resource_manager.hpp"
 #include "spdlog/spdlog.h"
@@ -111,14 +113,70 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
 
   auto pipeline_handle = WIND_TRY(m_pipeline_manager.create(std::move(graphics_config), m_context->gpu_device.device));
 
-  spdlog::info("pipeline handle: {}", pipeline_handle);
+  auto suzanne_vert = WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/suzanne.vert.spv"));
+
+  auto suzanne_frag = WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/suzanne.frag.spv"));
+
+  m_test_vertex_buffer = WIND_TRY(m_resource_manager->create_vertices(std::as_bytes(std::span{vertices})));
+
+  ShaderInfo suzanne_vert_info{
+      .stage  = ShaderStage::Vertex,
+      .module = WIND_TRY(m_resource_manager->get_shader(suzanne_vert)),
+  };
+
+  ShaderInfo suzanne_frag_info{
+      .stage  = ShaderStage::Fragment,
+      .module = WIND_TRY(m_resource_manager->get_shader(suzanne_frag)),
+  };
+
+  auto suzanne_config = graphics::GraphicsConfig{.shader = {suzanne_vert_info, suzanne_frag_info},
+
+                                                 .rasterization{
+                                                     .cull_mode    = CullMode::Back,
+                                                     .polygon_mode = PolygonMode::Fill,
+                                                     .front_face   = FrontFace::ClockWise,
+                                                     .discard      = false,
+                                                 },
+                                                 .vertex_input_state{
+                                                     .attributes{
+                                                         {
+                                                             .location = 0,
+                                                             .binding  = 0,
+                                                             .format   = VertexFormat::Float3,
+                                                             .offset   = 0,
+                                                         },
+                                                     },
+                                                     .bindings{{
+                                                         .binding    = 0,
+                                                         .stride     = sizeof(glm::vec3),
+                                                         .input_rate = VertexInputRate::Vertex,
+                                                     }},
+                                                 },
+                                                 .input_assembly{.topology = PrimitiveTopology::TriangleList},
+                                                 .depth_stencil{
+                                                     .depth_test    = true,
+                                                     .depth_write   = true,
+                                                     .depth_compare = CompareOp::Less,
+                                                 },
+                                                 .color_blend = {.enabled = false},
+                                                 .push_constants{PushConstantRange{
+                                                     .stage_flags = ShaderStage::Vertex,
+                                                     .offset      = 0,
+                                                     .size        = sizeof(glm::mat4),
+                                                 }},
+                                                 .color_format = Format::BGRA8_SRGB,
+                                                 .depth_format = Format::D32_FLOAT};
+
+  auto suzanne_pipeline_handle = WIND_TRY(m_pipeline_manager.create(std::move(suzanne_config), m_context->gpu_device.device));
+
+  spdlog::info("suzanne pipeline handle: {}", suzanne_pipeline_handle);
 
   m_resource_manager->destroy_shader(vertex_shader_handle);
   m_resource_manager->destroy_shader(fragment_shader_handle);
+  m_resource_manager->destroy_shader(suzanne_vert);
+  m_resource_manager->destroy_shader(suzanne_frag);
 
-  {
-    auto mesh = WIND_TRY(m_resource_manager->load_asset("assets/models/chair.wind"));
-  }
+  m_test_mesh = WIND_TRY(m_resource_manager->load_asset("assets/models/suzanne.wind"));
 
   return {};
 }
@@ -181,7 +239,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   color_barrier.srcStageMask                = vk::PipelineStageFlagBits2::eTopOfPipe;
   color_barrier.srcAccessMask               = vk::AccessFlagBits2::eNone;
 
-  std::array<float, 4> clear_color{0.5F, 0.2F, 0.2F, 0.2F};
+  std::array<float, 4> clear_color{0.055F, 0.055F, 0.055F, 1.0F};
 
   vk::ClearColorValue color{};
   color.setFloat32(clear_color);
@@ -239,22 +297,41 @@ auto Renderer::draw() WIND_NOEXCEPT -> void
   frame->graphics_command_buffer.setViewport(0, viewport);
   frame->graphics_command_buffer.setScissor(0, scissor);
 
-  auto pipeline = m_pipeline_manager.get(0);
+  auto pipeline         = m_pipeline_manager.get(0);
+  auto suzanne_pipeline = m_pipeline_manager.get(1);
 
-  if(!pipeline.has_value())
+  std::array pipelines = {*pipeline.value()->graphics_pipeline, *suzanne_pipeline.value()->graphics_pipeline};
+
+  for(const auto& pipeline : pipelines)
   {
-    spdlog::info("failed to get pipeline");
+    frame->graphics_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
   }
 
-  frame->graphics_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, *pipeline.value()->graphics_pipeline);
+  // Temporary camera/object transform.
+  glm::mat4 model{1.0f};
 
+  glm::mat4 view = glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.0f, -3.0f});
 
-  std::array<vk::Buffer, 1> vertex_buffers{m_test_vertex_buffer.buffer};
+  glm::mat4 projection = glm::perspective(glm::radians(60.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
+
+  glm::mat4 transform = projection * view * model;
+
+  frame->graphics_command_buffer.pushConstants(*suzanne_pipeline.value()->pipeline_layout,
+                                               vk::ShaderStageFlagBits::eVertex, 0, sizeof(transform), &transform);
+
+  const auto* mesh = m_resource_manager->get_mesh_unchecked(m_test_mesh);
+
+  std::array<vk::Buffer, 1> vertex_buffers{mesh->vertex_buffer.buffer};
 
   std::array<vk::DeviceSize, 1> offsets{0};
 
   frame->graphics_command_buffer.bindVertexBuffers(0, vertex_buffers, offsets);
-  frame->graphics_command_buffer.draw(3, 1, 0, 0);
+
+  frame->graphics_command_buffer.bindIndexBuffer(mesh->index_buffer.buffer, 0, vk::IndexType::eUint32);
+
+  frame->graphics_command_buffer.drawIndexed(mesh->index_count, 1, 0, 0, 0);
+
+  // frame->graphics_command_buffer.draw(3, 1, 0, 0);
 }
 
 auto Renderer::end() WIND_NOEXCEPT -> void

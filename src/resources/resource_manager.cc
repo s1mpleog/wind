@@ -1,12 +1,17 @@
 #include "resource_manager.hpp"
 #include "config.hpp"
+#include "error.hpp"
 #include "resources/texture_loader.hpp"
 #include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/memory/allocator.hpp"
+#include "vulkan/memory/resource_types.hpp"
 #include "vulkan/vulkan.hpp"
+#include <ranges>
 #include <span>
+#include <utility>
+#include <vector>
 
 namespace wind::resources {
 WIND_NODISCARD auto ResourceManager::create(const vulkan::VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>
@@ -93,24 +98,30 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
   if(it != m_asset_cache.end())
     return it->second;
 
+  auto mesh = gpu::Mesh{};
+
   auto wind_asset = WIND_TRY(asset::open(texture_path));
 
   // TODO: instead of two buffers use one buffer
   // |---------------------------|
   // vertex           index
-  auto vertices = WIND_TRY(m_allocator.create_buffer(m_context, std::as_bytes(std::span{wind_asset.vertices}),
-                                                     vk::BufferUsageFlagBits::eVertexBuffer));
+  mesh.vertex_buffer = WIND_TRY(m_allocator.create_buffer(m_context, gpu::BufferData{
+                                                                         .data = std::as_bytes(std::span{wind_asset.vertices}),
+                                                                         .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+                                                                     }));
 
+  mesh.index_buffer = WIND_TRY(m_allocator.create_buffer(m_context, gpu::BufferData{
+                                                                        .data = std::as_bytes(std::span{wind_asset.indices}),
+                                                                        .usage = vk::BufferUsageFlagBits::eIndexBuffer,
+                                                                    }));
 
-  auto indices = WIND_TRY(m_allocator.create_buffer(m_context, std::as_bytes(std::span{wind_asset.indices}),
-                                                    vk::BufferUsageFlagBits::eIndexBuffer));
+  mesh.vertex_count = static_cast<u32>(wind_asset.vertices.size());
 
-  auto vertex_index = static_cast<u32>(m_vertex_buffer.size());
-  // index_index yeah :(
-  auto index_index = static_cast<u32>(m_index_buffer.size());
+  mesh.index_count = static_cast<u32>(wind_asset.indices.size());
 
-  m_vertex_buffer.push_back(std::move(vertices));
-  m_index_buffer.push_back(std::move(indices));
+  auto mesh_index = static_cast<u32>(m_meshes.size());
+
+  m_meshes.push_back(std::move(mesh));
 
   spdlog::info("buffer created successfully");
 
@@ -130,11 +141,21 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
 
   m_texture.reserve(wind_asset.textures.size());
 
-  for(const auto& texture : wind_asset.textures)
+  std::vector<gpu::TextureData> texture_data;
+  texture_data.reserve(wind_asset.textures.size());
+
+  for(const auto&& [index, texture] : std::views::enumerate(wind_asset.textures))
   {
-    m_texture.emplace_back(WIND_TRY(m_allocator.create_texture(m_context, std::as_bytes(std::span{texture.data}),
-                                                               texture.width, texture.height, format(texture.format))));
+    auto data = gpu::TextureData{
+        .pixels     = std::as_bytes(std::span{texture.data}),
+        .dimensions = {texture.width, texture.height, 1},
+        .format     = format(texture.format),
+    };
+
+    texture_data.push_back(data);
   }
+
+  m_texture = WIND_TRY(m_allocator.create_texture(m_context, texture_data));
 
   spdlog::info("created textures: {}", m_texture.size());
 
@@ -143,7 +164,7 @@ WIND_NODISCARD auto ResourceManager::load_asset(std::string_view texture_path) W
     // process materials
   }
 
-  return MeshHandle{.vertex_handle = VertexHandle{vertex_index}, .index_handle = IndexHandle{index_index}};
+  return MeshHandle{.index = mesh_index};
 }
 
 WIND_NODISCARD auto ResourceManager::create_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
@@ -156,6 +177,19 @@ WIND_NODISCARD auto ResourceManager::get_depth_image_view() const WIND_NOEXCEPT 
 {
   WIND_ASSERT(m_depth_image.image_view != nullptr && "Depth image view is nullptr create depth image first");
   return m_depth_image.image_view;
+}
+
+WIND_NODISCARD auto ResourceManager::get_mesh(MeshHandle handle) WIND_NOEXCEPT -> WindResult<const gpu::Mesh*>
+{
+  if(handle.index > m_meshes.size())
+    WIND_ERR(WindError::internal());
+
+  return &m_meshes[handle.index];
+}
+
+WIND_NODISCARD auto ResourceManager::get_mesh_unchecked(MeshHandle handle) WIND_NOEXCEPT -> const gpu::Mesh*
+{
+  return &m_meshes[handle.index];
 }
 
 };  // namespace wind::resources

@@ -7,6 +7,7 @@
 #include "vulkan/types.hpp"
 #include "vulkan/vulkan.hpp"
 #include <array>
+#include <vulkan/vulkan_raii.hpp>
 
 namespace wind::vulkan::graphics {
 WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) WIND_NOEXCEPT -> WindResult<GraphicsPipeline>
@@ -41,8 +42,18 @@ WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) W
   rendering_info.depthAttachmentFormat   = to_vk(cfg.depth_format);
   rendering_info.stencilAttachmentFormat = vk::Format::eUndefined;
 
+
+  std::vector<vk::PushConstantRange> push_constant_ranges;
+  push_constant_ranges.reserve(cfg.push_constants.size());
+
+  for(auto& push_constant : cfg.push_constants)
+  {
+    push_constant_ranges.push_back(to_vk(push_constant));
+  }
+
   vk::PipelineLayoutCreateInfo layout_info{};
-  layout_info.setLayoutCount = 0;
+  layout_info.pushConstantRangeCount = static_cast<u32>(push_constant_ranges.size());
+  layout_info.pPushConstantRanges    = push_constant_ranges.data();
 
   auto layout = WIND_TRY(device.createPipelineLayout(layout_info), ErrorCode::FailedToCreatePipelineLayout);
 

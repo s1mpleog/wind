@@ -1,9 +1,12 @@
 #pragma once
 
 #include "vulkan/graphics/pipeline_config.hpp"
+#include "vulkan/vulkan.hpp"
 #include <vk_mem_alloc.h>
 
 namespace wind::gpu {
+
+
 struct AllocatedBuffer
 {
   VkBuffer      buffer{};
@@ -61,6 +64,14 @@ struct AllocatedBuffer
   }
 };
 
+struct Mesh
+{
+  AllocatedBuffer vertex_buffer;
+  AllocatedBuffer index_buffer;
+
+  u32 index_count{};
+  u32 vertex_count{};
+};
 
 struct AllocatedImage
 {
@@ -69,17 +80,15 @@ struct AllocatedImage
   VmaAllocator        allocator{VK_NULL_HANDLE};
   VmaAllocation       allocation{VK_NULL_HANDLE};
   vk::Format          format{};
-  u32                 width{};
-  u32                 height{};
+  vk::Extent2D        dimension{};
 
-  AllocatedImage(VkImage image, vk::raii::ImageView image_view, VmaAllocator allocator, VmaAllocation allocation, vk::Format format, u32 height, u32 width)
+  AllocatedImage(VkImage image, vk::raii::ImageView image_view, VmaAllocator allocator, VmaAllocation allocation, vk::Format format, vk::Extent2D dimension)
       : image{image}
       , image_view{std::move(image_view)}
       , allocator{allocator}
       , allocation{allocation}
       , format{format}
-      , width{width}
-      , height{height}
+      , dimension{dimension}
   {
   }
 
@@ -92,8 +101,7 @@ struct AllocatedImage
                                                          allocator{std::exchange(other.allocator, VK_NULL_HANDLE)},
                                                          allocation{std::exchange(other.allocation, VK_NULL_HANDLE)},
                                                          format{other.format},
-                                                         width{other.width},
-                                                         height{other.height}
+                                                         dimension{other.dimension}
   {
   }
 
@@ -114,9 +122,8 @@ struct AllocatedImage
 
     image_view = std::move(other.image_view);
 
-    format = other.format;
-    width  = other.width;
-    height = other.height;
+    format    = other.format;
+    dimension = other.dimension;
 
     return *this;
   }
@@ -157,4 +164,11 @@ struct TextureData
   vk::Extent3D               dimensions{};
   vulkan::Format             format{};
 };
+
+struct BufferData
+{
+  std::span<const std::byte> data;
+  vk::BufferUsageFlags       usage{vk::BufferUsageFlagBits::eVertexBuffer};
+};
+
 };  // namespace wind::gpu
