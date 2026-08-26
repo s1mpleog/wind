@@ -55,6 +55,13 @@ WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) W
   layout_info.pushConstantRangeCount = static_cast<u32>(push_constant_ranges.size());
   layout_info.pPushConstantRanges    = push_constant_ranges.data();
 
+  if(cfg.descriptor_set_layout)
+  {
+    // since we are using bindless descriptor set we only need one layout
+    layout_info.setLayoutCount = 1;
+    layout_info.pSetLayouts    = &*cfg.descriptor_set_layout;
+  }
+
   auto layout = WIND_TRY(device.createPipelineLayout(layout_info), ErrorCode::FailedToCreatePipelineLayout);
 
   gp_create_info.pNext               = &rendering_info;

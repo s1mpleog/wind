@@ -70,11 +70,13 @@ WIND_NODISCARD auto DescriptorManager::get_pool() const -> const vk::raii::Descr
   WIND_ASSERT(m_pool != nullptr && "pool is null");
   return &m_pool;
 }
+
 WIND_NODISCARD auto DescriptorManager::get_set() const -> const vk::raii::DescriptorSet*
 {
   WIND_ASSERT(m_set != nullptr && "set is nullptr");
   return &m_set;
 }
+
 WIND_NODISCARD auto DescriptorManager::get_layout() const -> const vk::raii::DescriptorSetLayout*
 {
   WIND_ASSERT(m_layout != nullptr && "layout is nullptr");

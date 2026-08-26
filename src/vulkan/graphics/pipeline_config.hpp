@@ -189,12 +189,39 @@ enum class CompareOp : u8
   Greater
 };
 
+// enum class ShaderStage : u8
+// {
+//   Vertex,
+//   Fragment,
+//   Compute
+// };
+
 enum class ShaderStage : u8
 {
-  Vertex,
-  Fragment,
-  Compute
+  Vertex   = 1 << 0,
+  Fragment = 1 << 1,
+  Compute  = 1 << 2,
 };
+
+constexpr auto operator|(ShaderStage lhs, ShaderStage rhs) WIND_NOEXCEPT->ShaderStage
+{
+  using T = std::underlying_type_t<ShaderStage>;
+
+  return static_cast<ShaderStage>(static_cast<T>(lhs) | static_cast<T>(rhs));
+}
+
+constexpr auto operator&(ShaderStage lhs, ShaderStage rhs) WIND_NOEXCEPT->ShaderStage
+{
+  using T = std::underlying_type_t<ShaderStage>;
+
+  return static_cast<ShaderStage>(static_cast<T>(lhs) & static_cast<T>(rhs));
+}
+
+constexpr auto operator|=(ShaderStage& lhs, ShaderStage rhs) WIND_NOEXCEPT->ShaderStage&
+{
+  lhs = lhs | rhs;
+  return lhs;
+}
 
 struct ShaderInfo
 {
@@ -288,9 +315,9 @@ struct ColorBlendState
 
   ColorWrite write_mask{ColorWrite::RGBA};
 
-  static constexpr auto opaque() noexcept -> ColorBlendState { return {}; }
+  static constexpr auto opaque() WIND_NOEXCEPT -> ColorBlendState { return {}; }
 
-  static constexpr auto alpha_blend() noexcept -> ColorBlendState
+  static constexpr auto alpha_blend() WIND_NOEXCEPT -> ColorBlendState
   {
     return {
         .enabled    = true,
@@ -316,15 +343,16 @@ struct PushConstantRange
 namespace graphics {
 struct GraphicsConfig
 {
-  std::vector<ShaderInfo>        shader;
-  RasterizationState             rasterization{};
-  VertexInputState               vertex_input_state{};
-  InputAssemblyState             input_assembly{};
-  DepthStencilState              depth_stencil{};
-  ColorBlendState                color_blend{};
-  std::vector<PushConstantRange> push_constants;
-  Format                         color_format{Format::RGBA8_UNORM};
-  Format                         depth_format{Format::Undefined};
+  std::vector<ShaderInfo>                shader;
+  RasterizationState                     rasterization{};
+  VertexInputState                       vertex_input_state{};
+  InputAssemblyState                     input_assembly{};
+  DepthStencilState                      depth_stencil{};
+  ColorBlendState                        color_blend{};
+  std::vector<PushConstantRange>         push_constants;
+  std::optional<vk::DescriptorSetLayout> descriptor_set_layout;
+  Format                                 color_format{Format::RGBA8_UNORM};
+  Format                                 depth_format{Format::Undefined};
 };
 
 };  // namespace graphics

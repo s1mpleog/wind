@@ -1,8 +1,6 @@
 #include "renderer.hpp"
 #include "camera.hpp"
 #include "error.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
-#include "glm/ext/matrix_transform.hpp"
 #include "platform/window.hpp"
 #include "resources/resource_manager.hpp"
 #include "spdlog/spdlog.h"
@@ -38,6 +36,12 @@ static std::array<Vertex, 3> vertices{{
     {{-0.5F, -0.5F, 0.0F, 1.0F}, {0.0F, 0.0F, 1.0F, 1.0F}},
 }};
 
+struct PushConstants
+{
+  glm::mat4 transform;
+  u32       albedo_texture;
+};
+
 WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& window) WIND_NOEXCEPT -> WindResult<Renderer>
 {
   auto context = std::make_unique<VulkanContext>(WIND_TRY(create_context(window, cfg)));
@@ -70,7 +74,7 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
   auto fragment_shader_handle =
       WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.frag.spv"));
 
-  m_test_vertex_buffer = WIND_TRY(m_resource_manager->create_vertices(std::as_bytes(std::span{vertices})));
+  // m_test_vertex_buffer = WIND_TRY(m_resource_manager->te(std::as_bytes(std::span{vertices})));
 
   ShaderInfo vert_info{
       .stage  = ShaderStage::Vertex,
@@ -124,7 +128,7 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
 
   auto suzanne_frag = WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/suzanne.frag.spv"));
 
-  m_test_vertex_buffer = WIND_TRY(m_resource_manager->create_vertices(std::as_bytes(std::span{vertices})));
+  // m_test_vertex_buffer = WIND_TRY(m_resource_manager->create_vertices(std::as_bytes(std::span{vertices})));
 
   ShaderInfo suzanne_vert_info{
       .stage  = ShaderStage::Vertex,
@@ -145,19 +149,39 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
                                                      .discard      = false,
                                                  },
                                                  .vertex_input_state{
-                                                     .attributes{
-                                                         {
-                                                             .location = 0,
-                                                             .binding  = 0,
-                                                             .format   = VertexFormat::Float3,
-                                                             .offset   = 0,
-                                                         },
-                                                     },
+                                                     .attributes{{
+                                                                     .location = 0,
+                                                                     .binding  = 0,
+                                                                     .format   = VertexFormat::Float3,
+                                                                     .offset   = 0,
+                                                                 },
+                                                                 {
+                                                                     .location = 1,
+                                                                     .binding  = 1,
+                                                                     .format   = VertexFormat::Float3,
+                                                                     .offset   = 0,
+                                                                 },
+                                                                 {
+                                                                     .location = 2,
+                                                                     .binding  = 2,
+                                                                     .format   = VertexFormat::Float2,
+                                                                     .offset   = 0,
+                                                                 }},
                                                      .bindings{{
-                                                         .binding    = 0,
-                                                         .stride     = sizeof(glm::vec3),
-                                                         .input_rate = VertexInputRate::Vertex,
-                                                     }},
+                                                                   .binding    = 0,
+                                                                   .stride     = sizeof(glm::vec3),
+                                                                   .input_rate = VertexInputRate::Vertex,
+                                                               },
+                                                               {
+                                                                   .binding    = 1,
+                                                                   .stride     = sizeof(glm::vec3),
+                                                                   .input_rate = VertexInputRate::Vertex,
+                                                               },
+                                                               {
+                                                                   .binding    = 2,
+                                                                   .stride     = sizeof(glm::vec2),
+                                                                   .input_rate = VertexInputRate::Vertex,
+                                                               }},
                                                  },
                                                  .input_assembly{.topology = PrimitiveTopology::TriangleList},
                                                  .depth_stencil{
@@ -166,11 +190,12 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
                                                      .depth_compare = CompareOp::Less,
                                                  },
                                                  .color_blend = {.enabled = false},
-                                                 .push_constants{PushConstantRange{
-                                                     .stage_flags = ShaderStage::Vertex,
+                                                 .push_constants{{
+                                                     .stage_flags = ShaderStage::Vertex | ShaderStage::Fragment,
                                                      .offset      = 0,
-                                                     .size        = sizeof(glm::mat4),
+                                                     .size        = sizeof(PushConstants),
                                                  }},
+                                                 .descriptor_set_layout = *m_resource_manager->get_bindless_descriptor_layout(),
                                                  .color_format = Format::BGRA8_SRGB,
                                                  .depth_format = Format::D32_FLOAT};
 
@@ -183,7 +208,7 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
   m_resource_manager->destroy_shader(suzanne_vert);
   m_resource_manager->destroy_shader(suzanne_frag);
 
-  m_test_mesh = WIND_TRY(m_resource_manager->load_asset("assets/models/chair.wind"));
+  m_test_model = WIND_TRY(m_resource_manager->load_model("assets/models/thanos.wind"));
 
   return {};
 }
@@ -285,6 +310,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   return {};
 }
 
+
 auto Renderer::draw() WIND_NOEXCEPT -> void
 {
   m_camera.update();
@@ -317,24 +343,37 @@ auto Renderer::draw() WIND_NOEXCEPT -> void
   }
 
   // Temporary camera/object transform.
-  const glm::mat4 model{1.0F};
+  const glm::mat4 identity{1.0F};
 
-  const glm::mat4 transform = m_camera.view_projection() * model;
+  const glm::mat4 transform = m_camera.view_projection() * identity;
+
+  const auto* model    = m_resource_manager->get_model_unchecked(m_test_model);
+  const auto& mesh     = model->mesh;
+  const auto& material = model->materials[0];
+
+  PushConstants pc{
+      .transform      = transform,
+      .albedo_texture = material.albedo_texture,
+  };
 
   frame->graphics_command_buffer.pushConstants(*suzanne_pipeline.value()->pipeline_layout,
-                                               vk::ShaderStageFlagBits::eVertex, 0, sizeof(transform), &transform);
+                                               vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
+                                               sizeof(PushConstants), &pc);
 
-  const auto* mesh = m_resource_manager->get_mesh_unchecked(m_test_mesh);
+  const auto& descriptor_set = *m_resource_manager->get_bindless_descriptor_set();
 
-  std::array<vk::Buffer, 1> vertex_buffers{mesh->vertex_buffer.buffer};
+  frame->graphics_command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                                    *suzanne_pipeline.value()->pipeline_layout, 0, *descriptor_set, {});
 
-  std::array<vk::DeviceSize, 1> offsets{0};
+  std::array<vk::Buffer, 3> vertex_buffers{mesh.vertex_buffer.buffer, mesh.normals.buffer, mesh.uvs.buffer};
+
+  std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
 
   frame->graphics_command_buffer.bindVertexBuffers(0, vertex_buffers, offsets);
 
-  frame->graphics_command_buffer.bindIndexBuffer(mesh->index_buffer.buffer, 0, vk::IndexType::eUint32);
+  frame->graphics_command_buffer.bindIndexBuffer(mesh.index_buffer.buffer, 0, vk::IndexType::eUint32);
 
-  frame->graphics_command_buffer.drawIndexed(mesh->index_count, 1, 0, 0, 0);
+  frame->graphics_command_buffer.drawIndexed(mesh.index_count, 1, 0, 0, 0);
 
   // frame->graphics_command_buffer.draw(3, 1, 0, 0);
 }

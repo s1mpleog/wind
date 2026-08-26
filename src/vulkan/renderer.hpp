@@ -52,7 +52,7 @@ private:
   graphics::PipelineManager                   m_pipeline_manager;
   std::unique_ptr<resources::ResourceManager> m_resource_manager;
   gpu::AllocatedBuffer                        m_test_vertex_buffer;
-  resources::MeshHandle                       m_test_mesh{};
+  resources::ModelHandle                      m_test_model{};
   Camera                                      m_camera;
 
   u32 m_current_frame{0};
