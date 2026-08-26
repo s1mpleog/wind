@@ -70,13 +70,15 @@ public:
   WIND_NODISCARD auto get_shader_unchecked(ShaderHandle handle) WIND_NOEXCEPT -> vk::raii::ShaderModule*;
   auto                destroy_shader(ShaderHandle handle) WIND_NOEXCEPT -> void;
 
-  WIND_NODISCARD auto create_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
-  WIND_NODISCARD auto get_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&;
+  WIND_NODISCARD auto create_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
+  WIND_NODISCARD auto get_default_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&;
 
   WIND_NODISCARD auto load_model(std::string_view texture_path) WIND_NOEXCEPT -> WindResult<ModelHandle>;
   //TODO: WindResult does not works with reference fix that for now return pointer
   WIND_NODISCARD auto get_model(ModelHandle handle) WIND_NOEXCEPT -> WindResult<const gpu::Model*>;
   WIND_NODISCARD auto get_model_unchecked(ModelHandle handle) WIND_NOEXCEPT -> const gpu::Model*;
+
+  WIND_NODISCARD auto recreate_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
 
   // just for testing
   WIND_NODISCARD auto create_vertices(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>
@@ -109,11 +111,10 @@ private:
   std::unordered_map<std::string, ShaderHandle> m_shader_cache;
   vulkan::memory::GpuAllocator                  m_allocator;
   std::unordered_map<std::string, ModelHandle>  m_model_cache;
-  // std::vector<gpu::Mesh>                        m_meshes;
-  std::vector<gpu::AllocatedTexture> m_texture;
-  gpu::AllocatedImage                m_depth_image;
-  vulkan::DescriptorManager          m_descriptor_manager;
-  std::vector<gpu::Model>            m_models;
+  std::vector<gpu::AllocatedTexture>            m_texture;
+  gpu::AllocatedImage                           m_depth_image;
+  vulkan::DescriptorManager                     m_descriptor_manager;
+  std::vector<gpu::Model>                       m_models;
 };
 
 };  // namespace wind::resources
