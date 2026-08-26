@@ -1,21 +1,17 @@
 #include "engine.hpp"
 #include "SDL3/SDL_events.h"
-#include "SDL3/SDL_scancode.h"
 #include "core/service_locator.hpp"
 #include "input/input_manager.hpp"
 #include "platform/window.hpp"
 #include "resources/resource_manager.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/context.hpp"
-#include "vulkan/core/swapchain.hpp"
 #include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/renderer.hpp"
-#include <algorithm>
 #include <memory>
 #include <spdlog/spdlog.h>
 
 namespace wind {
-
 //current life-cycle is following:
 // at lower level vulkan::context owns instance, debug messenger, GpuDevice and Swapchain
 // FrameContext owns N semaphores, fences and cmd buffers
@@ -47,7 +43,6 @@ WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, win
 
   auto pipeline_manager = std::make_unique<vulkan::graphics::PipelineManager>(vulkan::graphics::PipelineManager{});
 
-  // let renderer the subsystems for render
   auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window, vulkan_context.get(),
                                                     resource_manager.get(), pipeline_manager.get()));
 
@@ -83,7 +78,6 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
     }
 
     m_input_manager->update();
-
 
     auto [width, height] = m_window.drawable_size();
 

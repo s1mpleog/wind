@@ -16,6 +16,7 @@
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
+#include "vulkan/core/synchroization.hpp"
 
 namespace wind::vulkan::memory {
 WIND_NODISCARD auto GpuAllocator::create(const VulkanContext* context) WIND_NOEXCEPT -> WindResult<GpuAllocator>
@@ -51,86 +52,6 @@ WIND_NODISCARD auto GpuAllocator::create(const VulkanContext* context) WIND_NOEX
                         ErrorCode::FailedToCreateFence);
 
   return GpuAllocator{temp_allocator, std::move(command_buffers[0]), std::move(fence)};
-}
-
-// TODO: this does not belongs here
-auto GpuAllocator::transition_image(vk::raii::CommandBuffer& cmd, VkImage& image, vk::ImageLayout old_layout, vk::ImageLayout new_layout) WIND_NOEXCEPT
-    -> void
-{
-  // undefined = I don't care what was there before.
-  // TransferDstOptimal = I'm about to write pixels through a transfer.
-  // ShaderReadOnly = I'm finished writing; shader will read pixels.
-  if(old_layout == vk::ImageLayout::eUndefined && new_layout == vk::ImageLayout::eTransferDstOptimal)
-  {
-    vk::ImageMemoryBarrier2 barrier{};
-    barrier.image            = image;
-    barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
-
-    barrier.oldLayout = old_layout;
-    barrier.newLayout = new_layout;
-
-    // i will not pretend that i understand these
-    barrier.srcStageMask  = vk::PipelineStageFlagBits2::eTopOfPipe;
-    barrier.srcAccessMask = {};
-
-    barrier.dstStageMask  = vk::PipelineStageFlagBits2::eTransfer;
-    barrier.dstAccessMask = vk::AccessFlagBits2::eTransferWrite;
-
-    vk::DependencyInfo dep_info{};
-    dep_info.imageMemoryBarrierCount = 1;
-    dep_info.pImageMemoryBarriers    = &barrier;
-
-    cmd.pipelineBarrier2(dep_info);
-    return;
-  }
-
-  if(old_layout == vk::ImageLayout::eTransferDstOptimal && new_layout == vk::ImageLayout::eShaderReadOnlyOptimal)
-  {
-    vk::ImageMemoryBarrier2 barrier{};
-    barrier.image            = image;
-    barrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
-
-    barrier.oldLayout = old_layout;
-    barrier.newLayout = new_layout;
-
-    // i will not pretend that i understand these
-    barrier.srcStageMask  = vk::PipelineStageFlagBits2::eTransfer;
-    barrier.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
-
-    barrier.dstStageMask  = vk::PipelineStageFlagBits2::eFragmentShader;
-    barrier.dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead;
-
-    vk::DependencyInfo dep_info{};
-    dep_info.imageMemoryBarrierCount = 1;
-    dep_info.pImageMemoryBarriers    = &barrier;
-
-    cmd.pipelineBarrier2(dep_info);
-    return;
-  }
-
-  if(old_layout == vk::ImageLayout::eUndefined && new_layout == vk::ImageLayout::eDepthAttachmentOptimal)
-  {
-    vk::ImageMemoryBarrier2 barrier{};
-    barrier.image            = image;
-    barrier.subresourceRange = {vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1};
-
-    barrier.oldLayout = old_layout;
-    barrier.newLayout = new_layout;
-
-    // i will not pretend that i understand these
-    barrier.srcStageMask  = {};
-    barrier.srcAccessMask = {};
-
-    barrier.dstStageMask = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests;
-    barrier.dstAccessMask = vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
-
-    vk::DependencyInfo dep_info{};
-    dep_info.imageMemoryBarrierCount = 1;
-    dep_info.pImageMemoryBarriers    = &barrier;
-
-    cmd.pipelineBarrier2(dep_info);
-    return;
-  }
 }
 
 WIND_NODISCARD auto GpuAllocator::upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>
@@ -367,12 +288,12 @@ WIND_NODISCARD auto GpuAllocator::create_texture(const VulkanContext* context, s
     region.imageExtent = {.width = data.dimensions.width, .height = data.dimensions.height, .depth = data.dimensions.depth};
 
     // transition from undefined to TransferDst
-    transition_image(m_command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+    sync::transition_image(m_command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
     m_command_buffer.copyBufferToImage(staging_buffers[index].buffer, image, vk::ImageLayout::eTransferDstOptimal, region);
 
     // transition from Transfer dst to shader read
-    transition_image(m_command_buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+    sync::transition_image(m_command_buffer, image, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 
     vk::SamplerCreateInfo sampler_create_info{};
     sampler_create_info.anisotropyEnable = vk::False;
@@ -434,7 +355,7 @@ WIND_NODISCARD auto GpuAllocator::create_depth_buffer(const VulkanContext* conte
   WIND_TRY(begin_command_buffer());
 
   // transition from undefined dst to depth optimal
-  transition_image(m_command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal);
+  sync::transition_image(m_command_buffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal);
 
   // end the command buffer no more recording :(
   WIND_TRY(end_command_buffer());

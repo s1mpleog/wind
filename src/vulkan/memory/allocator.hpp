@@ -73,10 +73,6 @@ public:
   //   return WIND_TRY(create_buffer_bytes(bytes, flags));
   // }
 
-  //TODO: this will go somewhere else
-  auto transition_image(vk::raii::CommandBuffer& cmd, VkImage& image, vk::ImageLayout old_layout, vk::ImageLayout new_layout) WIND_NOEXCEPT
-      -> void;
-
   // TODO: maybe take ownership of data instead of view ?
   WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const gpu::TextureData> texture_data) WIND_NOEXCEPT
       -> WindResult<std::vector<gpu::AllocatedTexture>>;
