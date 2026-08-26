@@ -1,8 +1,12 @@
 #include "engine.hpp"
 #include "SDL3/SDL_events.h"
+#include "SDL3/SDL_scancode.h"
+#include "core/service_locator.hpp"
+#include "input/input_manager.hpp"
 #include "platform/window.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/renderer.hpp"
+#include <memory>
 #include <spdlog/spdlog.h>
 
 namespace wind {
@@ -28,16 +32,21 @@ WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, win
   auto window = platform::Window{std::move(window_cfg)};
   WIND_TRY_VOID(window.create());
 
+  auto input_manager = std::make_unique<input::InputManger>(input::InputManger{});
+
+  core::ServiceLocator::provide(input_manager.get());
+
   // let renderer the subsystems for render
   auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window));
   // load textures, build pipelines, create shaders and all
   WIND_TRY(renderer.initialize_resources());
 
+
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Engine created successfully");
 #endif
 
-  return Engine(std::move(window), std::move(renderer));
+  return Engine(std::move(window), std::move(renderer), std::move(input_manager));
 }
 
 auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
@@ -49,6 +58,8 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
   {
     SDL_Event event{};
 
+    m_input_manager->update();
+
     while(SDL_PollEvent(&event))
     {
       if(event.type == SDL_EVENT_QUIT)
@@ -57,6 +68,9 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
       //TODO:
       // m_process_event(event)
     }
+
+    m_input_manager->update();
+
 
     auto [width, height] = m_window.drawable_size();
 

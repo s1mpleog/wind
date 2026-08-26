@@ -1,6 +1,9 @@
 #include "renderer.hpp"
+#include "SDL3/SDL_scancode.h"
 #include "camera.hpp"
+#include "core/service_locator.hpp"
 #include "error.hpp"
+#include "input/input_manager.hpp"
 #include "platform/window.hpp"
 #include "resources/resource_manager.hpp"
 #include "spdlog/spdlog.h"
@@ -217,6 +220,11 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 {
   // get a frame
   auto* frame = &m_frame_context[m_current_frame];
+
+  // if(core::ServiceLocator::get<input::InputManger>().is_down(SDL_SCANCODE_S))
+  // {
+  //   spdlog::info("processing S move");
+  // }
 
   // wait for fences (previous frame to complete)
   WIND_TRY(frame->wait_in_flight_fence(m_context->gpu_device.device));

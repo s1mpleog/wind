@@ -2,6 +2,7 @@ words = [
     "Gpu",
     "KHRONOS",
     "Memcpy",
+    "SDL",
     "Shader",
     "VMA",
     "raii",
