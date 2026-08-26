@@ -101,14 +101,16 @@ WIND_NODISCARD auto check_hard_requirements(const Configuration& cfg, const vk::
   auto features_2   = device.getFeatures2().features;
   auto properties_2 = device.getProperties2().properties;
 
-  auto chain =
-      device.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR>();
+  auto chain = device.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features,
+                                   vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR, vk::PhysicalDeviceVulkan12Features>();
 
   auto& features_13 = chain.get<vk::PhysicalDeviceVulkan13Features>();
 
   auto& maintainance_feature = chain.get<vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR>();
 
   auto available_extensions = device.enumerateDeviceExtensionProperties();
+
+  auto features_12 = chain.get<vk::PhysicalDeviceVulkan12Features>();
 
   // limitation can't use WindResult :(
   if(!available_extensions || available_extensions->empty())
@@ -132,7 +134,8 @@ WIND_NODISCARD auto check_hard_requirements(const Configuration& cfg, const vk::
 
   return (features_2.geometryShader == vk::True) && properties_2.apiVersion >= to_vk(cfg.api_version)
          && (features_13.dynamicRendering == vk::True) && (features_13.synchronization2 == vk::True)
-         && (maintainance_feature.swapchainMaintenance1 == vk::True) && supported;
+         && (maintainance_feature.swapchainMaintenance1 == vk::True) && (features_12.runtimeDescriptorArray == vk::True)
+         && supported;
 }
 
 // responsible for selecting the preferred physical device
@@ -172,13 +175,16 @@ WIND_NODISCARD static auto select_physical_device(const Configuration&      cfg,
 
 WIND_NODISCARD static auto create_logical_device(PhysicalDeviceCandidate candidate) WIND_NOEXCEPT -> WindResult<GpuDevice>
 {
-  // candidate already have all the hard requirements check just create device here
+  vk::PhysicalDeviceVulkan12Features features_12{};
+  features_12.runtimeDescriptorArray = vk::True;
+
   vk::PhysicalDeviceVulkan13Features features_13{};
   features_13.dynamicRendering = vk::True;
   features_13.synchronization2 = vk::True;
 
   vk::PhysicalDeviceSwapchainMaintenance1FeaturesEXT maintenance_feature{};
   maintenance_feature.swapchainMaintenance1 = vk::True;
+  maintenance_feature.pNext                 = &features_12;
 
   features_13.pNext = &maintenance_feature;
 

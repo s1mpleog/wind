@@ -1,7 +1,9 @@
 #pragma once
 
 #include "config.hpp"
+#include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
+#include "vulkan/memory/resource_types.hpp"
 #include "vulkan/vulkan.hpp"
 #include <span>
 #include <vulkan/vulkan_core.h>
@@ -23,6 +25,30 @@ public:
   WIND_NODISCARD auto get_set() const -> const vk::raii::DescriptorSet*;
   WIND_NODISCARD auto get_layout() const -> const vk::raii::DescriptorSetLayout*;
 
+  WIND_NODISCARD auto register_texture(const vk::raii::Device& device, const gpu::AllocatedTexture& texture) WIND_NOEXCEPT -> u32
+  {
+    vk::DescriptorImageInfo image_info{};
+    image_info.imageView   = texture.image.image_view;
+    image_info.sampler     = texture.sampler;
+    image_info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+    const u32 index = m_index++;
+
+    spdlog::info("current index for bindless descriptor set: {}", index);
+
+    vk::WriteDescriptorSet write{};
+    write.descriptorCount = 1;
+    write.descriptorType  = vk::DescriptorType::eCombinedImageSampler;
+    write.dstBinding      = 0;
+    write.dstArrayElement = index;
+    write.pImageInfo      = &image_info;
+    write.dstSet          = m_set;
+
+    device.updateDescriptorSets(write, {});
+
+    return index;
+  }
+
 private:
   explicit DescriptorManager(vk::raii::DescriptorPool pool)
       : m_pool{std::move(pool)} {};
@@ -30,6 +56,7 @@ private:
   vk::raii::DescriptorPool      m_pool{nullptr};
   vk::raii::DescriptorSet       m_set{nullptr};
   vk::raii::DescriptorSetLayout m_layout{nullptr};
+  u32                           m_index{};
 };
 
 };  // namespace wind::vulkan

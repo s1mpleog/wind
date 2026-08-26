@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 #include "error.hpp"
+#include "glm/ext/vector_float2.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
@@ -37,10 +38,17 @@ struct WindMaterial
   std::array<float, 4> base_color{};
 };
 
+struct WindMesh
+{
+  std::vector<glm::vec3> position;
+  std::vector<u32>       indices;
+  std::vector<glm::vec3> normals;
+  std::vector<glm::vec2> uvs;
+};
+
 struct WindAsset
 {
-  std::vector<glm::vec3>    vertices;
-  std::vector<u32>          indices;
+  WindMesh                  mesh;
   std::vector<WindTexture>  textures;
   std::vector<WindMaterial> materials;
 };
@@ -92,6 +100,8 @@ WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WI
 
   constexpr u32 CHUNK_VERT = 0x54524556;  // "VERT"
   constexpr u32 CHUNK_INDC = 0x43444E49;  // "INDC"
+  constexpr u32 CHUNK_IUV_ = 0x5F565549;  // "IUV_"
+  constexpr u32 CHUNK_INOR = 0x524F4E49;  // "INOR"
   constexpr u32 CHUNK_TEXT = 0x54584554;  // "TEXT"
   constexpr u32 CHUNK_MATE = 0x4554414D;  // "MATE"
   constexpr u32 CHUNK_END  = 0x444E4549;  // "IEND"
@@ -110,11 +120,17 @@ WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WI
         auto size     = read_u64(buffer, cursor);
         auto vertices = buffer.subspan(cursor, size);
 
-        asset.vertices.resize(vertices.size());
+        // asset.vertices.resize(vertices.size());
 
-        std::memcpy(asset.vertices.data(), vertices.data(), vertices.size());
+        // std::memcpy(asset.vertices.data(), vertices.data(), vertices.size());
 
-        WIND_ASSERT(vertices.size() == asset.vertices.size() && "Memcpy failed");
+        // WIND_ASSERT(vertices.size() == asset.vertices.size() && "Memcpy failed");
+
+        asset.mesh.position.resize(vertices.size());
+
+        std::memcpy(asset.mesh.position.data(), vertices.data(), vertices.size());
+
+        WIND_ASSERT(vertices.size() == asset.mesh.position.size() && "Memcpy failed");
 
         cursor += size;
         break;
@@ -124,11 +140,47 @@ WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WI
         auto size    = read_u64(buffer, cursor);
         auto indices = buffer.subspan(cursor, size);
 
-        asset.indices.resize(indices.size());
+        // asset.indices.resize(indices.size());
 
-        std::memcpy(asset.indices.data(), indices.data(), indices.size());
+        // std::memcpy(asset.indices.data(), indices.data(), indices.size());
 
-        WIND_ASSERT(indices.size() == asset.indices.size() && "Memcpy failed");
+        // WIND_ASSERT(indices.size() == asset.indices.size() && "Memcpy failed");
+
+        asset.mesh.indices.resize(indices.size());
+
+        std::memcpy(asset.mesh.indices.data(), indices.data(), indices.size());
+
+        WIND_ASSERT(indices.size() == asset.mesh.indices.size() && "Memcpy failed");
+
+        cursor += size;
+        break;
+      }
+
+      case CHUNK_IUV_: {
+        auto size = read_u64(buffer, cursor);
+        auto uvs  = buffer.subspan(cursor, size);
+
+        spdlog::info("found uvs: {}", uvs.size());
+
+        asset.mesh.uvs.resize(uvs.size());
+        std::memcpy(asset.mesh.uvs.data(), uvs.data(), uvs.size());
+
+        WIND_ASSERT(uvs.size() == asset.mesh.uvs.size() && "Memcpy failed");
+
+        cursor += size;
+        break;
+      }
+
+      case CHUNK_INOR: {
+        auto size    = read_u64(buffer, cursor);
+        auto normals = buffer.subspan(cursor, size);
+
+        spdlog::info("found normals: {}", normals.size());
+
+        asset.mesh.normals.resize(normals.size());
+        std::memcpy(asset.mesh.normals.data(), normals.data(), normals.size());
+
+        WIND_ASSERT(normals.size() == asset.mesh.normals.size() && "Memcpy failed");
 
         cursor += size;
         break;
@@ -238,7 +290,7 @@ WIND_NODISCARD WIND_INLINE auto open(std::string_view name) WIND_NOEXCEPT -> Win
 
   auto asset = WIND_TRY(decode_wind_asset(buffer));
 
-  spdlog::info("read vertex data: {} bytes, index data: {} bytes", asset.vertices.size(), asset.indices.size());
+  spdlog::info("read vertex data: {} bytes, index data: {} bytes", asset.mesh.position.size(), asset.mesh.indices.size());
 
   if(!asset.textures.empty())
   {

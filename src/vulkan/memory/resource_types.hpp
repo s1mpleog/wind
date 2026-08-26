@@ -67,19 +67,30 @@ struct Mesh
 {
   AllocatedBuffer vertex_buffer;
   AllocatedBuffer index_buffer;
+  AllocatedBuffer normals;
+  AllocatedBuffer uvs;
 
   u32 index_count{};
   u32 vertex_count{};
+  u32 normal_count{};
+  u32 uv_count{};
 };
 
 struct GpuMaterial
 {
-  std::optional<u32> albedo_idx;
-  std::optional<u32> normal_idx;
-  std::optional<u32> metallic_roughness_idx;
-  float              metallic{};
-  float              roughness{};
-  glm::vec4          base_color{};
+  u32 albedo_texture{};
+  u32 normal_texture{};
+  u32 metallic_roughness_texture{};
+
+  float     metallic{};
+  float     roughness{};
+  glm::vec4 base_color{};
+};
+
+struct Model
+{
+  Mesh                     mesh{};
+  std::vector<GpuMaterial> materials;
 };
 
 struct AllocatedImage

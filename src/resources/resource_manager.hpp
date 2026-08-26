@@ -12,10 +12,8 @@
 // check the cache if hit -> increment index return handle
 // load the file -> cache it -> increment handle data -> return handle
 
-
 #include "config.hpp"
 #include "resources/descriptor_manager.hpp"
-#include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/context.hpp"
 #include "vulkan/memory/allocator.hpp"
@@ -30,7 +28,6 @@
 #include <vulkan/vulkan_raii.hpp>
 
 namespace wind::resources {
-
 template <typename T>
 struct Handle
 {
@@ -44,6 +41,7 @@ using TextureHandle = Handle<Texture>;
 using ShaderHandle  = Handle<Shader>;
 using VertexHandle  = Handle<u32>;
 using IndexHandle   = Handle<u32>;
+using ModelHandle   = Handle<u32>;
 
 static_assert(sizeof(TextureHandle) == 4);
 static_assert(sizeof(ShaderHandle) == 4);
@@ -72,14 +70,13 @@ public:
   WIND_NODISCARD auto get_shader_unchecked(ShaderHandle handle) WIND_NOEXCEPT -> vk::raii::ShaderModule*;
   auto                destroy_shader(ShaderHandle handle) WIND_NOEXCEPT -> void;
 
-  WIND_NODISCARD auto load_asset(std::string_view texture_path) WIND_NOEXCEPT -> WindResult<MeshHandle>;
-
   WIND_NODISCARD auto create_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
   WIND_NODISCARD auto get_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&;
 
+  WIND_NODISCARD auto load_model(std::string_view texture_path) WIND_NOEXCEPT -> WindResult<ModelHandle>;
   //TODO: WindResult does not works with reference fix that for now return pointer
-  WIND_NODISCARD auto get_mesh(MeshHandle handle) WIND_NOEXCEPT -> WindResult<const gpu::Mesh*>;
-  WIND_NODISCARD auto get_mesh_unchecked(MeshHandle handle) WIND_NOEXCEPT -> const gpu::Mesh*;
+  WIND_NODISCARD auto get_model(ModelHandle handle) WIND_NOEXCEPT -> WindResult<const gpu::Model*>;
+  WIND_NODISCARD auto get_model_unchecked(ModelHandle handle) WIND_NOEXCEPT -> const gpu::Model*;
 
   // just for testing
   WIND_NODISCARD auto create_vertices(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>
@@ -91,23 +88,14 @@ public:
     return allocated_buffer;
   }
 
-
-  WIND_NODISCARD auto register_texture(const gpu::AllocatedTexture& texture, u32 index) WIND_NOEXCEPT -> void
+  WIND_NODISCARD auto get_bindless_descriptor_set() WIND_NOEXCEPT -> const vk::raii::DescriptorSet*
   {
-    vk::DescriptorImageInfo image_info{};
-    image_info.imageView   = texture.image.image_view;
-    image_info.sampler     = texture.sampler;
-    image_info.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+    return m_descriptor_manager.get_set();
+  }
 
-    vk::WriteDescriptorSet write{};
-    write.descriptorCount = 1;
-    write.descriptorType  = vk::DescriptorType::eCombinedImageSampler;
-    write.dstBinding      = 0;
-    write.dstArrayElement = index;
-    write.pImageInfo      = &image_info;
-    write.dstSet          = *m_descriptor_manager.get_set();
-
-    m_context->gpu_device.device.updateDescriptorSets(write, {});
+  WIND_NODISCARD auto get_bindless_descriptor_layout() WIND_NOEXCEPT -> const vk::raii::DescriptorSetLayout*
+  {
+    return m_descriptor_manager.get_layout();
   }
 
 private:
@@ -120,11 +108,12 @@ private:
   std::vector<vk::raii::ShaderModule>           m_shaders;
   std::unordered_map<std::string, ShaderHandle> m_shader_cache;
   vulkan::memory::GpuAllocator                  m_allocator;
-  std::unordered_map<std::string, MeshHandle>   m_asset_cache;
-  std::vector<gpu::Mesh>                        m_meshes;
-  std::vector<gpu::AllocatedTexture>            m_texture;
-  gpu::AllocatedImage                           m_depth_image;
-  vulkan::DescriptorManager                     m_descriptor_manager;
+  std::unordered_map<std::string, ModelHandle>  m_model_cache;
+  // std::vector<gpu::Mesh>                        m_meshes;
+  std::vector<gpu::AllocatedTexture> m_texture;
+  gpu::AllocatedImage                m_depth_image;
+  vulkan::DescriptorManager          m_descriptor_manager;
+  std::vector<gpu::Model>            m_models;
 };
 
 };  // namespace wind::resources

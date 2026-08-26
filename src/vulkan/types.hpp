@@ -429,14 +429,33 @@ WIND_INLINE auto to_vk(ShaderStage stage) WIND_NOEXCEPT -> vk::ShaderStageFlagBi
   {
     case ShaderStage::Vertex:
       return vk::ShaderStageFlagBits::eVertex;
+
     case ShaderStage::Fragment:
       return vk::ShaderStageFlagBits::eFragment;
+
     case ShaderStage::Compute:
       return vk::ShaderStageFlagBits::eCompute;
-    default:
-      return vk::ShaderStageFlagBits::eVertex;
   }
+
+  std::unreachable();
 }
+
+WIND_INLINE auto to_vk_shader_stage_flags(ShaderStage stages) WIND_NOEXCEPT -> vk::ShaderStageFlags
+{
+  vk::ShaderStageFlags result{};
+
+  if((stages & ShaderStage::Vertex) != ShaderStage{})
+    result |= vk::ShaderStageFlagBits::eVertex;
+
+  if((stages & ShaderStage::Fragment) != ShaderStage{})
+    result |= vk::ShaderStageFlagBits::eFragment;
+
+  if((stages & ShaderStage::Compute) != ShaderStage{})
+    result |= vk::ShaderStageFlagBits::eCompute;
+
+  return result;
+}
+
 
 WIND_INLINE auto to_vk(const RasterizationState& rasterization) WIND_NOEXCEPT -> vk::PipelineRasterizationStateCreateInfo
 {
@@ -555,7 +574,7 @@ WIND_INLINE auto to_vk(const PushConstantRange& push_constant) WIND_NOEXCEPT -> 
   vk::PushConstantRange vk_push_constant{};
   vk_push_constant.offset     = push_constant.offset;
   vk_push_constant.size       = push_constant.size;
-  vk_push_constant.stageFlags = to_vk(push_constant.stage_flags);
+  vk_push_constant.stageFlags = to_vk_shader_stage_flags(push_constant.stage_flags);
   return vk_push_constant;
 }
 
@@ -643,5 +662,4 @@ WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> 
 
   return result;
 }
-
 };  // namespace wind::vulkan
