@@ -4,8 +4,13 @@
 #include "core/service_locator.hpp"
 #include "input/input_manager.hpp"
 #include "platform/window.hpp"
+#include "resources/resource_manager.hpp"
 #include "utils/expected_util.hpp"
+#include "vulkan/core/context.hpp"
+#include "vulkan/core/swapchain.hpp"
+#include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/renderer.hpp"
+#include <algorithm>
 #include <memory>
 #include <spdlog/spdlog.h>
 
@@ -33,20 +38,28 @@ WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, win
   WIND_TRY_VOID(window.create());
 
   auto input_manager = std::make_unique<input::InputManger>(input::InputManger{});
-
   core::ServiceLocator::provide(input_manager.get());
 
-  // let renderer the subsystems for render
-  auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window));
-  // load textures, build pipelines, create shaders and all
-  WIND_TRY(renderer.initialize_resources());
+  auto vulkan_context = std::make_unique<vulkan::VulkanContext>(WIND_TRY(vulkan::create_context(window, vulkan_cfg)));
 
+  auto resource_manager =
+      std::make_unique<resources::ResourceManager>(WIND_TRY(resources::ResourceManager::create(vulkan_context.get())));
+
+  auto pipeline_manager = std::make_unique<vulkan::graphics::PipelineManager>(vulkan::graphics::PipelineManager{});
+
+  // let renderer the subsystems for render
+  auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window, vulkan_context.get(),
+                                                    resource_manager.get(), pipeline_manager.get()));
+
+  // temporary
+  WIND_TRY(renderer.initialize_resources());
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Engine created successfully");
 #endif
 
-  return Engine(std::move(window), std::move(renderer), std::move(input_manager));
+  return Engine(std::move(window), std::move(vulkan_context), std::move(renderer), std::move(input_manager),
+                std::move(resource_manager), std::move(pipeline_manager));
 }
 
 auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
