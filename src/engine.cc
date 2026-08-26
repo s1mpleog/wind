@@ -1,6 +1,7 @@
 #include "engine.hpp"
 #include "SDL3/SDL_events.h"
 #include "core/service_locator.hpp"
+#include "error.hpp"
 #include "input/input_manager.hpp"
 #include "platform/window.hpp"
 #include "resources/resource_manager.hpp"
@@ -79,9 +80,22 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
 
     m_input_manager->update();
 
-    auto [width, height] = m_window.drawable_size();
 
-    WIND_TRY(m_renderer.begin(width, height));
+    int width{};
+    int height{};
+
+    SDL_GetWindowSizeInPixels(m_window.handle(), &width, &height);
+
+    auto begin_result = m_renderer.begin(static_cast<u32>(width), static_cast<u32>(height));
+
+    if(!begin_result)
+    {
+      if(begin_result.error().code == ErrorCode::SwapchainOutOfDate)
+        continue;
+
+      spdlog::info("error: {}", begin_result.error().to_string());
+      WIND_ERR(begin_result.error());
+    }
 
     m_renderer.draw();
 

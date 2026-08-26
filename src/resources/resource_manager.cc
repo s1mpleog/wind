@@ -293,13 +293,13 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
   return handle;
 }
 
-WIND_NODISCARD auto ResourceManager::create_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto ResourceManager::create_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
 {
   m_depth_image = WIND_TRY(m_allocator.create_depth_buffer(m_context, width, height));
   return {};
 }
 
-WIND_NODISCARD auto ResourceManager::get_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&
+WIND_NODISCARD auto ResourceManager::get_default_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&
 {
   WIND_ASSERT(m_depth_image.image_view != nullptr && "Depth image view is nullptr create depth image first");
   return m_depth_image.image_view;
@@ -316,6 +316,18 @@ WIND_NODISCARD auto ResourceManager::get_model(ModelHandle handle) WIND_NOEXCEPT
 WIND_NODISCARD auto ResourceManager::get_model_unchecked(ModelHandle handle) WIND_NOEXCEPT -> const gpu::Model*
 {
   return &m_models[handle.index];
+}
+
+
+WIND_NODISCARD auto ResourceManager::recreate_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
+{
+  // destroy the old depth image
+  m_depth_image.destroy_image();
+
+  // create new one
+  m_depth_image = WIND_TRY(m_allocator.create_depth_buffer(m_context, width, height));
+
+  return {};
 }
 
 };  // namespace wind::resources

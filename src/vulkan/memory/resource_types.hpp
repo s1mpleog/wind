@@ -112,6 +112,19 @@ struct AllocatedImage
   {
   }
 
+  auto destroy_image() WIND_NOEXCEPT -> void
+  {
+    image_view = nullptr;
+
+    if(image != VK_NULL_HANDLE)
+    {
+      vmaDestroyImage(allocator, image, allocation);
+    }
+
+    image      = VK_NULL_HANDLE;
+    allocation = VK_NULL_HANDLE;
+  }
+
   AllocatedImage()                                         = default;
   AllocatedImage(const AllocatedImage&)                    = delete;
   auto operator=(const AllocatedImage&) -> AllocatedImage& = delete;

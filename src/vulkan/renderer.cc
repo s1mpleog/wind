@@ -11,6 +11,7 @@
 #include "vulkan/core/configuration.hpp"
 #include "vulkan/core/context.hpp"
 #include "vulkan/core/swapchain.hpp"
+#include "vulkan/core/synchroization.hpp"
 #include "vulkan/frame/frame_context.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/graphics/pipeline_manager.hpp"
@@ -73,7 +74,7 @@ WIND_NODISCARD auto Renderer::create(Configuration               cfg,
 auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
 {
   // create depth image
-  WIND_TRY(m_resource_manager->create_depth_image(m_swapchain_context.extent.width, m_swapchain_context.extent.height));
+  WIND_TRY(m_resource_manager->create_default_depth_image(m_swapchain_context.extent.width, m_swapchain_context.extent.height));
 
   auto vertex_shader_handle =
       WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.vert.spv"));
@@ -225,52 +226,42 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   // get a frame
   auto* frame = &m_frame_context[m_current_frame];
 
-  // if(core::ServiceLocator::get<input::InputManger>().is_down(SDL_SCANCODE_S))
-  // {
-  //   spdlog::info("processing S move");
-  // }
-
   // wait for fences (previous frame to complete)
   WIND_TRY(frame->wait_in_flight_fence(m_context->gpu_device.device));
   WIND_TRY(frame->wait_present_fence(m_context->gpu_device.device));
 
-  // acquire the next image index
-  // auto [swapchain_result, swapchain_image] =
-  //     m_swapchain_context.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
-
-  // auto [swapchain_result, swapchain_image] =
-  //     m_swapchain_context.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr,
-  //                                                 {vk::Result::eSuccess, vk::Result::eSuboptimalKHR, vk::Result::eErrorOutOfDateKHR});
-
   uint32_t image_index{0};
 
+  // we are using c-api here because c++ library is acting weird here its returning error
   VkResult raw_result = m_context->gpu_device.device.getDispatcher()->vkAcquireNextImageKHR(
       *m_context->gpu_device.device, *m_swapchain_context.handle, UINT64_MAX, *frame->image_available, VK_NULL_HANDLE, &image_index);
 
   auto swapchain_result = static_cast<vk::Result>(raw_result);
 
-  spdlog::info("result is: {}", vk::to_string(swapchain_result));
-
-  // TODO: fix this
-  if(swapchain_result == vk::Result::eErrorOutOfDateKHR || swapchain_result == vk::Result::eSuboptimalKHR)
+  if(swapchain_result == vk::Result::eErrorOutOfDateKHR)
   {
-    spdlog::info("hello there");
+    // no image was acquired recreate swapchain acquire again
+    // stop the current frame
+
+    // TODO: change this with different option
     WIND_TRY(m_context->gpu_device.device.waitIdle());
 
+    spdlog::info("out of date swapchain recreating");
+
     auto old_swapchain = std::move(m_swapchain_context);
-
-    spdlog::info("old swapchain reached here?");
-
     auto new_swapchain =
         WIND_TRY(swapchain::create(m_config, width, height, m_context->surface, m_context->gpu_device, &old_swapchain.handle));
 
-    spdlog::info("reached here?");
-
     m_swapchain_context = std::move(new_swapchain);
 
-    // create new swapchain
-    spdlog::info("out of date swapchain");
+    // recreate the depth buffer
+    WIND_TRY(m_resource_manager->create_default_depth_image(width, height));
+
+    // this does not means error i am doing this so in draw call i check this error code
+    // if error == out_of_date then continue otherwise return error
+    WIND_ERR(WindError::vulkan(ErrorCode::SwapchainOutOfDate, swapchain_result));
   }
+
 
   if(swapchain_result != vk::Result::eSuccess && swapchain_result != vk::Result::eSuboptimalKHR
      && swapchain_result != vk::Result::eErrorOutOfDateKHR)
@@ -281,26 +272,16 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
   m_current_image = image_index;
 
+
   // reset old command buffer
   WIND_TRY(frame->reset_cmd_buffer());
 
   // begin recording command
   WIND_TRY(frame->begin());
 
-  // create image memory barrier 2 and rendering attachment info
-
-  //TODO: abstract these
-  vk::ImageMemoryBarrier2 color_barrier{};
-  color_barrier.image                       = m_swapchain_context.images[m_current_image];
-  color_barrier.oldLayout                   = vk::ImageLayout::eUndefined;
-  color_barrier.newLayout                   = vk::ImageLayout::eColorAttachmentOptimal;
-  color_barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-  color_barrier.subresourceRange.levelCount = 1;
-  color_barrier.subresourceRange.layerCount = 1;
-  color_barrier.dstStageMask                = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-  color_barrier.dstAccessMask               = vk::AccessFlagBits2::eColorAttachmentWrite;
-  color_barrier.srcStageMask                = vk::PipelineStageFlagBits2::eTopOfPipe;
-  color_barrier.srcAccessMask               = vk::AccessFlagBits2::eNone;
+  // transition swapchain image from undefined to optimal for color attachment
+  sync::transition_image(frame->graphics_command_buffer, m_swapchain_context.images[m_current_image],
+                         vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
   std::array<float, 4> clear_color{0.055F, 0.055F, 0.055F, 1.0F};
 
@@ -315,7 +296,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   color_attach_info.clearValue.color = color;
 
   vk::RenderingAttachmentInfo depth_attach_info{};
-  depth_attach_info.imageView   = m_resource_manager->get_depth_image_view();
+  depth_attach_info.imageView   = m_resource_manager->get_default_depth_image_view();
   depth_attach_info.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
   depth_attach_info.loadOp      = vk::AttachmentLoadOp::eClear;
   depth_attach_info.storeOp     = vk::AttachmentStoreOp::eDontCare;
@@ -330,17 +311,10 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   rendering_info.renderArea           = render_area;
   rendering_info.layerCount           = 1;
 
-  vk::DependencyInfo dep_info{};
-  dep_info.imageMemoryBarrierCount = 1;
-  dep_info.pImageMemoryBarriers    = &color_barrier;
-
-  frame->graphics_command_buffer.pipelineBarrier2(dep_info);
-
   frame->graphics_command_buffer.beginRendering(rendering_info);
 
   return {};
 }
-
 
 auto Renderer::draw() WIND_NOEXCEPT -> void
 {
@@ -415,28 +389,11 @@ auto Renderer::end() WIND_NOEXCEPT -> void
 
   frame->graphics_command_buffer.endRendering();
 
-  vk::ImageMemoryBarrier2 barrier{};
-  barrier.oldLayout     = vk::ImageLayout::eColorAttachmentOptimal;
-  barrier.newLayout     = vk::ImageLayout::ePresentSrcKHR;
-  barrier.image         = m_swapchain_context.images[m_current_image];
-  barrier.srcStageMask  = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
-  barrier.srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite;
-  barrier.dstStageMask  = vk::PipelineStageFlagBits2::eNone;
-  barrier.dstAccessMask = vk::AccessFlagBits2::eNone;
+  // transition image from color_attachment_optimal to present_src_khr so presentation engine can
+  // display it to monitor
+  sync::transition_image(frame->graphics_command_buffer, m_swapchain_context.images[m_current_image],
+                         vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
 
-  barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-  barrier.subresourceRange.levelCount = 1;
-  barrier.subresourceRange.layerCount = 1;
-
-  barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-  barrier.subresourceRange.layerCount = 1;
-  barrier.subresourceRange.levelCount = 1;
-
-  vk::DependencyInfo dep_info{};
-  dep_info.imageMemoryBarrierCount = 1;
-  dep_info.pImageMemoryBarriers    = &barrier;
-
-  frame->graphics_command_buffer.pipelineBarrier2(dep_info);
 
   if(!frame->end())
     return;
@@ -490,8 +447,6 @@ auto Renderer::end() WIND_NOEXCEPT -> void
     spdlog::info("Failed to present");
   }
 
-  // if(m_context->gpu_device.presentation_queue.presentKHR(present_info) != vk::Result::eSuccess)
-  //   spdlog::info("Failed to present");
 
   m_current_frame = (m_current_frame + 1) % MAX_FRAME_IN_FLIGHT;
 }
