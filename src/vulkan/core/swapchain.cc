@@ -99,12 +99,12 @@ auto create(const Configuration&          cfg,
             u32                           window_width,
             u32                           window_height,
             const vk::raii::SurfaceKHR&   surface,
-            const GpuDevice&              gpu_device,
+            const GpuDevice&              device_context,
             const vk::raii::SwapchainKHR* old_swapchain) WIND_NOEXCEPT -> WindResult<SwapchainContext>
 {
-  auto surface_capabilities = WIND_TRY(get_surface_capabilities(surface, gpu_device.physical_device));
-  auto surface_format       = WIND_TRY(get_surface_format(surface, gpu_device.physical_device));
-  auto presentation_mode    = WIND_TRY(get_presentation_mode(cfg, surface, gpu_device.physical_device));
+  auto surface_capabilities = WIND_TRY(get_surface_capabilities(surface, device_context.physical_device));
+  auto surface_format       = WIND_TRY(get_surface_format(surface, device_context.physical_device));
+  auto presentation_mode    = WIND_TRY(get_presentation_mode(cfg, surface, device_context.physical_device));
 
   vk::SwapchainCreateInfoKHR create_info{};
 
@@ -142,9 +142,9 @@ auto create(const Configuration&          cfg,
 
   create_info.imageExtent = extent;
 
-  const std::array queues_index = {gpu_device.graphics_queue_idx.value(), gpu_device.presentation_queue_idx.value()};
+  const std::array queues_index = {device_context.graphics_queue_idx.value(), device_context.presentation_queue_idx.value()};
 
-  if(gpu_device.graphics_queue_idx != gpu_device.presentation_queue_idx)
+  if(device_context.graphics_queue_idx != device_context.presentation_queue_idx)
   {
     create_info.imageSharingMode      = vk::SharingMode::eConcurrent;
     create_info.queueFamilyIndexCount = queues_index.size();
@@ -159,9 +159,10 @@ auto create(const Configuration&          cfg,
 
   create_info.oldSwapchain = (old_swapchain != nullptr) ? **old_swapchain : vk::SwapchainKHR{};
 
-  auto swapchain   = WIND_TRY(gpu_device.device.createSwapchainKHR(create_info));
+  auto swapchain = WIND_TRY(device_context.device.createSwapchainKHR(create_info));
+
   auto images      = WIND_TRY(get_images(swapchain));
-  auto image_views = WIND_TRY(create_image_views(images, gpu_device.device, surface_format.format));
+  auto image_views = WIND_TRY(create_image_views(images, device_context.device, surface_format.format));
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Swapchain created dimension: {}x{}, images: {}", extent.width, extent.height, images.size());

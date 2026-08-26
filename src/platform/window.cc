@@ -22,7 +22,8 @@ WIND_NODISCARD auto Window::create() WIND_NOEXCEPT -> WindResult<void>
     WIND_ERR(WindError::sdl(ErrorCode::FailedToInitSDL));
   }
 
-  m_handle = SDL_CreateWindow(m_config.name.c_str(), m_config.width, m_config.height, SDL_WINDOW_VULKAN);
+  m_handle = SDL_CreateWindow(m_config.name.c_str(), m_config.width, m_config.height,
+                              SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 
   if(m_handle == nullptr)
   {

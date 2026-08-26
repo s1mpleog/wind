@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <vector>
 #include <glm/glm.hpp>
+#include <vulkan/vulkan_to_string.hpp>
 
 namespace wind::vulkan {
 struct Vertex
@@ -234,17 +235,36 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   WIND_TRY(frame->wait_present_fence(m_context->gpu_device.device));
 
   // acquire the next image index
-  auto [swapchain_result, swapchain_image] =
-      m_swapchain_context.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
+  // auto [swapchain_result, swapchain_image] =
+  //     m_swapchain_context.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
+
+  // auto [swapchain_result, swapchain_image] =
+  //     m_swapchain_context.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr,
+  //                                                 {vk::Result::eSuccess, vk::Result::eSuboptimalKHR, vk::Result::eErrorOutOfDateKHR});
+
+  uint32_t image_index{0};
+
+  VkResult raw_result = m_context->gpu_device.device.getDispatcher()->vkAcquireNextImageKHR(
+      *m_context->gpu_device.device, *m_swapchain_context.handle, UINT64_MAX, *frame->image_available, VK_NULL_HANDLE, &image_index);
+
+  auto swapchain_result = static_cast<vk::Result>(raw_result);
+
+  spdlog::info("result is: {}", vk::to_string(swapchain_result));
 
   // TODO: fix this
   if(swapchain_result == vk::Result::eErrorOutOfDateKHR || swapchain_result == vk::Result::eSuboptimalKHR)
   {
+    spdlog::info("hello there");
     WIND_TRY(m_context->gpu_device.device.waitIdle());
 
     auto old_swapchain = std::move(m_swapchain_context);
 
-    auto new_swapchain = WIND_TRY(swapchain::create(m_config, width, height, m_context->surface, m_context->gpu_device));
+    spdlog::info("old swapchain reached here?");
+
+    auto new_swapchain =
+        WIND_TRY(swapchain::create(m_config, width, height, m_context->surface, m_context->gpu_device, &old_swapchain.handle));
+
+    spdlog::info("reached here?");
 
     m_swapchain_context = std::move(new_swapchain);
 
@@ -259,7 +279,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   WIND_TRY(frame->reset_in_flight_fence(m_context->gpu_device.device));
   WIND_TRY(frame->reset_present_fence(m_context->gpu_device.device));
 
-  m_current_image = swapchain_image;
+  m_current_image = image_index;
 
   // reset old command buffer
   WIND_TRY(frame->reset_cmd_buffer());
@@ -460,8 +480,18 @@ auto Renderer::end() WIND_NOEXCEPT -> void
   present_info.pWaitSemaphores    = &*frame->render_finished;
   present_info.pImageIndices      = &m_current_image;
 
-  if(m_context->gpu_device.presentation_queue.presentKHR(present_info) != vk::Result::eSuccess)
+  VkPresentInfoKHR present_info_c = static_cast<VkPresentInfoKHR>(present_info);
+  VkResult         present_result =
+      m_context->gpu_device.device.getDispatcher()->vkQueuePresentKHR(*m_context->gpu_device.presentation_queue, &present_info_c);
+  auto result = static_cast<vk::Result>(present_result);
+
+  if(result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR && result != vk::Result::eErrorOutOfDateKHR)
+  {
     spdlog::info("Failed to present");
+  }
+
+  // if(m_context->gpu_device.presentation_queue.presentKHR(present_info) != vk::Result::eSuccess)
+  //   spdlog::info("Failed to present");
 
   m_current_frame = (m_current_frame + 1) % MAX_FRAME_IN_FLIGHT;
 }
