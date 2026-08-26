@@ -18,7 +18,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <vector>
 #include <glm/glm.hpp>
 
@@ -45,31 +44,35 @@ struct PushConstants
   u32       albedo_texture;
 };
 
-WIND_NODISCARD auto Renderer::create(Configuration cfg, const platform::Window& window) WIND_NOEXCEPT -> WindResult<Renderer>
+WIND_NODISCARD auto Renderer::create(Configuration               cfg,
+                                     const platform::Window&     window,
+                                     const VulkanContext*        context,
+                                     resources::ResourceManager* resource_manager,
+                                     graphics::PipelineManager*  pipeline_manager) WIND_NOEXCEPT -> WindResult<Renderer>
 {
-  auto context = std::make_unique<VulkanContext>(WIND_TRY(create_context(window, cfg)));
+  // auto context = std::make_unique<VulkanContext>(WIND_TRY(create_context(window, cfg)));
+  auto [width, heigth] = window.drawable_size();
+
+  auto swapchain_context = WIND_TRY(swapchain::create(cfg, width, heigth, context->surface, context->gpu_device));
 
   // frame::create does not stores reference of device or graphics pool
   auto frame_context =
       WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, context->gpu_device.device, context->gpu_device.graphics_pool));
 
-  // but resource_manager stores const Context* context internally
-  auto resource_manager =
-      std::make_unique<resources::ResourceManager>(WIND_TRY(resources::ResourceManager::create(context.get())));
-
-  const float aspect_ratio =
-      static_cast<float>(context->swapchain.extent.width) / static_cast<float>(context->swapchain.extent.height);
+  // TEMPORARY
+  const float aspect_ratio = static_cast<float>(1280) / static_cast<float>(720);
 
   auto camera = Camera{};
   camera.init_perspective(60.0F, aspect_ratio, 0.1F, 100.0F);
 
-  return Renderer(std::move(cfg), std::move(context), std::move(frame_context), std::move(resource_manager), std::move(camera));
+  return Renderer(std::move(cfg), context, std::move(swapchain_context), std::move(frame_context), resource_manager,
+                  pipeline_manager, std::move(camera));
 }
 
 auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
 {
   // create depth image
-  WIND_TRY(m_resource_manager->create_depth_image(m_context->swapchain.extent.width, m_context->swapchain.extent.height));
+  WIND_TRY(m_resource_manager->create_depth_image(m_swapchain_context.extent.width, m_swapchain_context.extent.height));
 
   auto vertex_shader_handle =
       WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.vert.spv"));
@@ -125,7 +128,7 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
                                                   .color_format = Format::BGRA8_SRGB,
                                                   .depth_format = Format::D32_FLOAT};
 
-  auto pipeline_handle = WIND_TRY(m_pipeline_manager.create(std::move(graphics_config), m_context->gpu_device.device));
+  auto pipeline_handle = WIND_TRY(m_pipeline_manager->create(std::move(graphics_config), m_context->gpu_device.device));
 
   auto suzanne_vert = WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/suzanne.vert.spv"));
 
@@ -202,7 +205,7 @@ auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
                                                  .color_format = Format::BGRA8_SRGB,
                                                  .depth_format = Format::D32_FLOAT};
 
-  auto suzanne_pipeline_handle = WIND_TRY(m_pipeline_manager.create(std::move(suzanne_config), m_context->gpu_device.device));
+  auto suzanne_pipeline_handle = WIND_TRY(m_pipeline_manager->create(std::move(suzanne_config), m_context->gpu_device.device));
 
   spdlog::info("suzanne pipeline handle: {}", suzanne_pipeline_handle);
 
@@ -232,18 +235,18 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
   // acquire the next image index
   auto [swapchain_result, swapchain_image] =
-      m_context->swapchain.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
+      m_swapchain_context.handle.acquireNextImage(UINT64_MAX, frame->image_available, nullptr);
 
   // TODO: fix this
   if(swapchain_result == vk::Result::eErrorOutOfDateKHR || swapchain_result == vk::Result::eSuboptimalKHR)
   {
     WIND_TRY(m_context->gpu_device.device.waitIdle());
 
-    auto old_swapchain = std::move(m_context->swapchain);
+    auto old_swapchain = std::move(m_swapchain_context);
 
     auto new_swapchain = WIND_TRY(swapchain::create(m_config, width, height, m_context->surface, m_context->gpu_device));
 
-    m_context->swapchain = std::move(new_swapchain);
+    m_swapchain_context = std::move(new_swapchain);
 
     // create new swapchain
     spdlog::info("out of date swapchain");
@@ -268,7 +271,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
   //TODO: abstract these
   vk::ImageMemoryBarrier2 color_barrier{};
-  color_barrier.image                       = m_context->swapchain.images[m_current_image];
+  color_barrier.image                       = m_swapchain_context.images[m_current_image];
   color_barrier.oldLayout                   = vk::ImageLayout::eUndefined;
   color_barrier.newLayout                   = vk::ImageLayout::eColorAttachmentOptimal;
   color_barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
@@ -286,7 +289,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
   vk::RenderingAttachmentInfo color_attach_info{};
   color_attach_info.imageLayout      = vk::ImageLayout::eColorAttachmentOptimal;
-  color_attach_info.imageView        = m_context->swapchain.image_views[m_current_image];
+  color_attach_info.imageView        = m_swapchain_context.image_views[m_current_image];
   color_attach_info.loadOp           = vk::AttachmentLoadOp::eClear;
   color_attach_info.storeOp          = vk::AttachmentStoreOp::eStore;
   color_attach_info.clearValue.color = color;
@@ -298,7 +301,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   depth_attach_info.storeOp     = vk::AttachmentStoreOp::eDontCare;
   depth_attach_info.clearValue.depthStencil.setDepth(1.0F);
 
-  vk::Rect2D render_area{0, m_context->swapchain.extent};
+  vk::Rect2D render_area{0, m_swapchain_context.extent};
 
   vk::RenderingInfo rendering_info{};
   rendering_info.colorAttachmentCount = 1;
@@ -324,14 +327,14 @@ auto Renderer::draw() WIND_NOEXCEPT -> void
   m_camera.update();
 
   vk::Rect2D scissor{0};
-  scissor.extent = m_context->swapchain.extent;
+  scissor.extent = m_swapchain_context.extent;
 
   vk::Viewport viewport{};
   viewport.x     = 0.0F;
-  viewport.y     = static_cast<float>(m_context->swapchain.extent.height);
-  viewport.width = static_cast<float>(m_context->swapchain.extent.width);
+  viewport.y     = static_cast<float>(m_swapchain_context.extent.height);
+  viewport.width = static_cast<float>(m_swapchain_context.extent.width);
   // upside down triangle fix
-  viewport.height   = -static_cast<float>(m_context->swapchain.extent.height);
+  viewport.height   = -static_cast<float>(m_swapchain_context.extent.height);
   viewport.minDepth = 0.0f;
   viewport.maxDepth = 1.0f;
 
@@ -340,8 +343,8 @@ auto Renderer::draw() WIND_NOEXCEPT -> void
   frame->graphics_command_buffer.setViewport(0, viewport);
   frame->graphics_command_buffer.setScissor(0, scissor);
 
-  auto pipeline         = m_pipeline_manager.get(0);
-  auto suzanne_pipeline = m_pipeline_manager.get(1);
+  auto pipeline         = m_pipeline_manager->get(0);
+  auto suzanne_pipeline = m_pipeline_manager->get(1);
 
   std::array pipelines = {*pipeline.value()->graphics_pipeline, *suzanne_pipeline.value()->graphics_pipeline};
 
@@ -395,7 +398,7 @@ auto Renderer::end() WIND_NOEXCEPT -> void
   vk::ImageMemoryBarrier2 barrier{};
   barrier.oldLayout     = vk::ImageLayout::eColorAttachmentOptimal;
   barrier.newLayout     = vk::ImageLayout::ePresentSrcKHR;
-  barrier.image         = m_context->swapchain.images[m_current_image];
+  barrier.image         = m_swapchain_context.images[m_current_image];
   barrier.srcStageMask  = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
   barrier.srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite;
   barrier.dstStageMask  = vk::PipelineStageFlagBits2::eNone;
@@ -443,7 +446,7 @@ auto Renderer::end() WIND_NOEXCEPT -> void
   if(auto result = m_context->gpu_device.graphics_queue.submit2(submit_info, frame->in_flight); !result.has_value())
     spdlog::info("Failed to submit queue");
 
-  auto swapchain_handle = *m_context->swapchain.handle;
+  auto swapchain_handle = *m_swapchain_context.handle;
 
   vk::SwapchainPresentFenceInfoKHR present_fence_info{};
   present_fence_info.swapchainCount = 1;

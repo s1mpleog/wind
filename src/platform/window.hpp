@@ -61,7 +61,10 @@ public:
   WIND_NODISCARD auto create_surface(const vk::Instance& instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>;
   auto                get_config() const WIND_NOEXCEPT -> const WindowConfiguration&;
 
-  WIND_NODISCARD auto drawable_size() WIND_NOEXCEPT -> std::pair<u32, u32> { return {m_config.width, m_config.height}; }
+  WIND_NODISCARD auto drawable_size() const WIND_NOEXCEPT -> std::pair<u32, u32>
+  {
+    return {m_config.width, m_config.height};
+  }
 
   WIND_NODISCARD auto handle() WIND_NOEXCEPT -> SDL_Window* { return m_handle; }
 
