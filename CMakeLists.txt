@@ -74,6 +74,7 @@ add_executable(wind
   src/vulkan/memory/allocator.cc
   src/vma_impl.cc
   src/camera.cc
+  src/input/input_manager.cc
 )
 
 target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)
