@@ -218,34 +218,39 @@ auto Renderer::draw(scene::RenderObject object, RenderView camera_view) WIND_NOE
   frame->graphics_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->graphics_pipeline);
 
   const auto* model = m_resource_manager->get_model_unchecked(object.model_handle);
-
-  const auto& mesh     = model->mesh;
-  const auto& material = model->materials[0];
-
-  PushConstants pc{
-      .transform      = camera_view.projection * camera_view.view * identity,
-      .albedo_texture = material.albedo_texture ? material.albedo_texture.value() : UINT32_MAX,
-      ._pad           = {0, 0, 0},
-      .base_color     = material.base_color,
-  };
-
-  frame->graphics_command_buffer.pushConstants(pipeline->pipeline_layout,
-                                               vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0,
-                                               sizeof(PushConstants), &pc);
+  const auto& mesh  = model->mesh;
 
   const auto& descriptor_set = *m_resource_manager->get_bindless_descriptor_set();
 
   frame->graphics_command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->pipeline_layout, 0,
                                                     *descriptor_set, {});
 
+
   std::array<vk::Buffer, 3>     buffers{mesh.vertex_buffer.buffer, mesh.normals.buffer, mesh.uvs.buffer};
   std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
 
   frame->graphics_command_buffer.bindVertexBuffers(0, buffers, offsets);
-
   frame->graphics_command_buffer.bindIndexBuffer(mesh.index_buffer.buffer, 0, vk::IndexType::eUint32);
 
-  frame->graphics_command_buffer.drawIndexed(mesh.index_count, 1, 0, 0, 0);
+  for(const auto& submesh : mesh.sub_meshes)
+  {
+    const auto& material = model->materials[submesh.material_index];
+
+    PushConstants pc{
+        .transform      = camera_view.projection * camera_view.view * identity,
+        .albedo_texture = material.albedo_texture ? material.albedo_texture.value() : UINT32_MAX,
+        ._pad           = {0, 0, 0},
+        .base_color     = material.base_color,
+    };
+
+
+    frame->graphics_command_buffer.pushConstants(pipeline->pipeline_layout,
+                                                 vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+                                                 0, sizeof(PushConstants), &pc);
+
+
+    frame->graphics_command_buffer.drawIndexed(submesh.index_count, 1, submesh.index_offset, 0, 0);
+  }
 }
 
 auto Renderer::end() WIND_NOEXCEPT -> void

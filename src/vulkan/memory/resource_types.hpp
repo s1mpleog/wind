@@ -3,6 +3,7 @@
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/vulkan.hpp"
 #include <optional>
+#include <vector>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 
@@ -64,6 +65,13 @@ struct AllocatedBuffer
   }
 };
 
+struct SubMesh
+{
+  u32 index_count{};
+  u32 index_offset{};
+  u32 material_index{};
+};
+
 struct Mesh
 {
   AllocatedBuffer vertex_buffer;
@@ -75,6 +83,8 @@ struct Mesh
   u32 vertex_count{};
   u32 normal_count{};
   u32 uv_count{};
+
+  std::vector<SubMesh> sub_meshes;
 };
 
 struct GpuMaterial
