@@ -56,7 +56,7 @@ WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, win
 
   for(const auto& asset : assets)
   {
-    scene.add_render_objects(asset.models, asset.pipelines);
+    scene.add_render_objects(asset, asset.is_model);
   }
 
   auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window, vulkan_context.get(),

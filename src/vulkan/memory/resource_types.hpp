@@ -78,11 +78,13 @@ struct Mesh
   AllocatedBuffer index_buffer;
   AllocatedBuffer normals;
   AllocatedBuffer uvs;
+  AllocatedBuffer tangents;
 
   u32 index_count{};
   u32 vertex_count{};
   u32 normal_count{};
   u32 uv_count{};
+  u32 tangent_count{};
 
   std::vector<SubMesh> sub_meshes;
 };

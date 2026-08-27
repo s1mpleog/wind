@@ -6,16 +6,13 @@
 
 #include "camera.hpp"
 #include "render_object.hpp"
-#include "resources/resource_manager.hpp"
-#include "vulkan/graphics/pipeline_manager.hpp"
 #include <vector>
 
 namespace wind::scene {
 class Scene
 {
 public:
-  auto add_render_objects(resources::ModelHandle model_handle, vulkan::graphics::PipelineHandle pipeline_handle, Transform = {}) WIND_NOEXCEPT
-      -> void;
+  auto add_render_objects(builtin::BuiltAssets assets, bool is_model = true, Transform transform = {}) WIND_NOEXCEPT -> void;
 
   auto get() WIND_NOEXCEPT -> std::vector<RenderObject>;
 

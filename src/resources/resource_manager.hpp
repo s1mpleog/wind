@@ -19,6 +19,7 @@
 #include "vulkan/memory/allocator.hpp"
 #include "vulkan/memory/resource_types.hpp"
 #include "vulkan/vulkan.hpp"
+#include <array>
 #include <cstddef>
 #include <span>
 #include <string>
@@ -42,6 +43,7 @@ using ShaderHandle  = Handle<Shader>;
 using VertexHandle  = Handle<u32>;
 using IndexHandle   = Handle<u32>;
 using ModelHandle   = Handle<u32>;
+using BufferHandle  = Handle<u32>;
 
 static_assert(sizeof(TextureHandle) == 4);
 static_assert(sizeof(ShaderHandle) == 4);
@@ -81,14 +83,10 @@ public:
   WIND_NODISCARD auto recreate_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
 
   // just for testing
-  WIND_NODISCARD auto create_vertices(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>
-  {
-    auto allocated_buffer = WIND_TRY(m_allocator.create_buffer(m_context, gpu::BufferData{
-                                                                              .data = vertices,
-                                                                              .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-                                                                          }));
-    return allocated_buffer;
-  }
+  WIND_NODISCARD auto create_vertex_buffer(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<BufferHandle>;
+  WIND_NODISCARD auto create_index_buffer(std::span<const std::byte> indices) -> WindResult<BufferHandle>;
+  WIND_NODISCARD auto get_buffer(BufferHandle handle) const -> WindResult<const gpu::AllocatedBuffer*>;
+  WIND_NODISCARD auto get_buffer_unchecked(BufferHandle handle) const -> const gpu::AllocatedBuffer*;
 
   WIND_NODISCARD auto get_bindless_descriptor_set() WIND_NOEXCEPT -> const vk::raii::DescriptorSet*
   {
@@ -115,6 +113,7 @@ private:
   gpu::AllocatedImage                           m_depth_image;
   vulkan::DescriptorManager                     m_descriptor_manager;
   std::vector<gpu::Model>                       m_models;
+  std::vector<gpu::AllocatedBuffer>             m_buffers;  // for things that don't uses models
 };
 
 };  // namespace wind::resources
