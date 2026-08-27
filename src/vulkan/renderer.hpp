@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 #include "resources/resource_manager.hpp"
+#include "scene/render_object.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/configuration.hpp"
 #include "vulkan/core/context.hpp"
@@ -36,7 +37,7 @@ public:
   }
 
   WIND_NODISCARD auto begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
-  auto                draw() WIND_NOEXCEPT -> void;
+  auto                draw(scene::RenderObject object) WIND_NOEXCEPT -> void;
   auto                end() WIND_NOEXCEPT -> void;
 
 private:

@@ -69,12 +69,14 @@ add_executable(wind
   src/vulkan/frame/frame_context.cc
   src/resources/resource_manager.cc
   src/resources/descriptor_manager.cc
+  src/resources/builtin.cc
   src/vulkan/graphics/pipeline.cc
   src/vulkan/renderer.cc
   src/vulkan/memory/allocator.cc
   src/vma_impl.cc
   src/camera.cc
   src/input/input_manager.cc
+  src/scene/scene.cc
 )
 
 target_include_directories(wind PRIVATE ${CMAKE_BINARY_DIR}/generated)

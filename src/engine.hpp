@@ -9,7 +9,9 @@
 #include "vulkan/core/context.hpp"
 #include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/renderer.hpp"
+#include <algorithm>
 #include <memory>
+#include "scene/scene.hpp"
 
 namespace wind {
 class Engine
@@ -32,21 +34,23 @@ private:
          vulkan::Renderer                                   renderer,
          std::unique_ptr<input::InputManger>                input_manager,
          std::unique_ptr<resources::ResourceManager>        resource_manager,
-         std::unique_ptr<vulkan::graphics::PipelineManager> pipeline_manager)
+         std::unique_ptr<vulkan::graphics::PipelineManager> pipeline_manager,
+         scene::Scene                                       scene)
       : m_window{std::move(window)}
       , m_vulkan_context{std::move(context)}
       , m_renderer{std::move(renderer)}
       , m_pipeline_manager{std::move(pipeline_manager)}
       , m_resource_manager{std::move(resource_manager)}
-      , m_input_manager{std::move(input_manager)} {};
+      , m_input_manager{std::move(input_manager)}
+      , m_scene{std::move(scene)} {};
 
   platform::Window                                   m_window;
   std::unique_ptr<vulkan::VulkanContext>             m_vulkan_context;
   vulkan::Renderer                                   m_renderer;
   std::unique_ptr<vulkan::graphics::PipelineManager> m_pipeline_manager;
   std::unique_ptr<resources::ResourceManager>        m_resource_manager;
-  // painful but have to do it thanks to std::expected :(
-  std::unique_ptr<input::InputManger> m_input_manager;
+  std::unique_ptr<input::InputManger>                m_input_manager;
+  scene::Scene                                       m_scene;
 };
 
 };  // namespace wind
