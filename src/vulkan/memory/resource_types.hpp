@@ -2,6 +2,7 @@
 
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/vulkan.hpp"
+#include <optional>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 
@@ -78,9 +79,9 @@ struct Mesh
 
 struct GpuMaterial
 {
-  u32 albedo_texture{};
-  u32 normal_texture{};
-  u32 metallic_roughness_texture{};
+  std::optional<u32> albedo_texture;
+  std::optional<u32> normal_texture;
+  std::optional<u32> metallic_roughness_texture;
 
   float     metallic{};
   float     roughness{};
