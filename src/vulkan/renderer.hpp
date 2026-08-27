@@ -10,7 +10,7 @@
 #include "vulkan/core/swapchain.hpp"
 #include "vulkan/frame/frame_context.hpp"
 #include "vulkan/graphics/pipeline_manager.hpp"
-#include "camera.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
 namespace wind::vulkan {
 class Renderer
@@ -39,21 +39,26 @@ public:
   auto                draw(scene::RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void;
   auto                end() WIND_NOEXCEPT -> void;
 
+  // internal functions
+  auto draw_model(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void;
+  auto draw_buffer(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void;
+
+  // can cmd buffer be const ?
+  auto setup_viewport(vk::raii::CommandBuffer& cmd_buffer) const WIND_NOEXCEPT -> void;
+
 private:
   Renderer(Configuration               cfg,
            const VulkanContext*        context,
            SwapchainContext            swapchain_context,
            std::vector<FrameContext>   frame_context,
            resources::ResourceManager* resource_manager,
-           graphics::PipelineManager*  pipeline_manager,
-           Camera                      camera)
+           graphics::PipelineManager*  pipeline_manager)
       : m_config{std::move(cfg)}
       , m_context{context}
       , m_swapchain_context{std::move(swapchain_context)}
       , m_frame_context(std::move(frame_context))
       , m_pipeline_manager{pipeline_manager}
-      , m_resource_manager{resource_manager}
-      , m_camera{camera} {};
+      , m_resource_manager{resource_manager} {};
 
   Configuration               m_config;
   const VulkanContext*        m_context;
@@ -63,7 +68,6 @@ private:
   resources::ResourceManager* m_resource_manager;
   gpu::AllocatedBuffer        m_test_vertex_buffer;
   resources::ModelHandle      m_test_model{};
-  Camera                      m_camera;
 
   u32 m_current_frame{0};
   u32 m_current_image{0};

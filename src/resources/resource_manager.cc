@@ -1,6 +1,7 @@
 #include "resource_manager.hpp"
 #include "config.hpp"
 #include "error.hpp"
+#include "glm/common.hpp"
 #include "resources/descriptor_manager.hpp"
 #include "resources/texture_loader.hpp"
 #include "spdlog/spdlog.h"
@@ -58,7 +59,7 @@ WIND_NODISCARD auto ResourceManager::load_shader(const vk::raii::Device& device,
 {
   auto it = m_shader_cache.find(std::string{shader_path});
 
-  spdlog::info("context in resource manager: {}", (void*)m_context);
+  spdlog::info("loading shader: {}", shader_path);
 
   if(it != m_shader_cache.end())
     return it->second;
@@ -104,7 +105,7 @@ WIND_NODISCARD auto ResourceManager::load_shader(const vk::raii::Device& device,
 
 WIND_NODISCARD auto ResourceManager::get_shader(ShaderHandle handle) WIND_NOEXCEPT -> WindResult<vk::raii::ShaderModule*>
 {
-  if(handle.index > m_shaders.size())
+  if(handle.index >= m_shaders.size())
     WIND_ERR(WindError::internal());
 
   return &m_shaders[handle.index];
@@ -153,7 +154,7 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
 
   // mesh.index_buffer = WIND_TRY(m_allocator.create_buffer(m_context, ));
 
-  std::inplace_vector<gpu::BufferData, 4> buffers{{gpu::BufferData{
+  std::inplace_vector<gpu::BufferData, 5> buffers{{gpu::BufferData{
                                                       .data  = std::as_bytes(std::span{wind_asset.mesh.position}),
                                                       .usage = vk::BufferUsageFlagBits::eVertexBuffer,
                                                   }},
@@ -167,6 +168,10 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
                                                   }},
                                                   {gpu::BufferData{
                                                       .data  = std::as_bytes(std::span{wind_asset.mesh.uvs}),
+                                                      .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+                                                  }},
+                                                  {gpu::BufferData{
+                                                      .data  = std::as_bytes(std::span{wind_asset.mesh.tangents}),
                                                       .usage = vk::BufferUsageFlagBits::eVertexBuffer,
                                                   }}};
 
@@ -206,16 +211,13 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
   model.mesh.index_buffer  = std::move(result[1]);
   model.mesh.normals       = std::move(result[2]);
   model.mesh.uvs           = std::move(result[3]);
+  model.mesh.tangents      = std::move(result[4]);
 
-  auto uvs = WIND_TRY(m_allocator.create_buffer(m_context, gpu::BufferData{
-                                                               .data  = std::as_bytes(std::span{wind_asset.mesh.uvs}),
-                                                               .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-                                                           }));
-
-  model.mesh.vertex_count = static_cast<u32>(wind_asset.mesh.position.size());
-  model.mesh.index_count  = static_cast<u32>(wind_asset.mesh.indices.size());
-  model.mesh.uv_count     = static_cast<u32>(wind_asset.mesh.uvs.size());
-  model.mesh.normal_count = static_cast<u32>(wind_asset.mesh.normals.size());
+  model.mesh.vertex_count  = static_cast<u32>(wind_asset.mesh.position.size());
+  model.mesh.index_count   = static_cast<u32>(wind_asset.mesh.indices.size());
+  model.mesh.uv_count      = static_cast<u32>(wind_asset.mesh.uvs.size());
+  model.mesh.normal_count  = static_cast<u32>(wind_asset.mesh.normals.size());
+  model.mesh.tangent_count = static_cast<u32>(wind_asset.mesh.tangents.size());
 
   // auto mesh_index = static_cast<u32>(m_meshes.size());
 
@@ -312,7 +314,7 @@ WIND_NODISCARD auto ResourceManager::get_default_depth_image_view() const WIND_N
 
 WIND_NODISCARD auto ResourceManager::get_model(ModelHandle handle) WIND_NOEXCEPT -> WindResult<const gpu::Model*>
 {
-  if(handle.index > m_models.size())
+  if(handle.index >= m_models.size())
     WIND_ERR(WindError::internal());
 
   return &m_models[handle.index];
@@ -333,6 +335,40 @@ WIND_NODISCARD auto ResourceManager::recreate_default_depth_image(u32 width, u32
   m_depth_image = WIND_TRY(m_allocator.create_depth_buffer(m_context, width, height));
 
   return {};
+}
+
+WIND_NODISCARD auto ResourceManager::create_vertex_buffer(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<BufferHandle>
+{
+  auto index = static_cast<u32>(m_buffers.size());
+
+  m_buffers.emplace_back(WIND_TRY(m_allocator.create_buffer(m_context, gpu::BufferData{
+                                                                           .data = vertices,
+                                                                       })));
+
+  return BufferHandle{.index = index};
+}
+
+WIND_NODISCARD auto ResourceManager::create_index_buffer(std::span<const std::byte> indices) -> WindResult<BufferHandle>
+{
+  auto index = static_cast<u32>(m_buffers.size());
+
+  m_buffers.emplace_back(WIND_TRY(
+      m_allocator.create_buffer(m_context, gpu::BufferData{.data = indices, .usage = vk::BufferUsageFlagBits::eIndexBuffer})));
+
+
+  return BufferHandle{.index = index};
+}
+
+WIND_NODISCARD auto ResourceManager::get_buffer(BufferHandle handle) const -> WindResult<const gpu::AllocatedBuffer*>
+{
+  if(handle.index >= m_buffers.size())
+    WIND_ERR(WindError::internal());
+
+  return &m_buffers[handle.index];
+}
+WIND_NODISCARD auto ResourceManager::get_buffer_unchecked(BufferHandle handle) const -> const gpu::AllocatedBuffer*
+{
+  return get_buffer(handle).value();
 }
 
 };  // namespace wind::resources

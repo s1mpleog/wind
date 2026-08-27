@@ -4,6 +4,7 @@
 #include "error.hpp"
 #include "glm/ext/vector_float2.hpp"
 #include "glm/ext/vector_float3.hpp"
+#include "glm/ext/vector_float4.hpp"
 #include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
 #include <algorithm>
@@ -49,8 +50,9 @@ struct WindMesh
 {
   std::vector<glm::vec3>   position;
   std::vector<u32>         indices;
-  std::vector<glm::vec3>   normals;
   std::vector<glm::vec2>   uvs;
+  std::vector<glm::vec3>   normals;
+  std::vector<glm::vec4>   tangents;
   std::vector<WindSubMesh> sub_meshes;
 };
 
@@ -110,6 +112,7 @@ WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WI
   constexpr u32 CHUNK_INDC = 0x43444E49;  // "INDC"
   constexpr u32 CHUNK_IUV_ = 0x5F565549;  // "IUV_"
   constexpr u32 CHUNK_INOR = 0x524F4E49;  // "INOR"
+  constexpr u32 CHUNK_ITAN = 0x4E415449;  // "ITAN"
   constexpr u32 CHUNK_ISUB = 0x42555349;  // "ISUB"
   constexpr u32 CHUNK_TEXT = 0x54584554;  // "TEXT"
   constexpr u32 CHUNK_MATE = 0x4554414D;  // "MATE"
@@ -183,17 +186,28 @@ WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WI
         break;
       }
 
+      case CHUNK_ITAN: {
+        u64  size    = read_u64(buffer, cursor);
+        auto tangent = buffer.subspan(cursor, size);
+
+        asset.mesh.tangents.resize(tangent.size());
+
+        std::memcpy(asset.mesh.tangents.data(), tangent.data(), tangent.size());
+
+        WIND_ASSERT(tangent.size() == asset.mesh.tangents.size() && "Memcpy failed");
+
+        cursor += size;
+
+        break;
+      }
+
       case CHUNK_ISUB: {
-        spdlog::info("cursor once i enter i_sub: {}", cursor);
         // auto size = read_u64(buffer, cursor);
         cursor += sizeof(u64);
         // spdlog::info("sub_mesh size: {}", size);
         asset.mesh.sub_meshes.emplace_back(WindSubMesh{.index_count    = read_u32(buffer, cursor),
                                                        .index_offset   = read_u32(buffer, cursor),
                                                        .material_index = read_u32(buffer, cursor)});
-
-
-        spdlog::info("cursor once i leave i_sub: {}", cursor);
         break;
       }
 

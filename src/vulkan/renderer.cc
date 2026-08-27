@@ -1,6 +1,9 @@
 #include "renderer.hpp"
 #include "camera.hpp"
+#include "config.hpp"
 #include "error.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/vector_float4.hpp"
 #include "platform/window.hpp"
 #include "resources/resource_manager.hpp"
 #include "spdlog/spdlog.h"
@@ -14,29 +17,13 @@
 #include "vulkan/graphics/shader_types.hpp"
 #include "vulkan/vulkan.hpp"
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 #include <glm/glm.hpp>
+#include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
 namespace wind::vulkan {
-struct Vertex
-{
-  glm::vec4 position;
-  glm::vec4 color;
-};
-
-static_assert(sizeof(Vertex) == 32);
-static_assert(offsetof(Vertex, position) == 0);
-static_assert(offsetof(Vertex, color) == 16);
-
-static std::array<Vertex, 3> vertices{{
-    {{0.0F, 0.5F, 0.0F, 1.0F}, {1.0F, 0.0F, 0.0F, 1.0F}},
-    {{0.5F, -0.5F, 0.0F, 1.0F}, {0.0F, 1.0F, 0.0F, 1.0F}},
-    {{-0.5F, -0.5F, 0.0F, 1.0F}, {0.0F, 0.0F, 1.0F, 1.0F}},
-}};
-
 WIND_NODISCARD auto Renderer::create(Configuration               cfg,
                                      const platform::Window&     window,
                                      const VulkanContext*        context,
@@ -55,13 +42,7 @@ WIND_NODISCARD auto Renderer::create(Configuration               cfg,
   // create depth image
   WIND_TRY(resource_manager->create_default_depth_image(swapchain_context.extent.width, swapchain_context.extent.height));
 
-  // TEMPORARY
-  const float aspect_ratio = static_cast<float>(1280) / static_cast<float>(720);
-
-  auto camera = Camera{};
-
-  return Renderer(std::move(cfg), context, std::move(swapchain_context), std::move(frame_context), resource_manager,
-                  pipeline_manager, std::move(camera));
+  return Renderer(std::move(cfg), context, std::move(swapchain_context), std::move(frame_context), resource_manager, pipeline_manager);
 }
 
 WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
@@ -180,20 +161,95 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   return {};
 }
 
-auto Renderer::draw(scene::RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void
+
+auto Renderer::draw_buffer(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void
+{
+  WIND_ASSERT(!object.is_model_type && "Trying to draw buffer but object is model");
+
+  const auto* pipeline = m_pipeline_manager->get_unchecked(object.pipeline_handle);
+  cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->graphics_pipeline);
+
+  const auto* vertex_buffer = m_resource_manager->get_buffer_unchecked(object.buffer_asset.vertex_handle);
+  const auto* index_buffer  = m_resource_manager->get_buffer_unchecked(object.buffer_asset.index_handle);
+
+  const glm::mat4 identity{1.0F};
+
+  const auto& view = camera_view.view;
+
+  // std::printf(
+  //     "view:\n"
+  //     "%f %f %f %f\n"
+  //     "%f %f %f %f\n"
+  //
+  //     "%f %f %f %f\n"
+  //     "%f %f %f %f\n",
+  //     view[0][0], view[1][0], view[2][0], view[3][0], view[0][1], view[1][1], view[2][1], view[3][1], view[0][2],
+  //     view[1][2], view[2][2], view[3][2], view[0][3], view[1][3], view[2][3], view[3][3]);
+
+  auto push_constant = PushConstants{.transform      = camera_view.projection * camera_view.view
+                                                       * glm::translate(glm::mat4{1.0F}, glm::vec3{0.0F, 0.0F, -10.0F}),
+                                     .albedo_texture = 0,
+                                     .normal_index   = 0,
+                                     .metallic_roughness_index = 0,
+                                     .base_color               = glm::vec4{0.0F, 0.0F, 0.0F, 0.0F}};
+
+  cmd_buffer.pushConstants(pipeline->pipeline_layout, vk::ShaderStageFlagBits::eVertex, 0, sizeof(PushConstants), &push_constant);
+
+  std::array<vk::Buffer, 1>     buffers{vertex_buffer->buffer};
+  std::array<vk::DeviceSize, 1> offsets{0};
+
+  cmd_buffer.bindVertexBuffers(0, buffers, offsets);
+  cmd_buffer.bindIndexBuffer(index_buffer->buffer, 0, vk::IndexType::eUint16);
+
+  cmd_buffer.drawIndexed(object.buffer_asset.index_count, 1, 0, 0, 0);
+}
+
+auto Renderer::draw_model(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void
+{
+  WIND_ASSERT(object.is_model_type && "Trying to draw model but object is not model");
+
+  const auto* pipeline = m_pipeline_manager->get_unchecked(object.pipeline_handle);
+
+  cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->graphics_pipeline);
+
+  const auto* model = m_resource_manager->get_model_unchecked(object.model_handle);
+  const auto& mesh  = model->mesh;
+
+  const auto& descriptor_set = *m_resource_manager->get_bindless_descriptor_set();
+
+  cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->pipeline_layout, 0, *descriptor_set, {});
+
+  std::array<vk::Buffer, 4> buffers{mesh.vertex_buffer.buffer, mesh.normals.buffer, mesh.uvs.buffer, mesh.tangents.buffer};
+  std::array<vk::DeviceSize, 4> offsets{0, 0, 0, 0};
+
+  cmd_buffer.bindVertexBuffers(0, buffers, offsets);
+  cmd_buffer.bindIndexBuffer(mesh.index_buffer.buffer, 0, vk::IndexType::eUint32);
+
+  const glm::mat4 identity{1.0F};
+
+  for(const auto& submesh : mesh.sub_meshes)
+  {
+    const auto& material = model->materials[submesh.material_index];
+
+    PushConstants pc{
+        .transform      = camera_view.projection * camera_view.view * identity,
+        .albedo_texture = material.albedo_texture ? material.albedo_texture.value() : UINT32_MAX,
+        .normal_index   = material.normal_texture ? material.normal_texture.value() : UINT32_MAX,
+        .metallic_roughness_index = material.metallic_roughness_texture ? material.metallic_roughness_texture.value() : UINT32_MAX,
+        .base_color = material.base_color,
+    };
+
+    cmd_buffer.pushConstants(pipeline->pipeline_layout, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+                             0, sizeof(PushConstants), &pc);
+
+    cmd_buffer.drawIndexed(submesh.index_count, 1, submesh.index_offset, 0, 0);
+  }
+}
+
+auto Renderer::setup_viewport(vk::raii::CommandBuffer& cmd_buffer) const WIND_NOEXCEPT -> void
 {
   vk::Rect2D scissor{0};
   scissor.extent = m_swapchain_context.extent;
-
-  // // we set viewport and scissors dynamic in graphics pipeline so we have to set it here
-  // vk::Viewport viewport{};
-  // viewport.x = 0.0F;
-  // // viewport.y     = static_cast<float>(m_swapchain_context.extent.height);
-  // viewport.width = static_cast<float>(m_swapchain_context.extent.width);
-  // // upside down triangle fix
-  // viewport.height   = static_cast<float>(m_swapchain_context.extent.height);
-  // viewport.minDepth = 0.0F;
-  // viewport.maxDepth = 1.0F;
 
   vk::Viewport viewport{};
   viewport.x        = 0.0F;
@@ -203,53 +259,23 @@ auto Renderer::draw(scene::RenderObject object, RenderView camera_view) WIND_NOE
   viewport.minDepth = 0.0F;
   viewport.maxDepth = 1.0F;
 
+  cmd_buffer.setViewport(0, viewport);
+  cmd_buffer.setScissor(0, scissor);
+}
+
+auto Renderer::draw(scene::RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void
+{
   auto* frame = &m_frame_context[m_current_frame];
 
-  frame->graphics_command_buffer.setViewport(0, viewport);
-  frame->graphics_command_buffer.setScissor(0, scissor);
+  setup_viewport(frame->graphics_command_buffer);
 
-  // Temporary camera/object transform.
-  const glm::mat4 identity{1.0F};
-
-  // const glm::mat4 transform = m_camera.projection() * identity;
-
-  const auto* pipeline = m_pipeline_manager->get_unchecked(object.pipeline_handle);
-
-  frame->graphics_command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline->graphics_pipeline);
-
-  const auto* model = m_resource_manager->get_model_unchecked(object.model_handle);
-  const auto& mesh  = model->mesh;
-
-  const auto& descriptor_set = *m_resource_manager->get_bindless_descriptor_set();
-
-  frame->graphics_command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->pipeline_layout, 0,
-                                                    *descriptor_set, {});
-
-
-  std::array<vk::Buffer, 3>     buffers{mesh.vertex_buffer.buffer, mesh.normals.buffer, mesh.uvs.buffer};
-  std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
-
-  frame->graphics_command_buffer.bindVertexBuffers(0, buffers, offsets);
-  frame->graphics_command_buffer.bindIndexBuffer(mesh.index_buffer.buffer, 0, vk::IndexType::eUint32);
-
-  for(const auto& submesh : mesh.sub_meshes)
+  if(object.is_model_type)
   {
-    const auto& material = model->materials[submesh.material_index];
-
-    PushConstants pc{
-        .transform      = camera_view.projection * camera_view.view * identity,
-        .albedo_texture = material.albedo_texture ? material.albedo_texture.value() : UINT32_MAX,
-        ._pad           = {0, 0, 0},
-        .base_color     = material.base_color,
-    };
-
-
-    frame->graphics_command_buffer.pushConstants(pipeline->pipeline_layout,
-                                                 vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
-                                                 0, sizeof(PushConstants), &pc);
-
-
-    frame->graphics_command_buffer.drawIndexed(submesh.index_count, 1, submesh.index_offset, 0, 0);
+    draw_model(object, camera_view, frame->graphics_command_buffer);
+  }
+  else
+  {
+    draw_buffer(object, camera_view, frame->graphics_command_buffer);
   }
 }
 
