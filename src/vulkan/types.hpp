@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.hpp"
+#include "spdlog/spdlog.h"
 #include "vulkan/core/configuration.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/vulkan.hpp"

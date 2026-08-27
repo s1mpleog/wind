@@ -30,6 +30,8 @@ WIND_NODISCARD auto Window::create() WIND_NOEXCEPT -> WindResult<void>
     WIND_ERR(WindError::sdl(ErrorCode::FailedToCreateWindow));
   }
 
+  SDL_SetWindowRelativeMouseMode(m_handle, true);
+
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Window created: {}x{}", m_config.width, m_config.height);
 #endif

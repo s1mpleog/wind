@@ -14,6 +14,7 @@
 #include "vulkan/renderer.hpp"
 #include <memory>
 #include <spdlog/spdlog.h>
+#include <SDL3/SDL_timer.h>
 
 namespace wind {
 //current life-cycle is following:
@@ -47,22 +48,19 @@ WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, win
 
   auto pipeline_manager = std::make_unique<vulkan::graphics::PipelineManager>(vulkan::graphics::PipelineManager{});
 
-  auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window, vulkan_context.get(),
-                                                    resource_manager.get(), pipeline_manager.get()));
-
-  // temporary
-  WIND_TRY(renderer.initialize_resources());
-
   // load all the models and pipelines
   auto assets = WIND_TRY(builtin::build(resource_manager.get(), pipeline_manager.get(), vulkan_context->gpu_device.device));
 
   scene::Scene scene{};
+
 
   for(const auto& asset : assets)
   {
     scene.add_render_objects(asset.models, asset.pipelines);
   }
 
+  auto renderer = WIND_TRY(vulkan::Renderer::create(std::move(vulkan_cfg), window, vulkan_context.get(),
+                                                    resource_manager.get(), pipeline_manager.get()));
 
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Engine created successfully");
@@ -76,29 +74,42 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
 {
   bool running = true;
 
+  float time = 0.0F;
+
+  u64 last = SDL_GetPerformanceCounter();
+
   //TODO: abstract this
   while(running)
   {
+    uint64_t now   = SDL_GetPerformanceCounter();
+    float    delta = static_cast<float>(now - last) / static_cast<float>(SDL_GetPerformanceFrequency());
+    last           = now;
+    time += delta;
+
     SDL_Event event{};
 
-    m_input_manager->update();
+    m_input_manager->begin_frame();
 
     while(SDL_PollEvent(&event))
     {
+      m_input_manager->process_event(event);
+
       if(event.type == SDL_EVENT_QUIT)
         running = false;
-
-      //TODO:
-      // m_process_event(event)
     }
 
-    m_input_manager->update();
-
+    // TODO: do not use this
+    // m_input_manager->update();
 
     int width{};
     int height{};
 
     SDL_GetWindowSizeInPixels(m_window.handle(), &width, &height);
+
+    m_scene.camera.update_aspect(width, height);
+
+    m_scene.camera.process_mouse();
+    m_scene.camera.process_keyboard(delta);
 
     auto begin_result = m_renderer.begin(static_cast<u32>(width), static_cast<u32>(height));
 
@@ -110,9 +121,11 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
       WIND_ERR(begin_result.error());
     }
 
+    auto camera_view = m_scene.camera.render_view();
+
     for(const auto& object : m_scene.get())
     {
-      m_renderer.draw(object);
+      m_renderer.draw(object, camera_view);
     }
 
     m_renderer.end();
