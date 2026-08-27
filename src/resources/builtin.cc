@@ -95,7 +95,7 @@ WIND_NODISCARD auto build(resources::ResourceManager*        resource_manager,
   resource_manager->destroy_shader(vertex_shader_handle);
   resource_manager->destroy_shader(fragment_shader_handle);
 
-  auto model_handle = WIND_TRY(resource_manager->load_model("assets/models/thanos.wind"));
+  auto model_handle = WIND_TRY(resource_manager->load_model("assets/models/head.wind"));
 
   std::vector<BuiltAssets> assets;
 

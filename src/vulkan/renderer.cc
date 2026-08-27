@@ -224,7 +224,9 @@ auto Renderer::draw(scene::RenderObject object, RenderView camera_view) WIND_NOE
 
   PushConstants pc{
       .transform      = camera_view.projection * camera_view.view * identity,
-      .albedo_texture = material.albedo_texture,
+      .albedo_texture = material.albedo_texture ? material.albedo_texture.value() : UINT32_MAX,
+      ._pad           = {0, 0, 0},
+      .base_color     = material.base_color,
   };
 
   frame->graphics_command_buffer.pushConstants(pipeline->pipeline_layout,
