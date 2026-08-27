@@ -17,7 +17,7 @@ WIND_NODISCARD auto DescriptorManager::create(const vk::raii::Device& device, vk
   pool_size.type            = descriptor_type;
 
   vk::DescriptorPoolCreateInfo ds_pool_create_info{};
-  ds_pool_create_info.flags         = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind;
+  ds_pool_create_info.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind | vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
   ds_pool_create_info.pPoolSizes    = &pool_size;
   ds_pool_create_info.poolSizeCount = 1;
   ds_pool_create_info.maxSets       = 1024;

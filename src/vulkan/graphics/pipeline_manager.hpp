@@ -9,7 +9,7 @@
 
 namespace wind::vulkan::graphics {
 
-using PipelineId = u32;
+using PipelineHandle = u32;
 
 class PipelineManager
 {
@@ -23,20 +23,23 @@ public:
   PipelineManager(PipelineManager&&)                    = default;
   auto operator=(PipelineManager&&) -> PipelineManager& = default;
 
-  WIND_NODISCARD auto WIND_INLINE create(GraphicsConfig config, const vk::raii::Device& device) WIND_NOEXCEPT -> WindResult<PipelineId>
+  WIND_NODISCARD auto WIND_INLINE create(GraphicsConfig config, const vk::raii::Device& device) WIND_NOEXCEPT
+      -> WindResult<PipelineHandle>
   {
-    PipelineId id = m_pipelines.size();
+    PipelineHandle handle = m_pipelines.size();
     m_pipelines.emplace_back(WIND_TRY(graphics::create(device, std::move(config))));
-    return id;
+    return handle;
   }
 
-  auto get(PipelineId id) -> WindResult<GraphicsPipeline*>
+  auto get(PipelineHandle handle) -> WindResult<GraphicsPipeline*>
   {
-    if(id > m_pipelines.size())
+    if(handle > m_pipelines.size())
       WIND_ERR(WindError::internal());
 
-    return &m_pipelines[id];
+    return &m_pipelines[handle];
   };
+
+  auto get_unchecked(PipelineHandle handle) -> GraphicsPipeline* { return &m_pipelines[handle]; }
 
 private:
   std::vector<GraphicsPipeline> m_pipelines;

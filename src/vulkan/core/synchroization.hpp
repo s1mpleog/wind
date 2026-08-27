@@ -1,6 +1,5 @@
 #pragma once
 
-#include "spdlog/spdlog.h"
 #include "vulkan/vulkan.hpp"
 
 namespace wind::vulkan::sync {
@@ -123,8 +122,6 @@ WIND_INLINE auto transition_image(vk::raii::CommandBuffer& cmd, VkImage image, v
 
     cmd.pipelineBarrier2(dep_info);
 
-    spdlog::info("transition image from undefined -> colorAttachmentOptimal");
-
     return;
   }
 
@@ -151,8 +148,6 @@ WIND_INLINE auto transition_image(vk::raii::CommandBuffer& cmd, VkImage image, v
     dep_info.pImageMemoryBarriers    = &barrier;
 
     cmd.pipelineBarrier2(dep_info);
-
-    spdlog::info("transition image from eColorAttachmentOptimal -> ePresentSrcKHR");
   }
 
   if(old_layout == vk::ImageLayout::eUndefined && new_layout == vk::ImageLayout::ePresentSrcKHR)
@@ -199,7 +194,6 @@ WIND_INLINE auto transition_image(vk::raii::CommandBuffer& cmd, VkImage image, v
     // as i know vulkan explicitly separates "recording" and "drawing"
     cmd.pipelineBarrier2(dep_info);
 
-    spdlog::info("transition image from undefined -> ePresentSrcKHR");
 
     return;
   }

@@ -4,7 +4,10 @@
 #include "error.hpp"
 #include "input/input_manager.hpp"
 #include "platform/window.hpp"
+#include "resources/builtin.hpp"
 #include "resources/resource_manager.hpp"
+#include "scene/render_object.hpp"
+#include "scene/scene.hpp"
 #include "utils/expected_util.hpp"
 #include "vulkan/core/context.hpp"
 #include "vulkan/graphics/pipeline_manager.hpp"
@@ -50,12 +53,23 @@ WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, win
   // temporary
   WIND_TRY(renderer.initialize_resources());
 
+  // load all the models and pipelines
+  auto assets = WIND_TRY(builtin::build(resource_manager.get(), pipeline_manager.get(), vulkan_context->gpu_device.device));
+
+  scene::Scene scene{};
+
+  for(const auto& asset : assets)
+  {
+    scene.add_render_objects(asset.models, asset.pipelines);
+  }
+
+
 #ifdef WIND_LOG_ENABLE
   spdlog::info("Engine created successfully");
 #endif
 
   return Engine(std::move(window), std::move(vulkan_context), std::move(renderer), std::move(input_manager),
-                std::move(resource_manager), std::move(pipeline_manager));
+                std::move(resource_manager), std::move(pipeline_manager), std::move(scene));
 }
 
 auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
@@ -93,11 +107,13 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
       if(begin_result.error().code == ErrorCode::SwapchainOutOfDate)
         continue;
 
-      spdlog::info("error: {}", begin_result.error().to_string());
       WIND_ERR(begin_result.error());
     }
 
-    m_renderer.draw();
+    for(const auto& object : m_scene.get())
+    {
+      m_renderer.draw(object);
+    }
 
     m_renderer.end();
   }
