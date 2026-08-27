@@ -74,7 +74,6 @@ add_executable(wind
   src/vulkan/renderer.cc
   src/vulkan/memory/allocator.cc
   src/vma_impl.cc
-  src/camera.cc
   src/input/input_manager.cc
   src/scene/scene.cc
 )

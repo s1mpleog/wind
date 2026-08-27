@@ -19,9 +19,25 @@ public:
 
   auto get() WIND_NOEXCEPT -> std::vector<RenderObject>;
 
+  Scene()
+  {
+    camera = Camera{.position = {0.0F, 1.75F, 7.5F},
+                    // .position = {0.0f, 0.0f, 3.0f},
+                    .yaw   = glm::radians(180.0F),
+                    .pitch = glm::radians(-9.0F),
+                    // .pitch = glm::radians(0.0f),
+                    .fov    = 60.0F,
+                    .aspect = static_cast<float>(1200.0F) / static_cast<float>(700.0F),
+                    .near   = 0.1F,
+                    .far    = 1000.0f};
+  }
+
+
+  // make camera public for now it does not have any dependency to hide
+  Camera camera;
+
 private:
   std::vector<RenderObject> m_objects;
-  Camera                    m_camera;
 };
 
 };  // namespace wind::scene

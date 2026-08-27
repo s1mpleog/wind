@@ -14,6 +14,11 @@ WIND_NODISCARD auto create(const vk::raii::Device& device, GraphicsConfig cfg) W
 {
   vk::GraphicsPipelineCreateInfo gp_create_info{};
 
+  for(const auto& shader : cfg.shader)
+  {
+    spdlog::info("config shader module = {}", reinterpret_cast<uintptr_t>(shader.module));
+  }
+
   auto                                   pipeline_create_info = to_vk(cfg);
   vk::PipelineVertexInputStateCreateInfo vertex_input{};
   vertex_input.vertexAttributeDescriptionCount = static_cast<u32>(pipeline_create_info.attributes.size());

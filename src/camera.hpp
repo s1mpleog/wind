@@ -1,111 +1,106 @@
 #pragma once
 
+#include "SDL3/SDL_scancode.h"
+#include "core/service_locator.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/trigonometric.hpp"
+#include "input/input_manager.hpp"
+#include "render_view.hpp"
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
 namespace wind {
-
-class Camera
+struct Camera
 {
-public:
-  Camera() = default;
+  glm::vec3 position{0.0F, 1.75F, 7.5F};
+  float     yaw{glm::radians(180.0F)};
+  float     pitch{glm::radians(-9.0F)};
 
-  Camera(float fov, float aspect_ratio, float near_plane = 0.1F, float far_plane = 100.0F) noexcept;
+  float fov                      = 60.0F;
+  float aspect                   = 16.0F / 9.0F;
+  float near                     = 0.1F;
+  float far                      = 1000.0F;
+  bool  ignore_next_mouse_motion = true;
 
-  void init_perspective(float fov, float aspect_ratio, float near_plane = 0.1F, float far_plane = 100.0F) noexcept;
-
-  void reset() noexcept;
-
-  void update() noexcept;
-
-  void set_position(glm::vec3 position) noexcept;
-  void set_aspect_ratio(float aspect_ratio) noexcept;
-  void set_fov(float fov) noexcept;
-  void set_near_plane(float near_plane) noexcept;
-  void set_far_plane(float far_plane) noexcept;
-  void move(float forward, float right, float dt) noexcept;
-
-  void rotate(float delta_pitch, float delta_yaw) noexcept;
-
-  [[nodiscard]]
-  const glm::vec3& position() const noexcept
+  WIND_NODISCARD auto forward() const WIND_NOEXCEPT -> glm::vec3
   {
-    return m_position;
+    return glm::normalize(glm::vec3(glm::cos(pitch) * glm::sin(yaw), glm::sin(pitch), glm::cos(pitch) * glm::cos(yaw)));
   }
 
-  [[nodiscard]]
-  const glm::vec3& forward() const noexcept
+  // auto right() const -> glm::vec3 { return glm::normalize(glm::cross(glm::vec3(0.0F, 1.0F, 0.0F), forward())); }
+
+  auto right() const -> glm::vec3 { return glm::normalize(glm::cross(forward(), glm::vec3(0.0F, 1.0F, 0.0F))); }
+
+  auto view() const -> glm::mat4 { return glm::lookAt(position, position + forward(), glm::vec3(0.0F, 1.0F, 0.0F)); }
+
+  auto skybox_view() const -> glm::mat4 { return glm::mat4(glm::mat3(view())); }
+
+  WIND_NODISCARD auto projection() const WIND_NOEXCEPT -> glm::mat4
   {
-    return m_forward;
+    auto proj = glm::perspective(glm::radians(fov), aspect, near, far);
+    proj[1][1] *= -1.0F;  // Vulkan Y-Flip
+    return proj;
   }
 
-  [[nodiscard]]
-  const glm::vec3& right() const noexcept
+  auto view_proj() const -> glm::mat4 { return projection() * view(); }
+
+  auto update_aspect(u32 width, u32 height) WIND_NOEXCEPT -> void
   {
-    return m_right;
+    aspect = static_cast<float>(width) / static_cast<float>(height);
   }
 
-  [[nodiscard]]
-  const glm::vec3& up() const noexcept
+  WIND_NODISCARD auto render_view() const WIND_NOEXCEPT -> RenderView
   {
-    return m_up;
+    return RenderView{
+        .view       = view(),
+        .projection = projection(),
+    };
   }
 
-  [[nodiscard]]
-  const glm::mat4& view() const noexcept
+  auto process_keyboard(float delta) -> void
   {
-    return m_view;
+    const float speed = 10.0F * delta;
+
+    const glm::vec3 f = forward();
+    const glm::vec3 r = right();
+    const glm::vec3 u = glm::normalize(glm::cross(r, f));  // proper up
+
+    auto& input = core::ServiceLocator::get<input::InputManger>();
+
+    if(input.is_down(SDL_SCANCODE_W))
+      position += f * speed;  // Forward
+
+    if(input.is_down(SDL_SCANCODE_S))
+      position -= f * speed;  // Backward
+
+    if(input.is_down(SDL_SCANCODE_A))
+      position -= r * speed;  // Left
+
+    if(input.is_down(SDL_SCANCODE_D))
+      position += r * speed;  // Right
   }
 
-  [[nodiscard]]
-  const glm::mat4& projection() const noexcept
+  auto process_mouse() -> void
   {
-    return m_projection;
+    if(ignore_next_mouse_motion)
+    {
+      ignore_next_mouse_motion = false;
+      return;
+    }
+
+    auto& input = core::ServiceLocator::get<input::InputManger>();
+
+    const auto mouse = input.get_mouse_position();
+
+    constexpr float sensitivity = 0.0025F;
+
+    yaw += mouse.x_rel * sensitivity;
+    pitch -= mouse.y_rel * sensitivity;
+
+    pitch = glm::clamp(pitch, glm::radians(-89.0F), glm::radians(89.0F));
   }
 
-  [[nodiscard]]
-  const glm::mat4& view_projection() const noexcept
-  {
-    return m_view_projection;
-  }
-
-  [[nodiscard]]
-  float yaw() const noexcept
-  {
-    return m_yaw;
-  }
-
-  [[nodiscard]]
-  float pitch() const noexcept
-  {
-    return m_pitch;
-  }
-
-private:
-  void update_view() noexcept;
-  void update_projection() noexcept;
-
-private:
-  glm::vec3 m_position{0.0F, 0.0F, 10.0F};
-
-  glm::vec3 m_forward{0.0F, 0.0F, -1.0F};
-  glm::vec3 m_right{1.0F, 0.0F, 0.0F};
-  glm::vec3 m_up{0.0F, 1.0F, 0.0F};
-
-  float m_yaw{};
-  float m_pitch{};
-
-  float m_fov{60.0F};
-  float m_aspect_ratio{16.0F / 9.0F};
-
-  float m_near_plane{0.1F};
-  float m_far_plane{100.0F};
-
-  glm::mat4 m_view{1.0F};
-  glm::mat4 m_projection{1.0F};
-  glm::mat4 m_view_projection{1.0F};
-
-  bool m_projection_dirty{true};
+  auto reset_mouse_ignore() -> void { ignore_next_mouse_motion = true; }
 };
-
 }  // namespace wind

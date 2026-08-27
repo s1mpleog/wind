@@ -10,7 +10,6 @@
 #include "vulkan/core/swapchain.hpp"
 #include "vulkan/core/synchroization.hpp"
 #include "vulkan/frame/frame_context.hpp"
-#include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/graphics/shader_types.hpp"
 #include "vulkan/vulkan.hpp"
@@ -53,169 +52,16 @@ WIND_NODISCARD auto Renderer::create(Configuration               cfg,
   auto frame_context =
       WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, context->gpu_device.device, context->gpu_device.graphics_pool));
 
+  // create depth image
+  WIND_TRY(resource_manager->create_default_depth_image(swapchain_context.extent.width, swapchain_context.extent.height));
+
   // TEMPORARY
   const float aspect_ratio = static_cast<float>(1280) / static_cast<float>(720);
 
   auto camera = Camera{};
-  camera.init_perspective(60.0F, aspect_ratio, 0.1F, 100.0F);
 
   return Renderer(std::move(cfg), context, std::move(swapchain_context), std::move(frame_context), resource_manager,
                   pipeline_manager, std::move(camera));
-}
-
-auto Renderer::initialize_resources() WIND_NOEXCEPT -> WindResult<void>
-{
-  // create depth image
-  WIND_TRY(m_resource_manager->create_default_depth_image(m_swapchain_context.extent.width, m_swapchain_context.extent.height));
-
-  // auto vertex_shader_handle =
-  //     WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.vert.spv"));
-
-  // auto fragment_shader_handle =
-  //     WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/triangle.frag.spv"));
-
-  // // m_test_vertex_buffer = WIND_TRY(m_resource_manager->te(std::as_bytes(std::span{vertices})));
-
-  // ShaderInfo vert_info{
-  //     .stage  = ShaderStage::Vertex,
-  //     .module = WIND_TRY(m_resource_manager->get_shader(vertex_shader_handle)),
-  // };
-
-  // ShaderInfo frag_info{
-  //     .stage  = ShaderStage::Fragment,
-  //     .module = WIND_TRY(m_resource_manager->get_shader(fragment_shader_handle)),
-  // };
-
-  // auto graphics_config = graphics::GraphicsConfig{.shader = {vert_info, frag_info},
-  //                                                 .rasterization{
-  //                                                     .cull_mode    = CullMode::Back,
-  //                                                     .polygon_mode = PolygonMode::Fill,
-  //                                                     .front_face   = FrontFace::ClockWise,
-  //                                                     .discard      = false,
-  //                                                 },
-  //                                                 .vertex_input_state{
-  //                                                     .attributes{{
-  //                                                                     .location = 0,
-  //                                                                     .binding  = 0,
-  //                                                                     .format   = VertexFormat::Float4,
-  //                                                                     .offset   = offsetof(Vertex, position),
-  //                                                                 },
-  //                                                                 {
-  //                                                                     .location = 1,
-  //                                                                     .binding  = 0,
-  //                                                                     .format   = VertexFormat::Float4,
-  //                                                                     .offset   = offsetof(Vertex, color),
-  //                                                                 }},
-  //                                                     .bindings{{
-  //                                                         .binding    = 0,
-  //                                                         .stride     = sizeof(Vertex),
-  //                                                         .input_rate = VertexInputRate::Vertex,
-  //                                                     }},
-  //                                                 },
-  //                                                 .input_assembly{.topology = PrimitiveTopology::TriangleList},
-  //                                                 .depth_stencil{
-  //                                                     .depth_test    = true,
-  //                                                     .depth_write   = true,
-  //                                                     .depth_compare = CompareOp::Less,
-  //                                                 },
-  //                                                 .color_blend  = {.enabled = false},
-  //                                                 .color_format = Format::BGRA8_SRGB,
-  //                                                 .depth_format = Format::D32_FLOAT};
-
-  // auto pipeline_handle = WIND_TRY(m_pipeline_manager->create(std::move(graphics_config), m_context->gpu_device.device));
-
-  // auto suzanne_vert = WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/suzanne.vert.spv"));
-
-  // auto suzanne_frag = WIND_TRY(m_resource_manager->load_shader(m_context->gpu_device.device, "assets/shaders/suzanne.frag.spv"));
-
-  // // m_test_vertex_buffer = WIND_TRY(m_resource_manager->create_vertices(std::as_bytes(std::span{vertices})));
-
-  // ShaderInfo suzanne_vert_info{
-  //     .stage  = ShaderStage::Vertex,
-  //     .module = WIND_TRY(m_resource_manager->get_shader(suzanne_vert)),
-  // };
-
-  // ShaderInfo suzanne_frag_info{
-  //     .stage  = ShaderStage::Fragment,
-  //     .module = WIND_TRY(m_resource_manager->get_shader(suzanne_frag)),
-  // };
-  // // something static or anything
-  // // internally it just creates all the models can be long 1k loc 2k does not matters it will be
-  // // somewhere which i will not touch until i have to add model just expose a build function that will
-  // // take pipeline_manager and resource manager will crete all the models that i have inside and return
-  // // vector of handles for all models then i can assign all of it to scene
-
-  // auto suzanne_config = graphics::GraphicsConfig{.shader = {suzanne_vert_info, suzanne_frag_info},
-
-  //                                                .rasterization{
-  //                                                    .cull_mode    = CullMode::Back,
-  //                                                    .polygon_mode = PolygonMode::Fill,
-  //                                                    .front_face   = FrontFace::ClockWise,
-  //                                                    .discard      = false,
-  //                                                },
-  //                                                .vertex_input_state{
-  //                                                    .attributes{{
-  //                                                                    .location = 0,
-  //                                                                    .binding  = 0,
-  //                                                                    .format   = VertexFormat::Float3,
-  //                                                                    .offset   = 0,
-  //                                                                },
-  //                                                                {
-  //                                                                    .location = 1,
-  //                                                                    .binding  = 1,
-  //                                                                    .format   = VertexFormat::Float3,
-  //                                                                    .offset   = 0,
-  //                                                                },
-  //                                                                {
-  //                                                                    .location = 2,
-  //                                                                    .binding  = 2,
-  //                                                                    .format   = VertexFormat::Float2,
-  //                                                                    .offset   = 0,
-  //                                                                }},
-  //                                                    .bindings{{
-  //                                                                  .binding    = 0,
-  //                                                                  .stride     = sizeof(glm::vec3),
-  //                                                                  .input_rate = VertexInputRate::Vertex,
-  //                                                              },
-  //                                                              {
-  //                                                                  .binding    = 1,
-  //                                                                  .stride     = sizeof(glm::vec3),
-  //                                                                  .input_rate = VertexInputRate::Vertex,
-  //                                                              },
-  //                                                              {
-  //                                                                  .binding    = 2,
-  //                                                                  .stride     = sizeof(glm::vec2),
-  //                                                                  .input_rate = VertexInputRate::Vertex,
-  //                                                              }},
-  //                                                },
-  //                                                .input_assembly{.topology = PrimitiveTopology::TriangleList},
-  //                                                .depth_stencil{
-  //                                                    .depth_test    = true,
-  //                                                    .depth_write   = true,
-  //                                                    .depth_compare = CompareOp::Less,
-  //                                                },
-  //                                                .color_blend = {.enabled = false},
-  //                                                .push_constants{{
-  //                                                    .stage_flags = ShaderStage::Vertex | ShaderStage::Fragment,
-  //                                                    .offset      = 0,
-  //                                                    .size        = sizeof(PushConstants),
-  //                                                }},
-  //                                                .descriptor_set_layout = *m_resource_manager->get_bindless_descriptor_layout(),
-  //                                                .color_format = Format::BGRA8_SRGB,
-  //                                                .depth_format = Format::D32_FLOAT};
-
-  // auto suzanne_pipeline_handle = WIND_TRY(m_pipeline_manager->create(std::move(suzanne_config), m_context->gpu_device.device));
-
-  // spdlog::info("suzanne pipeline handle: {}", suzanne_pipeline_handle);
-
-  // m_resource_manager->destroy_shader(vertex_shader_handle);
-  // m_resource_manager->destroy_shader(fragment_shader_handle);
-  // m_resource_manager->destroy_shader(suzanne_vert);
-  // m_resource_manager->destroy_shader(suzanne_frag);
-
-  // m_test_model = WIND_TRY(m_resource_manager->load_model("assets/models/thanos.wind"));
-
-  return {};
 }
 
 WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
@@ -334,20 +180,26 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   return {};
 }
 
-auto Renderer::draw(scene::RenderObject object) WIND_NOEXCEPT -> void
+auto Renderer::draw(scene::RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void
 {
-  m_camera.update();
-
   vk::Rect2D scissor{0};
   scissor.extent = m_swapchain_context.extent;
 
-  // we set viewport and scissors dynamic in graphics pipeline so we have to set it here
+  // // we set viewport and scissors dynamic in graphics pipeline so we have to set it here
+  // vk::Viewport viewport{};
+  // viewport.x = 0.0F;
+  // // viewport.y     = static_cast<float>(m_swapchain_context.extent.height);
+  // viewport.width = static_cast<float>(m_swapchain_context.extent.width);
+  // // upside down triangle fix
+  // viewport.height   = static_cast<float>(m_swapchain_context.extent.height);
+  // viewport.minDepth = 0.0F;
+  // viewport.maxDepth = 1.0F;
+
   vk::Viewport viewport{};
-  viewport.x     = 0.0F;
-  viewport.y     = static_cast<float>(m_swapchain_context.extent.height);
-  viewport.width = static_cast<float>(m_swapchain_context.extent.width);
-  // upside down triangle fix
-  viewport.height   = -static_cast<float>(m_swapchain_context.extent.height);
+  viewport.x        = 0.0F;
+  viewport.y        = 0.0F;
+  viewport.width    = static_cast<float>(m_swapchain_context.extent.width);
+  viewport.height   = static_cast<float>(m_swapchain_context.extent.height);
   viewport.minDepth = 0.0F;
   viewport.maxDepth = 1.0F;
 
@@ -359,7 +211,7 @@ auto Renderer::draw(scene::RenderObject object) WIND_NOEXCEPT -> void
   // Temporary camera/object transform.
   const glm::mat4 identity{1.0F};
 
-  const glm::mat4 transform = m_camera.view_projection() * identity;
+  // const glm::mat4 transform = m_camera.projection() * identity;
 
   const auto* pipeline = m_pipeline_manager->get_unchecked(object.pipeline_handle);
 
@@ -371,7 +223,7 @@ auto Renderer::draw(scene::RenderObject object) WIND_NOEXCEPT -> void
   const auto& material = model->materials[0];
 
   PushConstants pc{
-      .transform      = transform,
+      .transform      = camera_view.projection * camera_view.view * identity,
       .albedo_texture = material.albedo_texture,
   };
 
@@ -386,8 +238,6 @@ auto Renderer::draw(scene::RenderObject object) WIND_NOEXCEPT -> void
 
   std::array<vk::Buffer, 3>     buffers{mesh.vertex_buffer.buffer, mesh.normals.buffer, mesh.uvs.buffer};
   std::array<vk::DeviceSize, 3> offsets{0, 0, 0};
-
-  spdlog::info("vertex buffer size: {}, normal size: {}, uv size: {}", mesh.vertex_count, mesh.normal_count, mesh.uv_count);
 
   frame->graphics_command_buffer.bindVertexBuffers(0, buffers, offsets);
 

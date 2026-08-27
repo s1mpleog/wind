@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.hpp"
+#include "render_view.hpp"
 #include "resources/resource_manager.hpp"
 #include "scene/render_object.hpp"
 #include "utils/expected_util.hpp"
@@ -28,8 +29,6 @@ public:
                                     resources::ResourceManager* resource_manager,
                                     graphics::PipelineManager*  pipeline_manager) WIND_NOEXCEPT -> WindResult<Renderer>;
 
-  auto initialize_resources() WIND_NOEXCEPT -> WindResult<void>;
-
   WIND_NODISCARD auto shutdown() const WIND_NOEXCEPT -> WindResult<void>
   {
     WIND_TRY(m_context->gpu_device.device.waitIdle());
@@ -37,7 +36,7 @@ public:
   }
 
   WIND_NODISCARD auto begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
-  auto                draw(scene::RenderObject object) WIND_NOEXCEPT -> void;
+  auto                draw(scene::RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void;
   auto                end() WIND_NOEXCEPT -> void;
 
 private:

@@ -2,6 +2,7 @@
 #include "resources/resource_manager.hpp"
 #include "spdlog/spdlog.h"
 #include "utils/expected_util.hpp"
+#include "vulkan/graphics/pipeline.hpp"
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/graphics/shader_types.hpp"
 #include <string_view>
@@ -15,9 +16,9 @@ WIND_NODISCARD auto build(resources::ResourceManager*        resource_manager,
 {
   using namespace wind::vulkan;
 
-  auto vertex_shader_handle = WIND_TRY(resource_manager->load_shader(device, "assets/shaders/triangle.vert.spv"));
+  auto vertex_shader_handle = WIND_TRY(resource_manager->load_shader(device, "assets/shaders/suzanne.vert.spv"));
 
-  auto fragment_shader_handle = WIND_TRY(resource_manager->load_shader(device, "assets/shaders/triangle.frag.spv"));
+  auto fragment_shader_handle = WIND_TRY(resource_manager->load_shader(device, "assets/shaders/suzanne.frag.spv"));
 
   ShaderInfo vert_info{
       .stage  = ShaderStage::Vertex,
@@ -33,7 +34,8 @@ WIND_NODISCARD auto build(resources::ResourceManager*        resource_manager,
                                                  .rasterization{
                                                      .cull_mode    = CullMode::Back,
                                                      .polygon_mode = PolygonMode::Fill,
-                                                     .front_face   = FrontFace::ClockWise,
+                                                     .front_face   = FrontFace::CounterClockwise,
+                                                     .depth_clamp  = false,
                                                      .discard      = false,
                                                  },
                                                  .vertex_input_state{
@@ -90,6 +92,8 @@ WIND_NODISCARD auto build(resources::ResourceManager*        resource_manager,
 
   auto pipeline_handle = WIND_TRY(pipeline_manager->create(std::move(suzanne_config), device));
 
+  resource_manager->destroy_shader(vertex_shader_handle);
+  resource_manager->destroy_shader(fragment_shader_handle);
 
   auto model_handle = WIND_TRY(resource_manager->load_model("assets/models/thanos.wind"));
 
