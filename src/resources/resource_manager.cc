@@ -134,11 +134,18 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
     return it->second;
   }
 
-  auto mesh = gpu::Mesh{};
-
   auto model = gpu::Model{};
 
   auto wind_asset = WIND_TRY(asset::open(texture_path));
+
+  for(const auto& sub_mesh : wind_asset.mesh.sub_meshes)
+  {
+    model.mesh.sub_meshes.emplace_back(gpu::SubMesh{
+        .index_count    = sub_mesh.index_count,
+        .index_offset   = sub_mesh.index_offset,
+        .material_index = sub_mesh.material_index,
+    });
+  }
 
   // TODO: instead of two buffers use one buffer
   // |---------------------------|
@@ -162,8 +169,6 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
                                                       .data  = std::as_bytes(std::span{wind_asset.mesh.uvs}),
                                                       .usage = vk::BufferUsageFlagBits::eVertexBuffer,
                                                   }}};
-
-  std::inplace_vector<gpu::BufferData, 4> test;
 
   //TODO: currently .wind fallbacks for uvs and normals so it will always exists
   // but later its not true so handle that with this
