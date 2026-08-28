@@ -17,7 +17,7 @@ endif()
 
 option(WIND_VALIDATION
     "Enable Vulkan validation layers"
-    ON
+    OFF
 )
 
 option(WIND_RENDERER_WARNINGS_AS_ERRORS
