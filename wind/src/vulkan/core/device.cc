@@ -1,9 +1,6 @@
 #include "device.hpp"
-#include "error.hpp"
-#include "spdlog/spdlog.h"
-#include "utils/expected_util.hpp"
-#include "vulkan/core/configuration.hpp"
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_raii.hpp>
 #include <algorithm>
 #include <optional>
 #include <ranges>
@@ -11,9 +8,12 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_raii.hpp>
+#include "error.hpp"
+#include "spdlog/spdlog.h"
+#include "utils/expected_util.hpp"
+#include "vulkan/core/configuration.hpp"
 #include "vulkan/types.hpp"
+#include "vulkan/vulkan.hpp"
 
 namespace wind::vulkan::device {
 

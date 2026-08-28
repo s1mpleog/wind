@@ -1,4 +1,10 @@
 #include "renderer.hpp"
+#include <glm/glm.hpp>
+#include <vulkan/vulkan_raii.hpp>
+#include <vulkan/vulkan_to_string.hpp>
+#include <array>
+#include <cstdint>
+#include <vector>
 #include "config.hpp"
 #include "error.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
@@ -17,12 +23,6 @@
 #include "vulkan/graphics/pipeline_manager.hpp"
 #include "vulkan/graphics/shader_types.hpp"
 #include "vulkan/vulkan.hpp"
-#include <array>
-#include <cstdint>
-#include <vector>
-#include <glm/glm.hpp>
-#include <vulkan/vulkan_raii.hpp>
-#include <vulkan/vulkan_to_string.hpp>
 
 namespace wind::vulkan {
 WIND_NODISCARD auto Renderer::create(Configuration               cfg,
@@ -164,7 +164,6 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
   return {};
 }
-
 
 auto Renderer::draw_buffer(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void
 {
