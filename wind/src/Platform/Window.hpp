@@ -25,18 +25,18 @@ inline auto MakeWindowConfig(const TU16 Width, const TU16 Height, std::string Na
 	return FWindowConfiguration{.Name = std::move(Name), .Width = Width, .Height = Height};
 }
 
-class UWindow
+class FUWindow
 {
   public:
-	explicit UWindow(FWindowConfiguration Cfg) : MConfig{std::move(Cfg)} {};
+	explicit FUWindow(FWindowConfiguration Cfg) : MConfig{std::move(Cfg)} {};
 
-	UWindow(const UWindow &) = delete;
-	auto operator=(const UWindow &) -> UWindow = delete;
+	FUWindow(const FUWindow &) = delete;
+	auto operator=(const FUWindow &) -> FUWindow = delete;
 
-	UWindow(UWindow &&Other) WIND_NOEXCEPT : MConfig{std::move(Other.MConfig)},
+	FUWindow(FUWindow &&Other) WIND_NOEXCEPT : MConfig{std::move(Other.MConfig)},
 	                                         MHandle{std::exchange(Other.MHandle, nullptr)} {};
 
-	auto operator=(UWindow &&Other) WIND_NOEXCEPT->UWindow &
+	auto operator=(FUWindow &&Other) WIND_NOEXCEPT->FUWindow &
 	{
 		if (this != &Other)
 		{
@@ -68,7 +68,7 @@ class UWindow
 		return MHandle;
 	}
 
-	~UWindow()
+	~FUWindow()
 	{
 		if (MHandle != nullptr)
 		{

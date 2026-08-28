@@ -10,7 +10,7 @@
 #include <vulkan/vulkan_core.h>
 
 // maybe use class ?
-struct FRameContext
+struct FFRameContext
 {
 	vk::raii::CommandBuffer GraphicsCommandBuffer{nullptr};
 	std::optional<vk::raii::CommandBuffer> TransferCommandBuffer;
@@ -73,4 +73,4 @@ struct FRameContext
 WIND_NODISCARD auto CreateFrame(TU32 FrameCount, const vk::raii::Device &Device,
                                 const vk::raii::CommandPool &GraphicsPool,
                                 const vk::raii::CommandPool *TransferPool = nullptr) WIND_NOEXCEPT
-    -> TWindResult<std::vector<FRameContext>>;
+    -> TWindResult<std::vector<FFRameContext>>;

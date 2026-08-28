@@ -12,11 +12,11 @@
 
 using TDescriptorHandle = uint32_t;
 
-class UDescriptorManager
+class FUDescriptorManager
 {
   public:
 	WIND_NODISCARD static auto Create(const vk::raii::Device &Device, vk::DescriptorType DescriptorType) WIND_NOEXCEPT
-	    -> TWindResult<UDescriptorManager>;
+	    -> TWindResult<FUDescriptorManager>;
 	WIND_NODISCARD auto CreateSet(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>;
 	WIND_NODISCARD auto CreateLayout(const vk::raii::Device &Device,
 	                                 std::span<const vk::DescriptorSetLayoutBinding> Bindings) WIND_NOEXCEPT
@@ -52,7 +52,7 @@ class UDescriptorManager
 	}
 
   private:
-	explicit UDescriptorManager(vk::raii::DescriptorPool Pool) : MPool{std::move(Pool)} {};
+	explicit FUDescriptorManager(vk::raii::DescriptorPool Pool) : MPool{std::move(Pool)} {};
 
 	vk::raii::DescriptorPool MPool{nullptr};
 	vk::raii::DescriptorSet MSet{nullptr};

@@ -13,33 +13,33 @@
 
 #include <memory>
 
-class UEngine
+class FUEngine
 {
   public:
-	UEngine(const UEngine &) = delete;
-	auto operator=(const UEngine &) -> UEngine & = delete;
+	FUEngine(const FUEngine &) = delete;
+	auto operator=(const FUEngine &) -> FUEngine & = delete;
 
-	UEngine(UEngine &&) noexcept = default;
-	auto operator=(UEngine &&) noexcept -> UEngine & = default;
+	FUEngine(FUEngine &&) noexcept = default;
+	auto operator=(FUEngine &&) noexcept -> FUEngine & = default;
 
 	WIND_NODISCARD static auto Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
-	    -> TWindResult<UEngine>;
+	    -> TWindResult<FUEngine>;
 
 	auto Run() WIND_NOEXCEPT -> TWindResult<void>;
 
   private:
-	UEngine(UWindow Window, std::unique_ptr<FVulkanContext> Context, URenderer Renderer,
-	        std::unique_ptr<UInputManger> InputManager, std::unique_ptr<UResourceManager> ResourceManager,
-	        std::unique_ptr<UPipelineManager> PipelineManager, UScene Scene)
+	FUEngine(FUWindow Window, std::unique_ptr<FVulkanContext> Context, FRenderer Renderer,
+	         std::unique_ptr<FUInputManger> InputManager, std::unique_ptr<FUResourceManager> ResourceManager,
+	         std::unique_ptr<FUPipelineManager> PipelineManager, FUScene Scene)
 	    : MWindow{std::move(Window)}, MVulkanContext{std::move(Context)}, MRenderer{std::move(Renderer)},
 	      MPipelineManager{std::move(PipelineManager)}, MResourceManager{std::move(ResourceManager)},
 	      MInputManager{std::move(InputManager)}, MScene{std::move(Scene)} {};
 
-	UWindow MWindow;
+	FUWindow MWindow;
 	std::unique_ptr<FVulkanContext> MVulkanContext;
-	URenderer MRenderer;
-	std::unique_ptr<UPipelineManager> MPipelineManager;
-	std::unique_ptr<UResourceManager> MResourceManager;
-	std::unique_ptr<UInputManger> MInputManager;
-	UScene MScene;
+	FRenderer MRenderer;
+	std::unique_ptr<FUPipelineManager> MPipelineManager;
+	std::unique_ptr<FUResourceManager> MResourceManager;
+	std::unique_ptr<FUInputManger> MInputManager;
+	FUScene MScene;
 };

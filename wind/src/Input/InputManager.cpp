@@ -3,11 +3,11 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keyboard.h"
 
-UInputManger::UInputManger() : MKeyStates(SDL_GetKeyboardState(nullptr))
+FUInputManger::FUInputManger() : MKeyStates(SDL_GetKeyboardState(nullptr))
 {
 }
 
-auto UInputManger::ProcessEvent(SDL_Event &Event) WIND_NOEXCEPT -> void
+auto FUInputManger::ProcessEvent(SDL_Event &Event) WIND_NOEXCEPT -> void
 {
 	switch (Event.type)
 	{
@@ -23,7 +23,7 @@ auto UInputManger::ProcessEvent(SDL_Event &Event) WIND_NOEXCEPT -> void
 	}
 }
 
-WIND_NODISCARD auto UInputManger::GetMousePosition() const WIND_NOEXCEPT -> FMousePosition
+WIND_NODISCARD auto FUInputManger::GetMousePosition() const WIND_NOEXCEPT -> FMousePosition
 {
 	return FMousePosition{
 	    .X = MMouseX,

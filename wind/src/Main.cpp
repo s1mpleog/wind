@@ -15,7 +15,7 @@ auto main() -> TI32
 	auto VulkanCfg = Default;
 	VulkanCfg.AppName = "Wind";
 
-	auto Engine = UEngine::Create(std::move(WindowCfg), VulkanCfg);
+	auto Engine = FUEngine::Create(std::move(WindowCfg), VulkanCfg);
 
 	if (!Engine)
 	{

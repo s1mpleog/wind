@@ -55,16 +55,16 @@ struct FMeshHandle
 	TU32 Index{};
 };
 
-class UResourceManager
+class FUResourceManager
 {
   public:
-	UResourceManager(const UResourceManager &) = delete;
-	auto operator=(const UResourceManager &) -> UResourceManager & = delete;
+	FUResourceManager(const FUResourceManager &) = delete;
+	auto operator=(const FUResourceManager &) -> FUResourceManager & = delete;
 
-	UResourceManager(UResourceManager &&) = default;
-	auto operator=(UResourceManager &&) -> UResourceManager & = default;
+	FUResourceManager(FUResourceManager &&) = default;
+	auto operator=(FUResourceManager &&) -> FUResourceManager & = default;
 
-	WIND_NODISCARD static auto Create(const FVulkanContext *Context) WIND_NOEXCEPT -> TWindResult<UResourceManager>;
+	WIND_NODISCARD static auto Create(const FVulkanContext *Context) WIND_NOEXCEPT -> TWindResult<FUResourceManager>;
 
 	WIND_NODISCARD auto LoadShader(const vk::raii::Device &Device, std::string_view ShaderPath) WIND_NOEXCEPT
 	    -> TWindResult<TShaderHandle>;
@@ -109,17 +109,17 @@ class UResourceManager
 	}
 
   private:
-	UResourceManager(const FVulkanContext *Context, UGpuAllocator Allocator, UDescriptorManager DescriptorManager)
+	FUResourceManager(const FVulkanContext *Context, FUGpuAllocator Allocator, FUDescriptorManager DescriptorManager)
 	    : Context{Context}, Allocator{std::move(Allocator)}, DescriptorManager{std::move(DescriptorManager)} {};
 
 	const FVulkanContext *Context;
 	std::vector<vk::raii::ShaderModule> Shaders;
 	std::unordered_map<std::string, TShaderHandle> ShaderCache;
-	UGpuAllocator Allocator;
+	FUGpuAllocator Allocator;
 	std::unordered_map<std::string, TModelHandle> ModelsCache;
 	std::vector<FAllocatedTexture> Textures;
 	FAllocatedImage DepthImage;
-	UDescriptorManager DescriptorManager;
+	FUDescriptorManager DescriptorManager;
 	std::vector<FModel> Models;
 	std::vector<FAllocatedBuffer> Buffers; // for things that don't uses models
 };

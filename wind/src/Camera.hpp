@@ -79,7 +79,7 @@ struct FCamera
 		const glm::vec3 R = Right();
 		// const glm::vec3 U = glm::normalize(glm::cross(R, F)); // proper up
 
-		auto &Input = UServiceLocator::Get<UInputManger>();
+		auto &Input = FUServiceLocator::Get<FUInputManger>();
 
 		if (Input.IsDown(SDL_SCANCODE_W))
 			Position += F * Speed; // Forward
@@ -102,7 +102,7 @@ struct FCamera
 			return;
 		}
 
-		auto &Input = UServiceLocator::Get<UInputManger>();
+		auto &Input = FUServiceLocator::Get<FUInputManger>();
 
 		const auto Mouse = Input.GetMousePosition();
 

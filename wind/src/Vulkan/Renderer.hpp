@@ -13,19 +13,19 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
-class URenderer
+class FRenderer
 {
   public:
-	URenderer(const URenderer &) = delete;
-	auto operator=(const URenderer &) -> URenderer & = delete;
-	URenderer(URenderer &&) noexcept = default;
-	auto operator=(URenderer &&) noexcept -> URenderer & = default;
+	FRenderer(const FRenderer &) = delete;
+	auto operator=(const FRenderer &) -> FRenderer & = delete;
+	FRenderer(FRenderer &&) noexcept = default;
+	auto operator=(FRenderer &&) noexcept -> FRenderer & = default;
 
 	// two step initialization
 	// todo: later make resource and pipeline manager const
-	WIND_NODISCARD static auto Create(FConfiguration Cfg, const UWindow &Window, const FVulkanContext *Context,
-	                                  UResourceManager *ResourceManager,
-	                                  UPipelineManager *PipelineManager) WIND_NOEXCEPT -> TWindResult<URenderer>;
+	WIND_NODISCARD static auto Create(FConfiguration Cfg, const FUWindow &Window, const FVulkanContext *Context,
+	                                  FUResourceManager *ResourceManager,
+	                                  FUPipelineManager *PipelineManager) WIND_NOEXCEPT -> TWindResult<FRenderer>;
 
 	WIND_NODISCARD auto Shutdown() const WIND_NOEXCEPT -> TWindResult<void>
 	{
@@ -47,9 +47,9 @@ class URenderer
 	auto SetupViewport(vk::raii::CommandBuffer &CmdBuffer) const WIND_NOEXCEPT -> void;
 
   private:
-	URenderer(FConfiguration Cfg, const FVulkanContext *Context, FSwapchainContext SwapchainContext,
-	          std::vector<FRameContext> FrameContext, UResourceManager *ResourceManager,
-	          UPipelineManager *PipelineManager, TDynamicBufferHandle FrameUbo)
+	FRenderer(FConfiguration Cfg, const FVulkanContext *Context, FSwapchainContext SwapchainContext,
+	          std::vector<FFRameContext> FrameContext, FUResourceManager *ResourceManager,
+	          FUPipelineManager *PipelineManager, TDynamicBufferHandle FrameUbo)
 	    : Config{Cfg}, Context{Context}, SwapchainContext{std::move(SwapchainContext)},
 	      FrameContext(std::move(FrameContext)), PipelineManager{PipelineManager}, ResourceManager{ResourceManager},
 	      FrameUbo{FrameUbo} {};
@@ -57,9 +57,9 @@ class URenderer
 	FConfiguration Config;
 	const FVulkanContext *Context;
 	FSwapchainContext SwapchainContext;
-	std::vector<FRameContext> FrameContext;
-	UPipelineManager *PipelineManager;
-	UResourceManager *ResourceManager;
+	std::vector<FFRameContext> FrameContext;
+	FUPipelineManager *PipelineManager;
+	FUResourceManager *ResourceManager;
 	TDynamicBufferHandle FrameUbo{};
 
 	TU32 CurrentFrame{0};

@@ -11,7 +11,7 @@
 #include <spdlog/spdlog.h>
 #include <vector>
 
-WIND_NODISCARD auto UWindow::Create() WIND_NOEXCEPT -> TWindResult<void>
+WIND_NODISCARD auto FUWindow::Create() WIND_NOEXCEPT -> TWindResult<void>
 {
 	if (MConfig.Width == 0 || MConfig.Height == 0 || MConfig.Name.empty())
 	{
@@ -40,7 +40,7 @@ WIND_NODISCARD auto UWindow::Create() WIND_NOEXCEPT -> TWindResult<void>
 	return {};
 }
 
-WIND_NODISCARD auto UWindow::Extensions() const WIND_NOEXCEPT -> TWindResult<std::vector<const char *>>
+WIND_NODISCARD auto FUWindow::Extensions() const WIND_NOEXCEPT -> TWindResult<std::vector<const char *>>
 {
 	WIND_ASSERT(MHandle != nullptr && "window handler is nullptr");
 
@@ -69,7 +69,7 @@ WIND_NODISCARD auto UWindow::Extensions() const WIND_NOEXCEPT -> TWindResult<std
 	return Extensions;
 }
 
-WIND_NODISCARD auto UWindow::CreateSurface(const vk::Instance &Instance) const WIND_NOEXCEPT -> TWindResult<VkSurfaceKHR>
+WIND_NODISCARD auto FUWindow::CreateSurface(const vk::Instance &Instance) const WIND_NOEXCEPT -> TWindResult<VkSurfaceKHR>
 {
 	WIND_ASSERT(MHandle != nullptr && "trying to create vulkan surface but window handle is null");
 
@@ -85,7 +85,7 @@ WIND_NODISCARD auto UWindow::CreateSurface(const vk::Instance &Instance) const W
 	return Surface;
 }
 
-auto UWindow::GetConfig() const WIND_NOEXCEPT -> const FWindowConfiguration &
+auto FUWindow::GetConfig() const WIND_NOEXCEPT -> const FWindowConfiguration &
 {
 	return MConfig;
 }

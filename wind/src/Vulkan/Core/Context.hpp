@@ -3,7 +3,7 @@
 #include "Platform/Window.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
-#include "Vulkan/Core/Device.hpp"
+#include "Vulkan/Core/VulkanDevice.hpp"
 
 #include <vulkan/vulkan_core.h>
 
@@ -20,4 +20,4 @@ struct FVulkanContext
 	FGpuDevice GpuDevice{};
 };
 
-auto CreateContext(const UWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> TWindResult<FVulkanContext>;
+auto CreateContext(const FUWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> TWindResult<FVulkanContext>;

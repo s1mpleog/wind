@@ -1,6 +1,6 @@
 #pragma once
 
-class UServiceLocator
+class FUServiceLocator
 {
   public:
 	template <typename T_>

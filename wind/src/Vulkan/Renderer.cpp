@@ -26,9 +26,9 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-WIND_NODISCARD auto URenderer::Create(FConfiguration Cfg, const UWindow &Window, const FVulkanContext *Context,
-                                      UResourceManager *ResourceManager,
-                                      UPipelineManager *PipelineManager) WIND_NOEXCEPT -> TWindResult<URenderer>
+WIND_NODISCARD auto FRenderer::Create(FConfiguration Cfg, const FUWindow &Window, const FVulkanContext *Context,
+                                      FUResourceManager *ResourceManager,
+                                      FUPipelineManager *PipelineManager) WIND_NOEXCEPT -> TWindResult<FRenderer>
 {
 	// auto context = std::make_unique<VulkanContext>(WIND_TRY(create_context(window, cfg)));
 	auto [width, heigth] = Window.DrawableSize();
@@ -44,11 +44,11 @@ WIND_NODISCARD auto URenderer::Create(FConfiguration Cfg, const UWindow &Window,
 
 	// auto ubo_handle = WIND_TRY(resource_manager->create_dynamic_uniform_buffer(sizeof(UboInstance)));
 
-	return URenderer(Cfg, Context, std::move(SwapchainContext), std::move(FrameContext), ResourceManager,
+	return FRenderer(Cfg, Context, std::move(SwapchainContext), std::move(FrameContext), ResourceManager,
 	                 PipelineManager, TDynamicBufferHandle{.Index = 0});
 }
 
-WIND_NODISCARD auto URenderer::Begin(TU32 Width, TU32 Height) WIND_NOEXCEPT -> TWindResult<void>
+WIND_NODISCARD auto FRenderer::Begin(TU32 Width, TU32 Height) WIND_NOEXCEPT -> TWindResult<void>
 {
 	// get a frame
 	auto *Frame = &FrameContext[CurrentFrame];
@@ -165,7 +165,7 @@ WIND_NODISCARD auto URenderer::Begin(TU32 Width, TU32 Height) WIND_NOEXCEPT -> T
 	return {};
 }
 
-auto URenderer::DrawBuffer(FRenderObject Object, FRenderView CameraView,
+auto FRenderer::DrawBuffer(FRenderObject Object, FRenderView CameraView,
                            vk::raii::CommandBuffer &CmdBuffer) WIND_NOEXCEPT -> void
 {
 	WIND_ASSERT(!Object.IsModelType && "Trying to draw buffer but object is model");
@@ -195,7 +195,7 @@ auto URenderer::DrawBuffer(FRenderObject Object, FRenderView CameraView,
 	CmdBuffer.drawIndexed(Object.BufferAsset.IndexCount, 1, 0, 0, 0);
 }
 
-auto URenderer::DrawModel(FRenderObject Object, FRenderView CameraView,
+auto FRenderer::DrawModel(FRenderObject Object, FRenderView CameraView,
                           vk::raii::CommandBuffer &CmdBuffer) WIND_NOEXCEPT -> void
 {
 	WIND_ASSERT(Object.IsModelType && "Trying to draw model but object is not model");
@@ -245,7 +245,7 @@ auto URenderer::DrawModel(FRenderObject Object, FRenderView CameraView,
 	}
 }
 
-auto URenderer::SetupViewport(vk::raii::CommandBuffer &CmdBuffer) const WIND_NOEXCEPT -> void
+auto FRenderer::SetupViewport(vk::raii::CommandBuffer &CmdBuffer) const WIND_NOEXCEPT -> void
 {
 	vk::Rect2D Scissor{0};
 	Scissor.extent = SwapchainContext.Extent;
@@ -262,7 +262,7 @@ auto URenderer::SetupViewport(vk::raii::CommandBuffer &CmdBuffer) const WIND_NOE
 	CmdBuffer.setScissor(0, Scissor);
 }
 
-auto URenderer::Draw(FRenderObject Object, FRenderView CameraView) WIND_NOEXCEPT -> void
+auto FRenderer::Draw(FRenderObject Object, FRenderView CameraView) WIND_NOEXCEPT -> void
 {
 	auto *Frame = &FrameContext[CurrentFrame];
 
@@ -278,7 +278,7 @@ auto URenderer::Draw(FRenderObject Object, FRenderView CameraView) WIND_NOEXCEPT
 	}
 }
 
-auto URenderer::End() WIND_NOEXCEPT -> void
+auto FRenderer::End() WIND_NOEXCEPT -> void
 {
 	auto *Frame = &FrameContext[CurrentFrame];
 

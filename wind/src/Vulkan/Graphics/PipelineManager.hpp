@@ -10,17 +10,17 @@
 
 using TPipelineHandle = TU32;
 
-class UPipelineManager
+class FUPipelineManager
 {
 	// TODO: cache it
   public:
-	UPipelineManager() = default;
+	FUPipelineManager() = default;
 
-	UPipelineManager(const UPipelineManager &) = delete;
-	auto operator=(const UPipelineManager &) -> UPipelineManager & = delete;
+	FUPipelineManager(const FUPipelineManager &) = delete;
+	auto operator=(const FUPipelineManager &) -> FUPipelineManager & = delete;
 
-	UPipelineManager(UPipelineManager &&) = default;
-	auto operator=(UPipelineManager &&) -> UPipelineManager & = default;
+	FUPipelineManager(FUPipelineManager &&) = default;
+	auto operator=(FUPipelineManager &&) -> FUPipelineManager & = default;
 
 	WIND_NODISCARD auto WIND_INLINE Create(FGraphicsConfig Config, const vk::raii::Device &Device) WIND_NOEXCEPT
 	    -> TWindResult<TPipelineHandle>

@@ -9,9 +9,9 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-WIND_NODISCARD auto UDescriptorManager::Create(const vk::raii::Device &Device,
+WIND_NODISCARD auto FUDescriptorManager::Create(const vk::raii::Device &Device,
                                                vk::DescriptorType DescriptorType) WIND_NOEXCEPT
-    -> TWindResult<UDescriptorManager>
+    -> TWindResult<FUDescriptorManager>
 {
 	// todo: don't use luck number
 	vk::DescriptorPoolSize PoolSize{};
@@ -32,10 +32,10 @@ WIND_NODISCARD auto UDescriptorManager::Create(const vk::raii::Device &Device,
 	             vk::to_string(DescriptorType));
 #endif
 
-	return UDescriptorManager{std::move(Pool)};
+	return FUDescriptorManager{std::move(Pool)};
 }
 
-WIND_NODISCARD auto UDescriptorManager::CreateSet(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>
+WIND_NODISCARD auto FUDescriptorManager::CreateSet(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>
 {
 	WIND_ASSERT(MPool != nullptr && "Descriptor pool is null while trying to allocate");
 	WIND_ASSERT(MLayout != VK_NULL_HANDLE && "layout is null oops created layout first");
@@ -57,7 +57,7 @@ WIND_NODISCARD auto UDescriptorManager::CreateSet(const vk::raii::Device &Device
 }
 
 WIND_NODISCARD auto
-UDescriptorManager::CreateLayout(const vk::raii::Device &Device,
+FUDescriptorManager::CreateLayout(const vk::raii::Device &Device,
                                  std::span<const vk::DescriptorSetLayoutBinding> Bindings) WIND_NOEXCEPT
     -> TWindResult<void>
 {
@@ -70,19 +70,19 @@ UDescriptorManager::CreateLayout(const vk::raii::Device &Device,
 	return {};
 }
 
-WIND_NODISCARD auto UDescriptorManager::GetPool() const -> const vk::raii::DescriptorPool *
+WIND_NODISCARD auto FUDescriptorManager::GetPool() const -> const vk::raii::DescriptorPool *
 {
 	WIND_ASSERT(MPool != nullptr && "pool is null");
 	return &MPool;
 }
 
-WIND_NODISCARD auto UDescriptorManager::GetSet() const -> const vk::raii::DescriptorSet *
+WIND_NODISCARD auto FUDescriptorManager::GetSet() const -> const vk::raii::DescriptorSet *
 {
 	WIND_ASSERT(MSet != nullptr && "set is nullptr");
 	return &MSet;
 }
 
-WIND_NODISCARD auto UDescriptorManager::GetLayout() const -> const vk::raii::DescriptorSetLayout *
+WIND_NODISCARD auto FUDescriptorManager::GetLayout() const -> const vk::raii::DescriptorSetLayout *
 {
 	WIND_ASSERT(MLayout != nullptr && "layout is nullptr");
 	return &MLayout;

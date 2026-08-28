@@ -30,5 +30,5 @@ struct FBuiltAssets
 	FBufferAssets BufferAssets{};
 };
 
-WIND_NODISCARD auto Build(UResourceManager *ResourceManager, UPipelineManager *PipelineManager,
+WIND_NODISCARD auto Build(FUResourceManager *ResourceManager, FUPipelineManager *PipelineManager,
                           const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<std::vector<FBuiltAssets>>;

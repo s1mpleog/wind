@@ -18,13 +18,13 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
-WIND_NODISCARD auto UResourceManager::Create(const FVulkanContext *Context) WIND_NOEXCEPT
-    -> TWindResult<UResourceManager>
+WIND_NODISCARD auto FUResourceManager::Create(const FVulkanContext *Context) WIND_NOEXCEPT
+    -> TWindResult<FUResourceManager>
 {
-	auto Allocator = WIND_TRY(UGpuAllocator::Create(Context));
+	auto Allocator = WIND_TRY(FUGpuAllocator::Create(Context));
 
 	auto DescriptorManager =
-	    WIND_TRY(UDescriptorManager::Create(Context->GpuDevice.Device, vk::DescriptorType::eCombinedImageSampler));
+	    WIND_TRY(FUDescriptorManager::Create(Context->GpuDevice.Device, vk::DescriptorType::eCombinedImageSampler));
 
 	std::inplace_vector<vk::DescriptorSetLayoutBinding, 2> Bindings{
 	    vk::DescriptorSetLayoutBinding{
@@ -60,10 +60,10 @@ WIND_NODISCARD auto UResourceManager::Create(const FVulkanContext *Context) WIND
 	WIND_TRY(DescriptorManager.CreateLayout(Context->GpuDevice.Device, std::span{Bindings}));
 	WIND_TRY(DescriptorManager.CreateSet(Context->GpuDevice.Device));
 
-	return UResourceManager{Context, std::move(Allocator), std::move(DescriptorManager)};
+	return FUResourceManager{Context, std::move(Allocator), std::move(DescriptorManager)};
 }
 
-WIND_NODISCARD auto UResourceManager::LoadShader(const vk::raii::Device &Device,
+WIND_NODISCARD auto FUResourceManager::LoadShader(const vk::raii::Device &Device,
                                                  std::string_view ShaderPath) WIND_NOEXCEPT
     -> TWindResult<TShaderHandle>
 {
@@ -113,7 +113,7 @@ WIND_NODISCARD auto UResourceManager::LoadShader(const vk::raii::Device &Device,
 	return Handle;
 }
 
-WIND_NODISCARD auto UResourceManager::GetShader(TShaderHandle Handle) WIND_NOEXCEPT
+WIND_NODISCARD auto FUResourceManager::GetShader(TShaderHandle Handle) WIND_NOEXCEPT
     -> TWindResult<vk::raii::ShaderModule *>
 {
 	if (Handle.Index >= Shaders.size())
@@ -122,13 +122,13 @@ WIND_NODISCARD auto UResourceManager::GetShader(TShaderHandle Handle) WIND_NOEXC
 	return &Shaders[Handle.Index];
 };
 
-WIND_NODISCARD auto UResourceManager::GetShaderUnchecked(TShaderHandle Handle) WIND_NOEXCEPT -> vk::raii::ShaderModule *
+WIND_NODISCARD auto FUResourceManager::GetShaderUnchecked(TShaderHandle Handle) WIND_NOEXCEPT -> vk::raii::ShaderModule *
 {
 	return &Shaders[Handle.Index];
 }
 
 // TODO: handle this in better way
-auto UResourceManager::DestroyShader(TShaderHandle Handle) WIND_NOEXCEPT -> void
+auto FUResourceManager::DestroyShader(TShaderHandle Handle) WIND_NOEXCEPT -> void
 {
 	if (Handle.Index > Shaders.size())
 		return;
@@ -136,7 +136,7 @@ auto UResourceManager::DestroyShader(TShaderHandle Handle) WIND_NOEXCEPT -> void
 	Shaders[Handle.Index] = nullptr;
 }
 
-WIND_NODISCARD auto UResourceManager::LoadModel(std::string_view TexturePath) WIND_NOEXCEPT -> TWindResult<TModelHandle>
+WIND_NODISCARD auto FUResourceManager::LoadModel(std::string_view TexturePath) WIND_NOEXCEPT -> TWindResult<TModelHandle>
 {
 	auto It = ModelsCache.find(std::string{TexturePath});
 
@@ -314,20 +314,20 @@ WIND_NODISCARD auto UResourceManager::LoadModel(std::string_view TexturePath) WI
 	return Handle;
 }
 
-WIND_NODISCARD auto UResourceManager::CreateDefaultDepthImage(TU32 Width, TU32 Height) WIND_NOEXCEPT
+WIND_NODISCARD auto FUResourceManager::CreateDefaultDepthImage(TU32 Width, TU32 Height) WIND_NOEXCEPT
     -> TWindResult<void>
 {
 	DepthImage = WIND_TRY(Allocator.CreateDepthBuffer(Context, Width, Height));
 	return {};
 }
 
-WIND_NODISCARD auto UResourceManager::GetDefaultDepthImageView() const WIND_NOEXCEPT -> const vk::raii::ImageView &
+WIND_NODISCARD auto FUResourceManager::GetDefaultDepthImageView() const WIND_NOEXCEPT -> const vk::raii::ImageView &
 {
 	WIND_ASSERT(DepthImage.ImageView != nullptr && "Depth image view is nullptr create depth image first");
 	return DepthImage.ImageView;
 }
 
-WIND_NODISCARD auto UResourceManager::GetModel(TModelHandle Handle) WIND_NOEXCEPT -> TWindResult<const FModel *>
+WIND_NODISCARD auto FUResourceManager::GetModel(TModelHandle Handle) WIND_NOEXCEPT -> TWindResult<const FModel *>
 {
 	if (Handle.Index >= Models.size())
 		WIND_ERR(WindError::internal());
@@ -335,12 +335,12 @@ WIND_NODISCARD auto UResourceManager::GetModel(TModelHandle Handle) WIND_NOEXCEP
 	return &Models[Handle.Index];
 }
 
-WIND_NODISCARD auto UResourceManager::GetModelUnchecked(TModelHandle Handle) WIND_NOEXCEPT -> const FModel *
+WIND_NODISCARD auto FUResourceManager::GetModelUnchecked(TModelHandle Handle) WIND_NOEXCEPT -> const FModel *
 {
 	return &Models[Handle.Index];
 }
 
-WIND_NODISCARD auto UResourceManager::RecreateDefaultDepthImage(TU32 Width, TU32 Height) WIND_NOEXCEPT
+WIND_NODISCARD auto FUResourceManager::RecreateDefaultDepthImage(TU32 Width, TU32 Height) WIND_NOEXCEPT
     -> TWindResult<void>
 {
 	// destroy the old depth image
@@ -352,7 +352,7 @@ WIND_NODISCARD auto UResourceManager::RecreateDefaultDepthImage(TU32 Width, TU32
 	return {};
 }
 
-WIND_NODISCARD auto UResourceManager::CreateVertexBuffer(std::span<const std::byte> Vertices) WIND_NOEXCEPT
+WIND_NODISCARD auto FUResourceManager::CreateVertexBuffer(std::span<const std::byte> Vertices) WIND_NOEXCEPT
     -> TWindResult<TBufferHandle>
 {
 	auto Index = static_cast<TU32>(Buffers.size());
@@ -364,7 +364,7 @@ WIND_NODISCARD auto UResourceManager::CreateVertexBuffer(std::span<const std::by
 	return TBufferHandle{.Index = Index};
 }
 
-WIND_NODISCARD auto UResourceManager::CreateIndexBuffer(std::span<const std::byte> Indices)
+WIND_NODISCARD auto FUResourceManager::CreateIndexBuffer(std::span<const std::byte> Indices)
     -> TWindResult<TBufferHandle>
 {
 	auto Index = static_cast<TU32>(Buffers.size());
@@ -375,19 +375,19 @@ WIND_NODISCARD auto UResourceManager::CreateIndexBuffer(std::span<const std::byt
 	return TBufferHandle{.Index = Index};
 }
 
-WIND_NODISCARD auto UResourceManager::GetBuffer(TBufferHandle Handle) const -> TWindResult<const FAllocatedBuffer *>
+WIND_NODISCARD auto FUResourceManager::GetBuffer(TBufferHandle Handle) const -> TWindResult<const FAllocatedBuffer *>
 {
 	if (Handle.Index >= Buffers.size())
 		WIND_ERR(WindError::internal());
 
 	return &Buffers[Handle.Index];
 }
-WIND_NODISCARD auto UResourceManager::GetBufferUnchecked(TBufferHandle Handle) const -> const FAllocatedBuffer *
+WIND_NODISCARD auto FUResourceManager::GetBufferUnchecked(TBufferHandle Handle) const -> const FAllocatedBuffer *
 {
 	return GetBuffer(Handle).value();
 }
 
-WIND_NODISCARD auto UResourceManager::CreateDynamicBuffer(TU32 Size, vk::BufferUsageFlagBits Usage) WIND_NOEXCEPT
+WIND_NODISCARD auto FUResourceManager::CreateDynamicBuffer(TU32 Size, vk::BufferUsageFlagBits Usage) WIND_NOEXCEPT
     -> TWindResult<TDynamicBufferHandle>
 {
 	auto Handle = static_cast<TU32>(Buffers.size());
@@ -397,7 +397,7 @@ WIND_NODISCARD auto UResourceManager::CreateDynamicBuffer(TU32 Size, vk::BufferU
 	return TDynamicBufferHandle{.Index = Handle};
 }
 
-WIND_NODISCARD auto UResourceManager::GetMappedData(TDynamicBufferHandle Handle) WIND_NOEXCEPT -> TWindResult<void *>
+WIND_NODISCARD auto FUResourceManager::GetMappedData(TDynamicBufferHandle Handle) WIND_NOEXCEPT -> TWindResult<void *>
 {
 	if (Handle.Index >= Buffers.size())
 		WIND_ERR(WindError::internal());
@@ -408,12 +408,12 @@ WIND_NODISCARD auto UResourceManager::GetMappedData(TDynamicBufferHandle Handle)
 	return Buffers[Handle.Index].Mapped;
 }
 
-WIND_NODISCARD auto UResourceManager::GetMappedDataUnchecked(TDynamicBufferHandle Handle) WIND_NOEXCEPT -> void *
+WIND_NODISCARD auto FUResourceManager::GetMappedDataUnchecked(TDynamicBufferHandle Handle) WIND_NOEXCEPT -> void *
 {
 	return Buffers[Handle.Index].Mapped;
 }
 
-WIND_NODISCARD auto UResourceManager::CreateDynamicUniformBuffer(TU32 Size) WIND_NOEXCEPT
+WIND_NODISCARD auto FUResourceManager::CreateDynamicUniformBuffer(TU32 Size) WIND_NOEXCEPT
     -> TWindResult<TDynamicBufferHandle>
 {
 	auto Handle = WIND_TRY(CreateDynamicBuffer(Size, vk::BufferUsageFlagBits::eUniformBuffer));

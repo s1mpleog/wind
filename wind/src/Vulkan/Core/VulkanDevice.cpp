@@ -1,10 +1,11 @@
-#include "Vulkan/Core/Device.hpp"
+#include "Vulkan/Core/VulkanDevice.hpp"
 
 #include "Error.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
 #include "Vulkan/Types.hpp"
 #include "spdlog/spdlog.h"
+#include "vulkan/vulkan.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -279,4 +280,20 @@ WIND_NODISCARD auto DeviceCreate(const FConfiguration &Cfg, const vk::raii::Inst
 	}
 
 	return GpuDevice;
+}
+
+auto FVulkanPhysicalDeviceFeatures::Query(vk::PhysicalDevice PhysicalDevice, TU32 APIVersion) WIND_NOEXCEPT -> void
+{
+	vk::PhysicalDeviceFeatures2 PhysicalDeviceFeatures2 = PhysicalDevice.getFeatures2();
+	vk::PhysicalDeviceProperties2 PhysicalDeviceProperties2 = PhysicalDevice.getProperties2();
+
+	if (APIVersion >= vk::ApiVersion13)
+	{
+	}
+}
+
+WIND_NODISCARD auto FVulkanDevice::CreateDevice() WIND_NOEXCEPT -> TWindResult<void>
+{
+	PhysicalDeviceFeatures.Query({}, VK_API_VERSION_1_4);
+	return {};
 }

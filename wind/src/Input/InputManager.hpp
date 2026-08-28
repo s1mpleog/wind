@@ -12,10 +12,10 @@ struct FMousePosition
 	float XRel{};
 };
 
-class UInputManger
+class FUInputManger
 {
   public:
-	UInputManger();
+	FUInputManger();
 
 	static auto Update() -> void
 	{

@@ -2,7 +2,7 @@
 
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
-#include "Vulkan/Core/Device.hpp"
+#include "Vulkan/Core/VulkanDevice.hpp"
 
 #include <vector>
 #include <vulkan/vulkan_core.h>

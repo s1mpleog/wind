@@ -1,11 +1,10 @@
 #include "Vulkan/Core/Context.hpp"
 
 #include "Utils/ExpectedUtil.hpp"
-#include "Vulkan/Core/Device.hpp"
 #include "Vulkan/Core/Instance.hpp"
 #include "Vulkan/Core/ValidationLayer.hpp"
 
-auto CreateContext(const UWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> TWindResult<FVulkanContext>
+auto CreateContext(const FUWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> TWindResult<FVulkanContext>
 {
 	FVulkanContext Ctx{};
 

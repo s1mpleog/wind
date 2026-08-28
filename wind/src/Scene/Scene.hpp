@@ -8,14 +8,14 @@
 
 #include <vector>
 
-class UScene
+class FUScene
 {
   public:
 	auto AddRenderObjects(FBuiltAssets Assets, bool IsModel = true, FTransform Transform = {}) WIND_NOEXCEPT -> void;
 
 	auto Get() WIND_NOEXCEPT -> std::vector<FRenderObject>;
 
-	UScene()
+	FUScene()
 	{
 		Camera = FCamera{.Position = {0.0F, 1.75F, 7.5F},
 		                 // .Position = {0.0f, 0.0f, 3.0f},

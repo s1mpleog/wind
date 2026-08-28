@@ -10,11 +10,11 @@
 WIND_NODISCARD auto CreateFrame(TU32 FrameCount, const vk::raii::Device &Device,
                                 const vk::raii::CommandPool &GraphicsPool,
                                 const vk::raii::CommandPool *TransferPool) WIND_NOEXCEPT
-    -> TWindResult<std::vector<FRameContext>>
+    -> TWindResult<std::vector<FFRameContext>>
 {
 	WIND_ASSERT(FrameCount != 0 && "Frame count is zero");
 
-	std::vector<FRameContext> FrameContext;
+	std::vector<FFRameContext> FrameContext;
 	FrameContext.reserve(FrameCount);
 
 	auto GraphicsCmdBuffer = WIND_TRY(Device.allocateCommandBuffers(

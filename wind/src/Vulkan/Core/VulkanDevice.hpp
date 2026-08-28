@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Config.hpp"
 #include "Types.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <optional>
 #include <vulkan/vulkan.hpp>
@@ -23,7 +25,8 @@ struct FGpuDevice
 	vk::raii::CommandPool GraphicsPool{nullptr};
 	std::optional<vk::raii::CommandPool> TransferPool;
 
-	[[nodiscard]] constexpr auto HasTransferQueue() const WIND_NOEXCEPT -> bool
+	WIND_NODISCARD constexpr auto HasTransferQueue() const WIND_NOEXCEPT -> bool
+
 	{
 		return TransferQueueIdx.has_value() && TransferQueue.has_value();
 	}
@@ -31,3 +34,29 @@ struct FGpuDevice
 
 WIND_NODISCARD auto DeviceCreate(const FConfiguration &Cfg, const vk::raii::Instance &Instance,
                                  const vk::raii::SurfaceKHR &Surface) WIND_NOEXCEPT -> TWindResult<FGpuDevice>;
+
+class FVulkanPhysicalDeviceFeatures
+{
+  public:
+	auto Query(vk::PhysicalDevice PhysicalDevice, TU32 APIVersion) WIND_NOEXCEPT -> void;
+
+  private:
+	vk::PhysicalDeviceVulkan12Features Core_1_2;
+	vk::PhysicalDeviceVulkan13Features Core_1_3;
+	vk::PhysicalDeviceVulkan14Features Core_1_4;
+};
+
+class FVulkanDevice
+{
+  public:
+	WIND_NODISCARD auto CreateDevice() WIND_NOEXCEPT -> TWindResult<void>;
+
+	WIND_NODISCARD auto GetDevice() const -> const vk::raii::Device &
+	{
+		return Device;
+	}
+
+  private:
+	vk::raii::Device Device;
+	FVulkanPhysicalDeviceFeatures PhysicalDeviceFeatures;
+};
