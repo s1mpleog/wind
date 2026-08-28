@@ -63,16 +63,6 @@ public:
   WIND_NODISCARD auto create_buffer(const VulkanContext* context, const gpu::BufferData& buffer) WIND_NOEXCEPT
       -> WindResult<gpu::AllocatedBuffer>;
 
-  // TODO: get rid of this
-  // template <std::ranges::contiguous_range R>
-  // WIND_NODISCARD auto create_buffer(R&& range, vk::BufferUsageFlagBits flags = vk::BufferUsageFlagBits::eVertexBuffer) WIND_NOEXCEPT
-  //     -> WindResult<AllocatedBuffer>
-  //   requires std::is_trivially_copyable_v<std::ranges::range_value_t<R>>
-  // {
-  //   auto bytes = std::as_bytes(std::span{range});
-  //   return WIND_TRY(create_buffer_bytes(bytes, flags));
-  // }
-
   // TODO: maybe take ownership of data instead of view ?
   WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const gpu::TextureData> texture_data) WIND_NOEXCEPT
       -> WindResult<std::vector<gpu::AllocatedTexture>>;
@@ -92,6 +82,9 @@ public:
   WIND_NODISCARD auto wait_for_fence(const vk::raii::Device& device) WIND_NOEXCEPT -> WindResult<void>;
   WIND_NODISCARD auto reset_fence(const vk::raii::Device& device) WIND_NOEXCEPT -> WindResult<void>;
   auto                is_fence_signaled(const vk::raii::Device& device) WIND_NOEXCEPT -> bool;
+
+  WIND_NODISCARD auto create_dynamic_buffer(u32 size, vk::BufferUsageFlagBits usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
+      -> WindResult<gpu::AllocatedBuffer>;
 
 private:
   GpuAllocator(VmaAllocator allocator, vk::raii::CommandBuffer command_buffer, vk::raii::Fence fence)

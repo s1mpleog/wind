@@ -47,27 +47,28 @@ public:
   auto setup_viewport(vk::raii::CommandBuffer& cmd_buffer) const WIND_NOEXCEPT -> void;
 
 private:
-  Renderer(Configuration               cfg,
-           const VulkanContext*        context,
-           SwapchainContext            swapchain_context,
-           std::vector<FrameContext>   frame_context,
-           resources::ResourceManager* resource_manager,
-           graphics::PipelineManager*  pipeline_manager)
+  Renderer(Configuration                  cfg,
+           const VulkanContext*           context,
+           SwapchainContext               swapchain_context,
+           std::vector<FrameContext>      frame_context,
+           resources::ResourceManager*    resource_manager,
+           graphics::PipelineManager*     pipeline_manager,
+           resources::DynamicBufferHandle frame_ubo)
       : m_config{std::move(cfg)}
       , m_context{context}
       , m_swapchain_context{std::move(swapchain_context)}
       , m_frame_context(std::move(frame_context))
       , m_pipeline_manager{pipeline_manager}
-      , m_resource_manager{resource_manager} {};
+      , m_resource_manager{resource_manager}
+      , m_frame_ubo{frame_ubo} {};
 
-  Configuration               m_config;
-  const VulkanContext*        m_context;
-  SwapchainContext            m_swapchain_context;
-  std::vector<FrameContext>   m_frame_context;
-  graphics::PipelineManager*  m_pipeline_manager;
-  resources::ResourceManager* m_resource_manager;
-  gpu::AllocatedBuffer        m_test_vertex_buffer;
-  resources::ModelHandle      m_test_model{};
+  Configuration                  m_config;
+  const VulkanContext*           m_context;
+  SwapchainContext               m_swapchain_context;
+  std::vector<FrameContext>      m_frame_context;
+  graphics::PipelineManager*     m_pipeline_manager;
+  resources::ResourceManager*    m_resource_manager;
+  resources::DynamicBufferHandle m_frame_ubo{};
 
   u32 m_current_frame{0};
   u32 m_current_image{0};

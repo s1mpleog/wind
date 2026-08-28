@@ -12,6 +12,11 @@ struct PushConstants
   glm::vec4 base_color;
 };
 
+struct UboInstance
+{
+  glm::mat4 transform;
+};
+
 struct Vertex
 {
   glm::vec3 position;

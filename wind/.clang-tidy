@@ -8,7 +8,9 @@ Checks: >
   modernize-*,
   cppcoreguidelines-*,
 
+  -readability-magic-numbers,
   -cppcoreguidelines-avoid-magic-numbers,
+
   -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -cppcoreguidelines-pro-type-reinterpret-cast,

@@ -80,18 +80,18 @@ def main() -> int:
         print("[ERROR] Ninja was not found in PATH.", file=sys.stderr)
         return 1
 
-    if not args.no_lfs:
-        if shutil.which("git") is None:
-            print("[ERROR] Git was not found in PATH.", file=sys.stderr)
-            return 1
+    # if not args.no_lfs:
+    #     if shutil.which("git") is None:
+    #         print("[ERROR] Git was not found in PATH.", file=sys.stderr)
+    #         return 1
 
-        print("==> Updating Git LFS assets")
+    #     print("==> Updating Git LFS assets")
 
-        subprocess.run(
-            ["git", "lfs", "pull"],
-            cwd=ROOT,
-            check=True,
-        )
+    #     subprocess.run(
+    #         ["git", "lfs", "pull"],
+    #         cwd=ROOT,
+    #         check=True,
+    #     )
 
     if args.clean:
         print("==> Removing build directory")
@@ -153,7 +153,6 @@ def main() -> int:
 
     program_args = args.program_args
 
-    # argparse.REMAINDER keeps the '--' itself.
     if program_args and program_args[0] == "--":
         program_args = program_args[1:]
 

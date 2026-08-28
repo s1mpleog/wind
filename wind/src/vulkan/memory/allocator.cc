@@ -386,4 +386,30 @@ WIND_NODISCARD auto GpuAllocator::create_depth_buffer(const VulkanContext* conte
                              vk::Extent2D{width, height}};
 }
 
+WIND_NODISCARD auto GpuAllocator::create_dynamic_buffer(u32 size, vk::BufferUsageFlagBits usage) WIND_NOEXCEPT
+    -> WindResult<gpu::AllocatedBuffer>
+{
+  vk::BufferCreateInfo buffer_info{};
+  buffer_info.usage       = usage;
+  buffer_info.sharingMode = vk::SharingMode::eExclusive;
+  buffer_info.size        = vk::DeviceSize{size};
+
+  VmaAllocationCreateInfo allocation_create_info{};
+  allocation_create_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+  allocation_create_info.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+  allocation_create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+  VmaAllocation     allocation{};
+  VkBuffer          device_buffer{};
+  VmaAllocationInfo allocation_info{};
+
+  if(auto result = vmaCreateBuffer(m_allocator, buffer_info, &allocation_create_info, &device_buffer, &allocation, &allocation_info);
+     result != VK_SUCCESS)
+  {
+    WIND_ERR(WindError::vulkan(ErrorCode::FailedToCreateBuffer, static_cast<vk::Result>(result)));
+  }
+
+  return gpu::AllocatedBuffer{device_buffer, allocation, m_allocator, allocation_info.pMappedData};
+}
+
 };  // namespace wind::vulkan::memory

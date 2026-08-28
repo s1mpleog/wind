@@ -1,7 +1,6 @@
 #include "resource_manager.hpp"
 #include "config.hpp"
 #include "error.hpp"
-#include "glm/common.hpp"
 #include "resources/descriptor_manager.hpp"
 #include "resources/texture_loader.hpp"
 #include "spdlog/spdlog.h"
@@ -10,6 +9,7 @@
 #include "vulkan/memory/allocator.hpp"
 #include "vulkan/memory/resource_types.hpp"
 #include "vulkan/vulkan.hpp"
+#include <array>
 #include <inplace_vector>
 #include <ranges>
 #include <span>
@@ -24,31 +24,38 @@ WIND_NODISCARD auto ResourceManager::create(const vulkan::VulkanContext* context
   auto descriptor_manager =
       WIND_TRY(vulkan::DescriptorManager::create(context->gpu_device.device, vk::DescriptorType::eCombinedImageSampler));
 
-  vk::DescriptorSetLayoutBinding binding{};
-  // slot 0 in texture
-  binding.binding = 0;
-  // image and sampler combined
-  binding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
-  // max textures
-  binding.descriptorCount = 1024;
-  // fragment shader will use it
-  binding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+  std::inplace_vector<vk::DescriptorSetLayoutBinding, 2> bindings{
+      vk::DescriptorSetLayoutBinding{
+          0,
+          vk::DescriptorType::eCombinedImageSampler,
+          1024,
+          vk::ShaderStageFlagBits::eFragment,
+      },
+      vk::DescriptorSetLayoutBinding{
+          1,
+          vk::DescriptorType::eUniformBufferDynamic,
+          1,
+          vk::ShaderStageFlagBits::eVertex,
+      },
+  };
+
+  std::array<vk::DescriptorBindingFlags, 2> binding_flags{
+      vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind,
+
+      vk::DescriptorBindingFlags{}  // binding 1: dynamic UBO
+  };
 
   vk::DescriptorSetLayoutBindingFlagsCreateInfo flags_info{};
-  // don't need all filled can add texture after binding
-  vk::DescriptorBindingFlags binding_flags =
-      vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind;
-
-  flags_info.bindingCount  = 1;
-  flags_info.pBindingFlags = &binding_flags;
-
+  flags_info.bindingCount  = binding_flags.size();
+  flags_info.pBindingFlags = binding_flags.data();
   vk::DescriptorSetLayoutCreateInfo layout_info{};
+
   layout_info.pNext        = &flags_info;
   layout_info.flags        = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
-  layout_info.bindingCount = 1;
-  layout_info.pBindings    = &binding;
+  layout_info.bindingCount = bindings.size();
+  layout_info.pBindings    = bindings.data();
 
-  WIND_TRY(descriptor_manager.create_layout(context->gpu_device.device, std::span{&binding, 1}));
+  WIND_TRY(descriptor_manager.create_layout(context->gpu_device.device, std::span{bindings}));
   WIND_TRY(descriptor_manager.create_set(context->gpu_device.device));
 
   return ResourceManager{context, std::move(allocator), std::move(descriptor_manager)};
@@ -369,6 +376,38 @@ WIND_NODISCARD auto ResourceManager::get_buffer(BufferHandle handle) const -> Wi
 WIND_NODISCARD auto ResourceManager::get_buffer_unchecked(BufferHandle handle) const -> const gpu::AllocatedBuffer*
 {
   return get_buffer(handle).value();
+}
+
+WIND_NODISCARD auto ResourceManager::create_dynamic_buffer(u32 size, vk::BufferUsageFlagBits usage) WIND_NOEXCEPT
+    -> WindResult<DynamicBufferHandle>
+{
+  auto handle = static_cast<u32>(m_buffers.size());
+  auto test   = WIND_TRY(m_allocator.create_dynamic_buffer(size, usage));
+  spdlog::info("mapped is: {}", test.mapped);
+  m_buffers.push_back(std::move(test));
+  return DynamicBufferHandle{.index = handle};
+}
+
+WIND_NODISCARD auto ResourceManager::get_mapped_data(DynamicBufferHandle handle) WIND_NOEXCEPT -> WindResult<void*>
+{
+  if(handle.index >= m_buffers.size())
+    WIND_ERR(WindError::internal());
+
+  if(m_buffers[handle.index].mapped == nullptr)
+    WIND_ERR(WindError::internal());
+
+  return m_buffers[handle.index].mapped;
+}
+
+WIND_NODISCARD auto ResourceManager::get_mapped_data_unchecked(DynamicBufferHandle handle) WIND_NOEXCEPT -> void*
+{
+  return m_buffers[handle.index].mapped;
+}
+
+WIND_NODISCARD auto ResourceManager::create_dynamic_uniform_buffer(u32 size) WIND_NOEXCEPT -> WindResult<DynamicBufferHandle>
+{
+  auto handle = WIND_TRY(create_dynamic_buffer(size, vk::BufferUsageFlagBits::eUniformBuffer));
+  return handle;
 }
 
 };  // namespace wind::resources

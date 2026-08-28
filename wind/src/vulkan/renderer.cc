@@ -1,9 +1,10 @@
 #include "renderer.hpp"
-#include "camera.hpp"
 #include "config.hpp"
 #include "error.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
 #include "glm/ext/vector_float4.hpp"
+#include "glm/trigonometric.hpp"
 #include "platform/window.hpp"
 #include "resources/resource_manager.hpp"
 #include "spdlog/spdlog.h"
@@ -42,7 +43,10 @@ WIND_NODISCARD auto Renderer::create(Configuration               cfg,
   // create depth image
   WIND_TRY(resource_manager->create_default_depth_image(swapchain_context.extent.width, swapchain_context.extent.height));
 
-  return Renderer(std::move(cfg), context, std::move(swapchain_context), std::move(frame_context), resource_manager, pipeline_manager);
+  // auto ubo_handle = WIND_TRY(resource_manager->create_dynamic_uniform_buffer(sizeof(UboInstance)));
+
+  return Renderer(std::move(cfg), context, std::move(swapchain_context), std::move(frame_context), resource_manager,
+                  pipeline_manager, resources::DynamicBufferHandle{.index = 0});
 }
 
 WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
@@ -172,20 +176,6 @@ auto Renderer::draw_buffer(scene::RenderObject object, RenderView camera_view, v
   const auto* vertex_buffer = m_resource_manager->get_buffer_unchecked(object.buffer_asset.vertex_handle);
   const auto* index_buffer  = m_resource_manager->get_buffer_unchecked(object.buffer_asset.index_handle);
 
-  const glm::mat4 identity{1.0F};
-
-  const auto& view = camera_view.view;
-
-  // std::printf(
-  //     "view:\n"
-  //     "%f %f %f %f\n"
-  //     "%f %f %f %f\n"
-  //
-  //     "%f %f %f %f\n"
-  //     "%f %f %f %f\n",
-  //     view[0][0], view[1][0], view[2][0], view[3][0], view[0][1], view[1][1], view[2][1], view[3][1], view[0][2],
-  //     view[1][2], view[2][2], view[3][2], view[0][3], view[1][3], view[2][3], view[3][3]);
-
   auto push_constant = PushConstants{.transform      = camera_view.projection * camera_view.view
                                                        * glm::translate(glm::mat4{1.0F}, glm::vec3{0.0F, 0.0F, -10.0F}),
                                      .albedo_texture = 0,
@@ -217,7 +207,11 @@ auto Renderer::draw_model(scene::RenderObject object, RenderView camera_view, vk
 
   const auto& descriptor_set = *m_resource_manager->get_bindless_descriptor_set();
 
-  cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->pipeline_layout, 0, *descriptor_set, {});
+  // auto  ubo_instance = UboInstance{.transform = camera_view.projection * camera_view.view * glm::mat4{1.0F}};
+  // auto* mapped       = m_resource_manager->get_mapped_data_unchecked(m_frame_ubo);
+  // std::memcpy(mapped, &ubo_instance, sizeof(ubo_instance));
+
+  cmd_buffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline->pipeline_layout, 0, *descriptor_set, {0});
 
   std::array<vk::Buffer, 4> buffers{mesh.vertex_buffer.buffer, mesh.normals.buffer, mesh.uvs.buffer, mesh.tangents.buffer};
   std::array<vk::DeviceSize, 4> offsets{0, 0, 0, 0};
@@ -225,14 +219,14 @@ auto Renderer::draw_model(scene::RenderObject object, RenderView camera_view, vk
   cmd_buffer.bindVertexBuffers(0, buffers, offsets);
   cmd_buffer.bindIndexBuffer(mesh.index_buffer.buffer, 0, vk::IndexType::eUint32);
 
-  const glm::mat4 identity{1.0F};
-
   for(const auto& submesh : mesh.sub_meshes)
   {
-    const auto& material = model->materials[submesh.material_index];
+    const auto& material  = model->materials[submesh.material_index];
+    auto        transform = camera_view.projection * camera_view.view
+                            * glm::rotate(glm::mat4{1.0F}, glm::radians(45.0F), glm::vec3{0.0F, 1.0F, 0.0F});
 
     PushConstants pc{
-        .transform      = camera_view.projection * camera_view.view * identity,
+        .transform      = transform,
         .albedo_texture = material.albedo_texture ? material.albedo_texture.value() : UINT32_MAX,
         .normal_index   = material.normal_texture ? material.normal_texture.value() : UINT32_MAX,
         .metallic_roughness_index = material.metallic_roughness_texture ? material.metallic_roughness_texture.value() : UINT32_MAX,

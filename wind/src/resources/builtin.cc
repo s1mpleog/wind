@@ -88,9 +88,9 @@ WIND_NODISCARD auto build(resources::ResourceManager*        resource_manager,
 {
   using namespace wind::vulkan;
 
-  auto vertex_shader_handle = WIND_TRY(resource_manager->load_shader(device, "assets/shaders/suzanne.vert.spv"));
+  auto vertex_shader_handle = WIND_TRY(resource_manager->load_shader(device, "assets/shaders/model.vert.spv"));
 
-  auto fragment_shader_handle = WIND_TRY(resource_manager->load_shader(device, "assets/shaders/suzanne.frag.spv"));
+  auto fragment_shader_handle = WIND_TRY(resource_manager->load_shader(device, "assets/shaders/model.frag.spv"));
 
   ShaderInfo vert_info{
       .stage  = ShaderStage::Vertex,
@@ -175,7 +175,7 @@ WIND_NODISCARD auto build(resources::ResourceManager*        resource_manager,
   resource_manager->destroy_shader(vertex_shader_handle);
   resource_manager->destroy_shader(fragment_shader_handle);
 
-  auto model_handle = WIND_TRY(resource_manager->load_model("assets/models/room.wind"));
+  auto model_handle = WIND_TRY(resource_manager->load_model("assets/models/thanos.wind"));
 
   std::vector<BuiltAssets> assets;
 

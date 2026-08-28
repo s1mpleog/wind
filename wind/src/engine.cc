@@ -17,17 +17,6 @@
 #include <SDL3/SDL_timer.h>
 
 namespace wind {
-//current life-cycle is following:
-// at lower level vulkan::context owns instance, debug messenger, GpuDevice and Swapchain
-// FrameContext owns N semaphores, fences and cmd buffers
-// Renderer owns vulkan::context and Frame context
-// Window owns its internal handler nothing else
-// Engine owns window and renderer
-// main createsEngine
-// Renderer -> frame context and vulkan context
-// Engine -> Window and Renderer
-// main -> callsEngine
-
 WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, wind::vulkan::Configuration vulkan_cfg) WIND_NOEXCEPT
     -> WindResult<Engine>
 {
@@ -52,7 +41,6 @@ WIND_NODISCARD auto Engine::create(platform::WindowConfiguration window_cfg, win
   auto assets = WIND_TRY(builtin::build(resource_manager.get(), pipeline_manager.get(), vulkan_context->gpu_device.device));
 
   scene::Scene scene{};
-
 
   for(const auto& asset : assets)
   {
@@ -93,6 +81,15 @@ auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
     while(SDL_PollEvent(&event))
     {
       m_input_manager->process_event(event);
+
+
+      if(event.type == SDL_EVENT_WINDOW_RESIZED)
+      {
+        int new_width  = event.window.data1;
+        int new_height = event.window.data2;
+        // Handle new dimensions here
+        break;
+      }
 
       if(event.type == SDL_EVENT_QUIT)
         running = false;

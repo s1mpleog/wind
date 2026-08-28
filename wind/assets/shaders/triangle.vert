@@ -14,6 +14,10 @@ layout(push_constant) uniform PushConstants
     vec4 base_color;
 } pc;
 
+// layout(set = 0, binding = 1) uniform UboInstance {
+//     mat4 transform
+// } ubo_instance;
+
 void main()
 {
     vec4 position = pc.transform * vec4(in_position, 1.0);

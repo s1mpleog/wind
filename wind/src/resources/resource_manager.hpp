@@ -38,12 +38,13 @@ struct Handle
 struct Texture;
 struct Shader;
 
-using TextureHandle = Handle<Texture>;
-using ShaderHandle  = Handle<Shader>;
-using VertexHandle  = Handle<u32>;
-using IndexHandle   = Handle<u32>;
-using ModelHandle   = Handle<u32>;
-using BufferHandle  = Handle<u32>;
+using TextureHandle       = Handle<Texture>;
+using ShaderHandle        = Handle<Shader>;
+using VertexHandle        = Handle<u32>;
+using IndexHandle         = Handle<u32>;
+using ModelHandle         = Handle<u32>;
+using BufferHandle        = Handle<u32>;
+using DynamicBufferHandle = Handle<u32>;
 
 static_assert(sizeof(TextureHandle) == 4);
 static_assert(sizeof(ShaderHandle) == 4);
@@ -82,11 +83,18 @@ public:
 
   WIND_NODISCARD auto recreate_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
 
-  // just for testing
   WIND_NODISCARD auto create_vertex_buffer(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<BufferHandle>;
   WIND_NODISCARD auto create_index_buffer(std::span<const std::byte> indices) -> WindResult<BufferHandle>;
   WIND_NODISCARD auto get_buffer(BufferHandle handle) const -> WindResult<const gpu::AllocatedBuffer*>;
   WIND_NODISCARD auto get_buffer_unchecked(BufferHandle handle) const -> const gpu::AllocatedBuffer*;
+
+  WIND_NODISCARD auto create_dynamic_buffer(u32 size, vk::BufferUsageFlagBits usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
+      -> WindResult<DynamicBufferHandle>;
+
+  WIND_NODISCARD auto create_dynamic_uniform_buffer(u32 size) WIND_NOEXCEPT -> WindResult<DynamicBufferHandle>;
+
+  WIND_NODISCARD auto get_mapped_data(DynamicBufferHandle handle) WIND_NOEXCEPT -> WindResult<void*>;
+  WIND_NODISCARD auto get_mapped_data_unchecked(DynamicBufferHandle handle) WIND_NOEXCEPT -> void*;
 
   WIND_NODISCARD auto get_bindless_descriptor_set() WIND_NOEXCEPT -> const vk::raii::DescriptorSet*
   {

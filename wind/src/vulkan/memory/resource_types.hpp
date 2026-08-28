@@ -3,6 +3,7 @@
 #include "vulkan/graphics/pipeline_config.hpp"
 #include "vulkan/vulkan.hpp"
 #include <optional>
+#include <utility>
 #include <vector>
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
@@ -13,22 +14,25 @@ struct AllocatedBuffer
   VkBuffer      buffer{};
   VmaAllocation allocation{};
   VmaAllocator  allocator{};
+  void*         mapped{nullptr};
 
   AllocatedBuffer()                                          = default;
   AllocatedBuffer(const AllocatedBuffer&)                    = delete;
   auto operator=(const AllocatedBuffer&) -> AllocatedBuffer& = delete;
 
-  AllocatedBuffer(VkBuffer buffer, VmaAllocation allocation, VmaAllocator allocator)
+  AllocatedBuffer(VkBuffer buffer, VmaAllocation allocation, VmaAllocator allocator, void* mapped = nullptr)
       : buffer(buffer)
       , allocation(allocation)
       , allocator(allocator)
+      , mapped{mapped}
   {
   }
 
   AllocatedBuffer(AllocatedBuffer&& other) noexcept
       : buffer(std::exchange(other.buffer, VK_NULL_HANDLE))
       , allocation(std::exchange(other.allocation, nullptr))
-      , allocator(other.allocator) {};
+      , allocator(other.allocator)
+      , mapped(std::exchange(other.mapped, nullptr)) {};
 
   auto reset() WIND_NOEXCEPT -> void
   {
@@ -38,6 +42,8 @@ struct AllocatedBuffer
 
       buffer     = VK_NULL_HANDLE;
       allocation = nullptr;
+      allocation = nullptr;
+      mapped     = nullptr;
     }
   }
 
@@ -50,6 +56,7 @@ struct AllocatedBuffer
       buffer     = std::exchange(other.buffer, VK_NULL_HANDLE);
       allocation = std::exchange(other.allocation, nullptr);
       allocator  = std::exchange(other.allocator, nullptr);
+      mapped     = std::exchange(other.mapped, nullptr);
     }
 
     return *this;
