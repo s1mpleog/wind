@@ -32,7 +32,7 @@ WIND_NODISCARD auto CreateFrame(u32 FrameCount, const vk::raii::Device &Device,
 		TransferCmdBuffer = std::move(Buffers[0]);
 	}
 
-	for (usize I = 0; I < FrameCount; ++I)
+	for (TUsize I = 0; I < FrameCount; ++I)
 	{
 		FrameContext.emplace_back(
 		    std::move(GraphicsCmdBuffer[I]), std::move(TransferCmdBuffer),

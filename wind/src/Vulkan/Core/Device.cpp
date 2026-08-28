@@ -32,7 +32,7 @@ static auto MakePhysicalDeviceCandidate(const vk::raii::PhysicalDevice &Physical
 {
 	std::optional<FPhysicalDeviceCandidate> Best{};
 
-	auto Features2 = PhysicalDevice.getFeatures2().features;
+	[[maybe_unused]] auto Features2 = PhysicalDevice.getFeatures2().features;
 	auto Properties2 = PhysicalDevice.getProperties2().properties;
 	auto QueueInfos = PhysicalDevice.getQueueFamilyProperties();
 

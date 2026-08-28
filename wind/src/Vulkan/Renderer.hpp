@@ -29,7 +29,7 @@ class URenderer
 
 	WIND_NODISCARD auto Shutdown() const WIND_NOEXCEPT -> WindResult<void>
 	{
-		WIND_TRY(MContext->GpuDevice.Device.waitIdle());
+		WIND_TRY(Context->GpuDevice.Device.waitIdle());
 		return {};
 	}
 
@@ -50,18 +50,18 @@ class URenderer
 	URenderer(FConfiguration Cfg, const FVulkanContext *Context, FSwapchainContext SwapchainContext,
 	          std::vector<FRameContext> FrameContext, UResourceManager *ResourceManager,
 	          UPipelineManager *PipelineManager, TDynamicBufferHandle FrameUbo)
-	    : MConfig{Cfg}, MContext{Context}, MSwapchainContext{std::move(SwapchainContext)},
-	      MFrameContext(std::move(FrameContext)), MPipelineManager{PipelineManager}, MResourceManager{ResourceManager},
-	      MFrameUbo{FrameUbo} {};
+	    : Config{Cfg}, Context{Context}, SwapchainContext{std::move(SwapchainContext)},
+	      FrameContext(std::move(FrameContext)), PipelineManager{PipelineManager}, ResourceManager{ResourceManager},
+	      FrameUbo{FrameUbo} {};
 
-	FConfiguration MConfig;
-	const FVulkanContext *MContext;
-	FSwapchainContext MSwapchainContext;
-	std::vector<FRameContext> MFrameContext;
-	UPipelineManager *MPipelineManager;
-	UResourceManager *MResourceManager;
-	TDynamicBufferHandle MFrameUbo{};
+	FConfiguration Config;
+	const FVulkanContext *Context;
+	FSwapchainContext SwapchainContext;
+	std::vector<FRameContext> FrameContext;
+	UPipelineManager *PipelineManager;
+	UResourceManager *ResourceManager;
+	TDynamicBufferHandle FrameUbo{};
 
-	u32 MCurrentFrame{0};
-	u32 MCurrentImage{0};
+	u32 CurrentFrame{0};
+	u32 CurrentImage{0};
 };

@@ -51,21 +51,21 @@ WIND_NODISCARD auto URenderer::Create(FConfiguration Cfg, const UWindow &Window,
 WIND_NODISCARD auto URenderer::Begin(u32 Width, u32 Height) WIND_NOEXCEPT -> WindResult<void>
 {
 	// get a frame
-	auto *Frame = &MFrameContext[MCurrentFrame];
+	auto *Frame = &FrameContext[CurrentFrame];
 
 	// wait for fences (previous frame to complete)
 	// vk::WaitForFences will return once fence is in signaled state so like once GPU processed the previous
 	// frame it will set the fence to signaled and this will return
-	WIND_TRY(Frame->WaitInFlightFence(MContext->GpuDevice.Device));
-	WIND_TRY(Frame->WaitPresentFence(MContext->GpuDevice.Device));
+	WIND_TRY(Frame->WaitInFlightFence(Context->GpuDevice.Device));
+	WIND_TRY(Frame->WaitPresentFence(Context->GpuDevice.Device));
 
 	uint32_t ImageIndex{0};
 
 	// we are using c-api here because c++ library is acting weird here its returning error
 	// ask presentation engine for next swapchain image handle once this function success then image_available semaphore
 	// will be SIGNALED
-	VkResult RawResult = MContext->GpuDevice.Device.getDispatcher()->vkAcquireNextImageKHR(
-	    *MContext->GpuDevice.Device, *MSwapchainContext.Handle, UINT64_MAX, *Frame->ImageAvailable, VK_NULL_HANDLE,
+	VkResult RawResult = Context->GpuDevice.Device.getDispatcher()->vkAcquireNextImageKHR(
+	    *Context->GpuDevice.Device, *SwapchainContext.Handle, UINT64_MAX, *Frame->ImageAvailable, VK_NULL_HANDLE,
 	    &ImageIndex);
 
 	auto SwapchainResult = static_cast<vk::Result>(RawResult);
@@ -76,18 +76,18 @@ WIND_NODISCARD auto URenderer::Begin(u32 Width, u32 Height) WIND_NOEXCEPT -> Win
 		// stop the current frame
 
 		// TODO: change this with different option
-		WIND_TRY(MContext->GpuDevice.Device.waitIdle());
+		WIND_TRY(Context->GpuDevice.Device.waitIdle());
 
 		spdlog::info("out of date swapchain recreating");
 
-		auto OldSwapchain = std::move(MSwapchainContext);
+		auto OldSwapchain = std::move(SwapchainContext);
 		auto NewSwapchain = WIND_TRY(
-		    CreateSwapchain(MConfig, Width, Height, MContext->Surface, MContext->GpuDevice, &OldSwapchain.Handle));
+		    CreateSwapchain(Config, Width, Height, Context->Surface, Context->GpuDevice, &OldSwapchain.Handle));
 
-		MSwapchainContext = std::move(NewSwapchain);
+		SwapchainContext = std::move(NewSwapchain);
 
 		// recreate the depth buffer
-		WIND_TRY(MResourceManager->CreateDefaultDepthImage(Width, Height));
+		WIND_TRY(ResourceManager->CreateDefaultDepthImage(Width, Height));
 
 		// this does not means error i am doing this so in draw call i check this error code
 		// if error == out_of_date then continue otherwise return error
@@ -106,11 +106,11 @@ WIND_NODISCARD auto URenderer::Begin(u32 Width, u32 Height) WIND_NOEXCEPT -> Win
 	// so we have to do it like if we submit to signaled fence then when cpu waits it will return
 	// automatically since it is in signaled fence let GPU change from un-signaled to signaled when it
 	// finishes the operation
-	WIND_TRY(Frame->ResetInFlightFence(MContext->GpuDevice.Device));
-	WIND_TRY(Frame->ResetPresentFence(MContext->GpuDevice.Device));
+	WIND_TRY(Frame->ResetInFlightFence(Context->GpuDevice.Device));
+	WIND_TRY(Frame->ResetPresentFence(Context->GpuDevice.Device));
 
 	// set the current image index to what swapchain index gave us
-	MCurrentImage = ImageIndex;
+	CurrentImage = ImageIndex;
 
 	// reset old command buffer
 	// the specs says any state other than pending can be transitioned to initial state by
@@ -125,7 +125,7 @@ WIND_NODISCARD auto URenderer::Begin(u32 Width, u32 Height) WIND_NOEXCEPT -> Win
 
 	// transition swapchain image from undefined to optimal for color attachment
 	// we can't use undefined layout for color attachment aka rendering we must transition first
-	TransitionImage(Frame->GraphicsCommandBuffer, MSwapchainContext.Images[MCurrentImage], vk::ImageLayout::eUndefined,
+	TransitionImage(Frame->GraphicsCommandBuffer, SwapchainContext.Images[CurrentImage], vk::ImageLayout::eUndefined,
 	                vk::ImageLayout::eColorAttachmentOptimal);
 
 	std::array<float, 4> ClearColor{0.055F, 0.055F, 0.055F, 1.0F};
@@ -135,20 +135,20 @@ WIND_NODISCARD auto URenderer::Begin(u32 Width, u32 Height) WIND_NOEXCEPT -> Win
 
 	vk::RenderingAttachmentInfo ColorAttachInfo{};
 	ColorAttachInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-	ColorAttachInfo.imageView = MSwapchainContext.ImageViews[MCurrentImage];
+	ColorAttachInfo.imageView = SwapchainContext.ImageViews[CurrentImage];
 	ColorAttachInfo.loadOp = vk::AttachmentLoadOp::eClear;
 	ColorAttachInfo.storeOp = vk::AttachmentStoreOp::eStore;
 	ColorAttachInfo.clearValue.color = Color;
 
 	// create depth attachment
 	vk::RenderingAttachmentInfo DepthAttachInfo{};
-	DepthAttachInfo.imageView = MResourceManager->GetDefaultDepthImageView();
+	DepthAttachInfo.imageView = ResourceManager->GetDefaultDepthImageView();
 	DepthAttachInfo.imageLayout = vk::ImageLayout::eDepthAttachmentOptimal;
 	DepthAttachInfo.loadOp = vk::AttachmentLoadOp::eClear;
 	DepthAttachInfo.storeOp = vk::AttachmentStoreOp::eDontCare;
 	DepthAttachInfo.clearValue.depthStencil.setDepth(1.0F);
 
-	vk::Rect2D RenderArea{0, MSwapchainContext.Extent};
+	vk::Rect2D RenderArea{0, SwapchainContext.Extent};
 
 	// information for dynamic rendering
 	vk::RenderingInfo RenderingInfo{};
@@ -170,11 +170,11 @@ auto URenderer::DrawBuffer(FRenderObject Object, FRenderView CameraView,
 {
 	WIND_ASSERT(!Object.IsModelType && "Trying to draw buffer but object is model");
 
-	const auto *Pipeline = MPipelineManager->GetUnchecked(Object.PipelineHandle);
+	const auto *Pipeline = PipelineManager->GetUnchecked(Object.PipelineHandle);
 	CmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, Pipeline->GraphicsPipeline);
 
-	const auto *VertexBuffer = MResourceManager->GetBufferUnchecked(Object.BufferAsset.VertexHandle);
-	const auto *IndexBuffer = MResourceManager->GetBufferUnchecked(Object.BufferAsset.IndexHandle);
+	const auto *VertexBuffer = ResourceManager->GetBufferUnchecked(Object.BufferAsset.VertexHandle);
+	const auto *IndexBuffer = ResourceManager->GetBufferUnchecked(Object.BufferAsset.IndexHandle);
 
 	auto PushConstant = FPushConstants{.Transform = CameraView.Projection * CameraView.View *
 	                                                glm::translate(glm::mat4{1.0F}, glm::vec3{0.0F, 0.0F, -10.0F}),
@@ -200,14 +200,14 @@ auto URenderer::DrawModel(FRenderObject Object, FRenderView CameraView,
 {
 	WIND_ASSERT(Object.IsModelType && "Trying to draw model but object is not model");
 
-	const auto *Pipeline = MPipelineManager->GetUnchecked(Object.PipelineHandle);
+	const auto *Pipeline = PipelineManager->GetUnchecked(Object.PipelineHandle);
 
 	CmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, Pipeline->GraphicsPipeline);
 
-	const auto *Model = MResourceManager->GetModelUnchecked(Object.ModelHandle);
+	const auto *Model = ResourceManager->GetModelUnchecked(Object.ModelHandle);
 	const auto &Mesh = Model->Mesh;
 
-	const auto &DescriptorSet = *MResourceManager->GetBindlessDescriptorSet();
+	const auto &DescriptorSet = *ResourceManager->GetBindlessDescriptorSet();
 
 	// auto  ubo_instance = UboInstance{.transform = camera_view.projection * camera_view.view * glm::mat4{1.0F}};
 	// auto* mapped       = m_resource_manager->get_mapped_data_unchecked(m_frame_ubo);
@@ -248,13 +248,13 @@ auto URenderer::DrawModel(FRenderObject Object, FRenderView CameraView,
 auto URenderer::SetupViewport(vk::raii::CommandBuffer &CmdBuffer) const WIND_NOEXCEPT -> void
 {
 	vk::Rect2D Scissor{0};
-	Scissor.extent = MSwapchainContext.Extent;
+	Scissor.extent = SwapchainContext.Extent;
 
 	vk::Viewport Viewport{};
 	Viewport.x = 0.0F;
 	Viewport.y = 0.0F;
-	Viewport.width = static_cast<float>(MSwapchainContext.Extent.width);
-	Viewport.height = static_cast<float>(MSwapchainContext.Extent.height);
+	Viewport.width = static_cast<float>(SwapchainContext.Extent.width);
+	Viewport.height = static_cast<float>(SwapchainContext.Extent.height);
 	Viewport.minDepth = 0.0F;
 	Viewport.maxDepth = 1.0F;
 
@@ -264,7 +264,7 @@ auto URenderer::SetupViewport(vk::raii::CommandBuffer &CmdBuffer) const WIND_NOE
 
 auto URenderer::Draw(FRenderObject Object, FRenderView CameraView) WIND_NOEXCEPT -> void
 {
-	auto *Frame = &MFrameContext[MCurrentFrame];
+	auto *Frame = &FrameContext[CurrentFrame];
 
 	SetupViewport(Frame->GraphicsCommandBuffer);
 
@@ -280,7 +280,7 @@ auto URenderer::Draw(FRenderObject Object, FRenderView CameraView) WIND_NOEXCEPT
 
 auto URenderer::End() WIND_NOEXCEPT -> void
 {
-	auto *Frame = &MFrameContext[MCurrentFrame];
+	auto *Frame = &FrameContext[CurrentFrame];
 
 	// end a dynamic render pass instance we already did required draw calls in draw() function
 	// in begin() we did begin_rendering which says that we can record draw calls into cmd buffer after that
@@ -290,7 +290,7 @@ auto URenderer::End() WIND_NOEXCEPT -> void
 	// transition image from color_attachment_optimal to present_src_khr so presentation engine can
 	// display it to monitor previous layout was color_attachment which was suitable for rendering now
 	// we want a layout which will be suitable for presentation engine
-	TransitionImage(Frame->GraphicsCommandBuffer, MSwapchainContext.Images[MCurrentImage],
+	TransitionImage(Frame->GraphicsCommandBuffer, SwapchainContext.Images[CurrentImage],
 	                vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
 
 	// vk::EndCmdBuffer
@@ -338,10 +338,10 @@ auto URenderer::End() WIND_NOEXCEPT -> void
 	// command buffer from executable state (vk::CmdEnd) can be transition to pending by queue submission command
 	// in pending state the application "must not modify command buffer" (never forget about it) as it may be executing
 	// on device
-	if (auto Result = MContext->GpuDevice.GraphicsQueue.submit2(SubmitInfo, Frame->InFlight); !Result.has_value())
+	if (auto Result = Context->GpuDevice.GraphicsQueue.submit2(SubmitInfo, Frame->InFlight); !Result.has_value())
 		spdlog::info("Failed to submit queue");
 
-	auto SwapchainHandle = *MSwapchainContext.Handle;
+	auto SwapchainHandle = *SwapchainContext.Handle;
 
 	vk::SwapchainPresentFenceInfoKHR PresentFenceInfo{};
 	PresentFenceInfo.swapchainCount = 1;
@@ -355,11 +355,11 @@ auto URenderer::End() WIND_NOEXCEPT -> void
 	// wait for render_finished to be signaled in submit info it will happen when gpu reaches eAllGraphics stage
 	// after than the current image has been rendered and presentation engine can finally sent to OS
 	PresentInfo.pWaitSemaphores = &*Frame->RenderFinished;
-	PresentInfo.pImageIndices = &MCurrentImage;
+	PresentInfo.pImageIndices = &CurrentImage;
 
 	VkPresentInfoKHR PresentInfoC = static_cast<VkPresentInfoKHR>(PresentInfo);
-	VkResult PresentResult = MContext->GpuDevice.Device.getDispatcher()->vkQueuePresentKHR(
-	    *MContext->GpuDevice.PresentationQueue, &PresentInfoC);
+	VkResult PresentResult = Context->GpuDevice.Device.getDispatcher()->vkQueuePresentKHR(
+	    *Context->GpuDevice.PresentationQueue, &PresentInfoC);
 	auto Result = static_cast<vk::Result>(PresentResult);
 
 	if (Result != vk::Result::eSuccess && Result != vk::Result::eSuboptimalKHR &&
@@ -368,5 +368,5 @@ auto URenderer::End() WIND_NOEXCEPT -> void
 		spdlog::info("Failed to present");
 	}
 
-	MCurrentFrame = (MCurrentFrame + 1) % MaxFrameInFlight;
+	CurrentFrame = (CurrentFrame + 1) % MaxFrameInFlight;
 }

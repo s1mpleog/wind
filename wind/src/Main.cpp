@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <spdlog/spdlog.h>
 
-auto main() -> i32
+auto main() -> TI32
 {
 	constexpr u16 WindowWidth = 1280;
 	constexpr u16 WindowHeight = 720;

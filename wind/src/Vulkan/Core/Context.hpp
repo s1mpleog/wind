@@ -7,7 +7,7 @@
 
 #include <vulkan/vulkan_core.h>
 
-constexpr usize MaxFrameInFlight = 2;
+constexpr TUsize MaxFrameInFlight = 2;
 
 struct FVulkanContext
 {

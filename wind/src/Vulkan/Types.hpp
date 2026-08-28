@@ -3,7 +3,6 @@
 #include "Config.hpp"
 #include "Vulkan/Core/Configuration.hpp"
 #include "Vulkan/Graphics/PipelineConfig.hpp"
-#include "spdlog/spdlog.h"
 
 #include <span>
 #include <vector>
@@ -116,7 +115,7 @@ WIND_INLINE auto ToVk(EFrontFace FrontFace) WIND_NOEXCEPT -> vk::FrontFace
 	case EFrontFace::ClockWise:
 		return vk::FrontFace::eClockwise;
 	default:
-		return vk::FrontFace::eClockwise;
+		return vk::FrontFace::eCounterClockwise;
 	}
 }
 

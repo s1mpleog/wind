@@ -34,7 +34,7 @@ enum class EFrontFace : u8
 	ClockWise
 };
 
-enum class EFormat : uint16_t
+enum class EFormat : u8
 {
 	Undefined,
 

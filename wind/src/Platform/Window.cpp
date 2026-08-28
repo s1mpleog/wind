@@ -56,7 +56,7 @@ WIND_NODISCARD auto UWindow::Extensions() const WIND_NOEXCEPT -> WindResult<std:
 	std::vector<const char *> Extensions;
 	Extensions.reserve(ExtensionsCount);
 
-	for (usize I = 0; I < ExtensionsCount; ++I)
+	for (TUsize I = 0; I < ExtensionsCount; ++I)
 	{
 		Extensions.emplace_back(ExtensionsRaw[I]);
 	}
