@@ -76,7 +76,7 @@ WIND_NODISCARD auto UGpuAllocator::UploadStagingBuffer(std::span<const std::byte
 	VmaAllocation Allocation{};
 
 	// creates a new vkBuffer, allocates and binds memory for it
-	if (auto Result = vmaCreateBuffer(MAllocator, BufferInfo, &AllocationCreateInfo, &Buffer, &Allocation, &AllocInfo);
+	if (auto Result = vmaCreateBuffer(Allocator, BufferInfo, &AllocationCreateInfo, &Buffer, &Allocation, &AllocInfo);
 	    Result != VK_SUCCESS)
 		WIND_ERR(WindError::vulkan(ErrorCode::FailedToCreateBuffer, static_cast<vk::Result>(Result)));
 
@@ -86,33 +86,33 @@ WIND_NODISCARD auto UGpuAllocator::UploadStagingBuffer(std::span<const std::byte
 	return FAllocatedBuffer{
 	    Buffer,
 	    Allocation,
-	    MAllocator,
+	    Allocator,
 	};
 }
 
 WIND_NODISCARD auto UGpuAllocator::BeginCommandBuffer() WIND_NOEXCEPT -> TWindResult<void>
 {
-	WIND_ASSERT(MCommandBuffer != nullptr && "Command buffer is null");
+	WIND_ASSERT(CommandBuffer != nullptr && "Command buffer is null");
 
 	vk::CommandBufferBeginInfo BeginInfo{};
 	BeginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-	WIND_TRY(MCommandBuffer.begin(BeginInfo), ErrorCode::FailedToBeginCommandBuffer);
+	WIND_TRY(CommandBuffer.begin(BeginInfo), ErrorCode::FailedToBeginCommandBuffer);
 
 	return {};
 }
 
 WIND_NODISCARD auto UGpuAllocator::EndCommandBuffer() WIND_NOEXCEPT -> TWindResult<void>
 {
-	WIND_ASSERT(MCommandBuffer != nullptr && "Command buffer is null");
+	WIND_ASSERT(CommandBuffer != nullptr && "Command buffer is null");
 
-	WIND_TRY(MCommandBuffer.end());
+	WIND_TRY(CommandBuffer.end());
 	return {};
 }
 
 WIND_NODISCARD auto UGpuAllocator::WaitForFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>
 {
-	WIND_ASSERT(MFence != nullptr && "fence is null");
-	auto Result = Device.waitForFences(*MFence, vk::True, UINT64_MAX);
+	WIND_ASSERT(Fence != nullptr && "fence is null");
+	auto Result = Device.waitForFences(*Fence, vk::True, UINT64_MAX);
 
 	if (Result != vk::Result::eSuccess)
 		WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, Result));
@@ -122,7 +122,7 @@ WIND_NODISCARD auto UGpuAllocator::WaitForFence(const vk::raii::Device &Device) 
 
 WIND_NODISCARD auto UGpuAllocator::ResetFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>
 {
-	WIND_TRY(Device.resetFences(*MFence));
+	WIND_TRY(Device.resetFences(*Fence));
 	return {};
 }
 
@@ -130,7 +130,7 @@ WIND_NODISCARD auto UGpuAllocator::CreateBuffers(const FVulkanContext *Context,
                                                  std::span<const FBufferData> Buffers) WIND_NOEXCEPT
     -> TWindResult<std::vector<FAllocatedBuffer>>
 {
-	WIND_ASSERT(MAllocator != VK_NULL_HANDLE && "VMA allocator is null");
+	WIND_ASSERT(Allocator != VK_NULL_HANDLE && "VMA allocator is null");
 	WIND_ASSERT(Context != VK_NULL_HANDLE && "context is null");
 
 	std::vector<FAllocatedBuffer> AllocatedBuffers;
@@ -166,7 +166,7 @@ WIND_NODISCARD auto UGpuAllocator::CreateBuffers(const FVulkanContext *Context,
 		VmaAllocation ImageAllocation{};
 		VkBuffer DeviceBuffer{};
 
-		if (auto Result = vmaCreateBuffer(MAllocator, BufferCreateInfo, &AllocationCreateInfo, &DeviceBuffer,
+		if (auto Result = vmaCreateBuffer(Allocator, BufferCreateInfo, &AllocationCreateInfo, &DeviceBuffer,
 		                                  &ImageAllocation, nullptr);
 		    Result != VK_SUCCESS)
 		{
@@ -181,24 +181,24 @@ WIND_NODISCARD auto UGpuAllocator::CreateBuffers(const FVulkanContext *Context,
 		CopyRegion.srcOffset = 0;
 
 		// copy the buffer
-		MCommandBuffer.copyBuffer(StagingBuffers[index].Buffer, DeviceBuffer, CopyRegion);
+		CommandBuffer.copyBuffer(StagingBuffers[index].Buffer, DeviceBuffer, CopyRegion);
 
-		AllocatedBuffers.emplace_back(DeviceBuffer, ImageAllocation, MAllocator);
+		AllocatedBuffers.emplace_back(DeviceBuffer, ImageAllocation, Allocator);
 	}
 
 	WIND_TRY(EndCommandBuffer());
 
 	vk::SubmitInfo SubmitInfo{};
 	SubmitInfo.commandBufferCount = 1;
-	SubmitInfo.pCommandBuffers = &*MCommandBuffer;
+	SubmitInfo.pCommandBuffers = &*CommandBuffer;
 
 	if (Context->GpuDevice.HasTransferQueue())
 	{
-		WIND_TRY(Context->GpuDevice.TransferQueue->submit(SubmitInfo, *MFence), ErrorCode::FailedToSubmitQueue);
+		WIND_TRY(Context->GpuDevice.TransferQueue->submit(SubmitInfo, *Fence), ErrorCode::FailedToSubmitQueue);
 	}
 	else
 	{
-		WIND_TRY(Context->GpuDevice.GraphicsQueue.submit(SubmitInfo, *MFence), ErrorCode::FailedToSubmitQueue);
+		WIND_TRY(Context->GpuDevice.GraphicsQueue.submit(SubmitInfo, *Fence), ErrorCode::FailedToSubmitQueue);
 	}
 
 	WIND_TRY(WaitForFence(Context->GpuDevice.Device));
@@ -245,7 +245,7 @@ WIND_NODISCARD auto UGpuAllocator::CreateVkImage(TU32 Width, TU32 Height, EForma
 	VkImage Image{};
 
 	if (auto Result =
-	        vmaCreateImage(MAllocator, &VkImageCreateInfo, &ImageAllocationInfo, &Image, &ImageAllocation, nullptr);
+	        vmaCreateImage(Allocator, &VkImageCreateInfo, &ImageAllocationInfo, &Image, &ImageAllocation, nullptr);
 	    Result != VK_SUCCESS)
 		WIND_ERR(WindError::vulkan(ErrorCode::FailedToCreateImage, static_cast<vk::Result>(Result)));
 
@@ -256,7 +256,7 @@ WIND_NODISCARD auto UGpuAllocator::CreateTexture(const FVulkanContext *Context,
                                                  std::span<const FTextureData> TextureData) WIND_NOEXCEPT
     -> TWindResult<std::vector<FAllocatedTexture>>
 {
-	WIND_ASSERT(MAllocator != VK_NULL_HANDLE && "VMA allocator is null");
+	WIND_ASSERT(Allocator != VK_NULL_HANDLE && "VMA allocator is null");
 	WIND_ASSERT(Context != VK_NULL_HANDLE && "context is null");
 
 	std::vector<FAllocatedBuffer> StagingBuffers;
@@ -297,13 +297,13 @@ WIND_NODISCARD auto UGpuAllocator::CreateTexture(const FVulkanContext *Context,
 		    .width = data.Dimensions.width, .height = data.Dimensions.height, .depth = data.Dimensions.depth};
 
 		// transition from undefined to TransferDst
-		TransitionImage(MCommandBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+		TransitionImage(CommandBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-		MCommandBuffer.copyBufferToImage(StagingBuffers[index].Buffer, image, vk::ImageLayout::eTransferDstOptimal,
-		                                 Region);
+		CommandBuffer.copyBufferToImage(StagingBuffers[index].Buffer, image, vk::ImageLayout::eTransferDstOptimal,
+		                                Region);
 
 		// transition from Transfer dst to shader read
-		TransitionImage(MCommandBuffer, image, vk::ImageLayout::eTransferDstOptimal,
+		TransitionImage(CommandBuffer, image, vk::ImageLayout::eTransferDstOptimal,
 		                vk::ImageLayout::eShaderReadOnlyOptimal);
 
 		vk::SamplerCreateInfo SamplerCreateInfo{};
@@ -317,7 +317,7 @@ WIND_NODISCARD auto UGpuAllocator::CreateTexture(const FVulkanContext *Context,
 
 		auto Sampler = WIND_TRY(Context->GpuDevice.Device.createSampler(SamplerCreateInfo));
 
-		Textures.emplace_back(FAllocatedImage{image, std::move(ImageView), MAllocator, image_allocation,
+		Textures.emplace_back(FAllocatedImage{image, std::move(ImageView), Allocator, image_allocation,
 		                                      ToVk(data.Format),
 		                                      vk::Extent2D{
 		                                          data.Dimensions.width,
@@ -330,15 +330,15 @@ WIND_NODISCARD auto UGpuAllocator::CreateTexture(const FVulkanContext *Context,
 
 	vk::SubmitInfo SubmitInfo{};
 	SubmitInfo.commandBufferCount = 1;
-	SubmitInfo.pCommandBuffers = &*MCommandBuffer;
+	SubmitInfo.pCommandBuffers = &*CommandBuffer;
 
 	if (Context->GpuDevice.HasTransferQueue())
 	{
-		WIND_TRY(Context->GpuDevice.TransferQueue->submit(SubmitInfo, *MFence), ErrorCode::FailedToSubmitQueue);
+		WIND_TRY(Context->GpuDevice.TransferQueue->submit(SubmitInfo, *Fence), ErrorCode::FailedToSubmitQueue);
 	}
 	else
 	{
-		WIND_TRY(Context->GpuDevice.GraphicsQueue.submit(SubmitInfo, *MFence), ErrorCode::FailedToSubmitQueue);
+		WIND_TRY(Context->GpuDevice.GraphicsQueue.submit(SubmitInfo, *Fence), ErrorCode::FailedToSubmitQueue);
 	}
 
 	WIND_TRY(WaitForFence(Context->GpuDevice.Device));
@@ -346,8 +346,8 @@ WIND_NODISCARD auto UGpuAllocator::CreateTexture(const FVulkanContext *Context,
 	return Textures;
 }
 
-WIND_NODISCARD auto UGpuAllocator::CreateDepthBuffer(const FVulkanContext *Context, TU32 Width, TU32 Height) WIND_NOEXCEPT
-    -> TWindResult<FAllocatedImage>
+WIND_NODISCARD auto UGpuAllocator::CreateDepthBuffer(const FVulkanContext *Context, TU32 Width,
+                                                     TU32 Height) WIND_NOEXCEPT -> TWindResult<FAllocatedImage>
 {
 	auto [image, image_allocation] =
 	    WIND_TRY(CreateVkImage(Width, Height, EFormat::D32Float, vk::ImageUsageFlagBits::eDepthStencilAttachment));
@@ -367,35 +367,31 @@ WIND_NODISCARD auto UGpuAllocator::CreateDepthBuffer(const FVulkanContext *Conte
 	WIND_TRY(BeginCommandBuffer());
 
 	// transition from undefined dst to depth optimal
-	TransitionImage(MCommandBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal);
+	TransitionImage(CommandBuffer, image, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal);
 
 	// end the command buffer no more recording :(
 	WIND_TRY(EndCommandBuffer());
 
 	vk::SubmitInfo SubmitInfo{};
 	SubmitInfo.commandBufferCount = 1;
-	SubmitInfo.pCommandBuffers = &*MCommandBuffer;
+	SubmitInfo.pCommandBuffers = &*CommandBuffer;
 
 	WIND_TRY(WaitForFence(Context->GpuDevice.Device));
 	WIND_TRY(ResetFence(Context->GpuDevice.Device));
 
 	if (Context->GpuDevice.HasTransferQueue())
 	{
-		WIND_TRY(Context->GpuDevice.TransferQueue->submit(SubmitInfo, *MFence), ErrorCode::FailedToSubmitQueue);
+		WIND_TRY(Context->GpuDevice.TransferQueue->submit(SubmitInfo, *Fence), ErrorCode::FailedToSubmitQueue);
 	}
 	else
 	{
-		WIND_TRY(Context->GpuDevice.GraphicsQueue.submit(SubmitInfo, *MFence), ErrorCode::FailedToSubmitQueue);
+		WIND_TRY(Context->GpuDevice.GraphicsQueue.submit(SubmitInfo, *Fence), ErrorCode::FailedToSubmitQueue);
 	}
 
 	WIND_TRY(WaitForFence(Context->GpuDevice.Device));
 
-	return FAllocatedImage{image,
-	                       std::move(ImageView),
-	                       MAllocator,
-	                       image_allocation,
-	                       ToVk(EFormat::D32Float),
-	                       vk::Extent2D{Width, Height}};
+	return FAllocatedImage{
+	    image, std::move(ImageView), Allocator, image_allocation, ToVk(EFormat::D32Float), vk::Extent2D{Width, Height}};
 }
 
 WIND_NODISCARD auto UGpuAllocator::CreateDynamicBuffer(TU32 Size, vk::BufferUsageFlagBits Usage) WIND_NOEXCEPT
@@ -417,11 +413,11 @@ WIND_NODISCARD auto UGpuAllocator::CreateDynamicBuffer(TU32 Size, vk::BufferUsag
 	VmaAllocationInfo AllocationInfo{};
 
 	if (auto Result =
-	        vmaCreateBuffer(MAllocator, BufferInfo, &AllocationCreateInfo, &DeviceBuffer, &Allocation, &AllocationInfo);
+	        vmaCreateBuffer(Allocator, BufferInfo, &AllocationCreateInfo, &DeviceBuffer, &Allocation, &AllocationInfo);
 	    Result != VK_SUCCESS)
 	{
 		WIND_ERR(WindError::vulkan(ErrorCode::FailedToCreateBuffer, static_cast<vk::Result>(Result)));
 	}
 
-	return FAllocatedBuffer{DeviceBuffer, Allocation, MAllocator, AllocationInfo.pMappedData};
+	return FAllocatedBuffer{DeviceBuffer, Allocation, Allocator, AllocationInfo.pMappedData};
 }

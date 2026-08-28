@@ -21,9 +21,9 @@ class UGpuAllocator
 	UGpuAllocator(const UGpuAllocator &) = delete;
 	auto operator=(const UGpuAllocator &) -> UGpuAllocator & = delete;
 
-	UGpuAllocator(UGpuAllocator &&Other) WIND_NOEXCEPT : MAllocator{std::exchange(Other.MAllocator, VK_NULL_HANDLE)},
-	                                                     MCommandBuffer{std::move(Other.MCommandBuffer)},
-	                                                     MFence{std::move(Other.MFence)}
+	UGpuAllocator(UGpuAllocator &&Other) WIND_NOEXCEPT : Allocator{std::exchange(Other.Allocator, VK_NULL_HANDLE)},
+	                                                     CommandBuffer{std::move(Other.CommandBuffer)},
+	                                                     Fence{std::move(Other.Fence)}
 	{
 	}
 
@@ -31,13 +31,13 @@ class UGpuAllocator
 	{
 		if (this != &Other)
 		{
-			if (MAllocator != VK_NULL_HANDLE)
-				vmaDestroyAllocator(MAllocator);
+			if (Allocator != VK_NULL_HANDLE)
+				vmaDestroyAllocator(Allocator);
 
-			MAllocator = std::exchange(Other.MAllocator, VK_NULL_HANDLE);
+			Allocator = std::exchange(Other.Allocator, VK_NULL_HANDLE);
 
-			MCommandBuffer = std::move(Other.MCommandBuffer);
-			MFence = std::move(Other.MFence);
+			CommandBuffer = std::move(Other.CommandBuffer);
+			Fence = std::move(Other.Fence);
 		}
 
 		return *this;
@@ -45,9 +45,9 @@ class UGpuAllocator
 
 	~UGpuAllocator()
 	{
-		if (MAllocator != VK_NULL_HANDLE)
+		if (Allocator != VK_NULL_HANDLE)
 		{
-			vmaDestroyAllocator(MAllocator);
+			vmaDestroyAllocator(Allocator);
 			spdlog::info("vma allocator destroyed");
 		}
 	}
@@ -83,14 +83,15 @@ class UGpuAllocator
 	auto IsFenceSignaled(const vk::raii::Device &Device) WIND_NOEXCEPT -> bool;
 
 	WIND_NODISCARD auto
-	CreateDynamicBuffer(TU32 Size, vk::BufferUsageFlagBits Usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
+	CreateDynamicBuffer(TU32 Size,
+	                    vk::BufferUsageFlagBits Usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
 	    -> TWindResult<FAllocatedBuffer>;
 
   private:
 	UGpuAllocator(VmaAllocator Allocator, vk::raii::CommandBuffer CommandBuffer, vk::raii::Fence Fence)
-	    : MAllocator{Allocator}, MCommandBuffer{std::move(CommandBuffer)}, MFence{std::move(Fence)} {};
+	    : Allocator{Allocator}, CommandBuffer{std::move(CommandBuffer)}, Fence{std::move(Fence)} {};
 
-	VmaAllocator MAllocator{VK_NULL_HANDLE};
-	vk::raii::CommandBuffer MCommandBuffer{nullptr};
-	vk::raii::Fence MFence{nullptr};
+	VmaAllocator Allocator{VK_NULL_HANDLE};
+	vk::raii::CommandBuffer CommandBuffer{nullptr};
+	vk::raii::Fence Fence{nullptr};
 };

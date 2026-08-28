@@ -77,7 +77,7 @@ struct FCamera
 
 		const glm::vec3 F = Forward();
 		const glm::vec3 R = Right();
-		const glm::vec3 U = glm::normalize(glm::cross(R, F)); // proper up
+		// const glm::vec3 U = glm::normalize(glm::cross(R, F)); // proper up
 
 		auto &Input = UServiceLocator::Get<UInputManger>();
 

@@ -89,7 +89,8 @@ class UResourceManager
 	WIND_NODISCARD auto GetBufferUnchecked(TBufferHandle Handle) const -> const FAllocatedBuffer *;
 
 	WIND_NODISCARD auto
-	CreateDynamicBuffer(TU32 Size, vk::BufferUsageFlagBits Usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
+	CreateDynamicBuffer(TU32 Size,
+	                    vk::BufferUsageFlagBits Usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
 	    -> TWindResult<TDynamicBufferHandle>;
 
 	WIND_NODISCARD auto CreateDynamicUniformBuffer(TU32 Size) WIND_NOEXCEPT -> TWindResult<TDynamicBufferHandle>;
@@ -99,26 +100,26 @@ class UResourceManager
 
 	WIND_NODISCARD auto GetBindlessDescriptorSet() WIND_NOEXCEPT -> const vk::raii::DescriptorSet *
 	{
-		return MDescriptorManager.GetSet();
+		return DescriptorManager.GetSet();
 	}
 
 	WIND_NODISCARD auto GetBindlessDescriptorLayout() WIND_NOEXCEPT -> const vk::raii::DescriptorSetLayout *
 	{
-		return MDescriptorManager.GetLayout();
+		return DescriptorManager.GetLayout();
 	}
 
   private:
 	UResourceManager(const FVulkanContext *Context, UGpuAllocator Allocator, UDescriptorManager DescriptorManager)
-	    : MContext{Context}, MAllocator{std::move(Allocator)}, MDescriptorManager{std::move(DescriptorManager)} {};
+	    : Context{Context}, Allocator{std::move(Allocator)}, DescriptorManager{std::move(DescriptorManager)} {};
 
-	const FVulkanContext *MContext;
-	std::vector<vk::raii::ShaderModule> MShaders;
-	std::unordered_map<std::string, TShaderHandle> MShaderCache;
-	UGpuAllocator MAllocator;
-	std::unordered_map<std::string, TModelHandle> MModelCache;
-	std::vector<FAllocatedTexture> MTexture;
-	FAllocatedImage MDepthImage;
-	UDescriptorManager MDescriptorManager;
-	std::vector<FModel> MModels;
-	std::vector<FAllocatedBuffer> MBuffers; // for things that don't uses models
+	const FVulkanContext *Context;
+	std::vector<vk::raii::ShaderModule> Shaders;
+	std::unordered_map<std::string, TShaderHandle> ShaderCache;
+	UGpuAllocator Allocator;
+	std::unordered_map<std::string, TModelHandle> ModelsCache;
+	std::vector<FAllocatedTexture> Textures;
+	FAllocatedImage DepthImage;
+	UDescriptorManager DescriptorManager;
+	std::vector<FModel> Models;
+	std::vector<FAllocatedBuffer> Buffers; // for things that don't uses models
 };
