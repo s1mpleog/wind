@@ -44,33 +44,33 @@ add_executable(wind)
 
 target_sources(wind
     PRIVATE
-        src/main.cc
-        src/engine.cc
+        src/Main.cpp
+        src/Engine.cpp
 
-        src/platform/window.cc
+        src/platform/Window.cpp
 
-        src/vulkan/core/context.cc
-        src/vulkan/core/instance.cc
-        src/vulkan/core/validation_layer.cc
-        src/vulkan/core/device.cc
-        src/vulkan/core/swapchain.cc
+        src/vulkan/core/Context.cpp
+        src/vulkan/core/Instance.cpp
+        src/vulkan/core/ValidationLayer.cpp
+        src/vulkan/core/Device.cpp
+        src/vulkan/core/Swapchain.cpp
 
-        src/vulkan/frame/frame_context.cc
+        src/vulkan/frame/FrameContext.cpp
 
-        src/vulkan/graphics/pipeline.cc
-        src/vulkan/renderer.cc
+        src/vulkan/graphics/Pipeline.cpp
+        src/vulkan/Renderer.cpp
 
-        src/vulkan/memory/allocator.cc
+        src/vulkan/memory/Allocator.cpp
 
-        src/resources/resource_manager.cc
-        src/resources/descriptor_manager.cc
-        src/resources/builtin.cc
+        src/resources/ResourceManager.cpp
+        src/resources/DescriptorManager.cpp
+        src/resources/Builtin.cpp
 
-        src/input/input_manager.cc
+        src/input/InputManager.cpp
 
-        src/scene/scene.cc
+        src/scene/Scene.cpp
 
-        src/vma_impl.cc
+        src/VmaImpl.cpp
 )
 
 target_include_directories(wind
@@ -99,8 +99,8 @@ target_precompile_headers(wind
         <spdlog/spdlog.h>
         <ranges>
 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/config.hpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/expected_util.hpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Config.hpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/ExpectedUtil.hpp"
 )
 
 target_compile_options(wind
