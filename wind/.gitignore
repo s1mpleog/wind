@@ -1,0 +1,7 @@
+/build-debug
+/subprojects
+/cache
+/build
+/build-release
+/.cache
+/test.wind

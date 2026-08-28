@@ -1,0 +1,81 @@
+# ThirdParty/CMakeLists.txt
+
+# =============================================================================
+# SDL3
+# =============================================================================
+
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/SDL3
+    ${CMAKE_BINARY_DIR}/ThirdParty/SDL3
+    EXCLUDE_FROM_ALL
+)
+
+# =============================================================================
+# spdlog
+# =============================================================================
+
+set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/spdlog
+    ${CMAKE_BINARY_DIR}/ThirdParty/spdlog
+    EXCLUDE_FROM_ALL
+)
+
+# =============================================================================
+# cpptrace
+# =============================================================================
+
+set(CPPTRACE_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(CPPTRACE_BUILD_BENCHMARKING OFF CACHE BOOL "" FORCE)
+set(CPPTRACE_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cpptrace
+    ${CMAKE_BINARY_DIR}/ThirdParty/cpptrace
+    EXCLUDE_FROM_ALL
+)
+
+# =============================================================================
+# GLM
+# =============================================================================
+
+set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLM_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/glm
+    ${CMAKE_BINARY_DIR}/ThirdParty/glm
+    EXCLUDE_FROM_ALL
+)
+
+# =============================================================================
+# Vulkan-Headers
+# =============================================================================
+
+set(VULKAN_HEADERS_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(VULKAN_HEADERS_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/Vulkan
+    ${CMAKE_BINARY_DIR}/ThirdParty/Vulkan
+    EXCLUDE_FROM_ALL
+)
+
+# =============================================================================
+# Vulkan Memory Allocator
+# =============================================================================
+
+set(VMA_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/VMA
+    ${CMAKE_BINARY_DIR}/ThirdParty/VMA
+    EXCLUDE_FROM_ALL
+)
