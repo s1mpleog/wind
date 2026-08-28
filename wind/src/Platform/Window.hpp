@@ -14,7 +14,6 @@
 #include <spdlog/spdlog.h>
 #include <vector>
 
-namespace wind::platform {
 
 struct WindowConfiguration
 {
@@ -84,4 +83,3 @@ private:
   SDL_Window*         m_handle{nullptr};
 };
 
-}  // namespace wind::platform

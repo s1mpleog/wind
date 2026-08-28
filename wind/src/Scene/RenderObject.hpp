@@ -4,16 +4,15 @@
 #include "Resources/ResourceManager.hpp"
 #include "Vulkan/Graphics/PipelineManager.hpp"
 
-namespace wind::scene {
 
 struct ModelComponent
 {
-  resources::ModelHandle handle;
+  ModelHandle handle;
 };
 
 struct PipelineComponent
 {
-  vulkan::graphics::PipelineHandle handle;
+  PipelineHandle handle;
 };
 
 struct Transform
@@ -22,11 +21,10 @@ struct Transform
 
 struct RenderObject
 {
-  resources::ModelHandle           model_handle{};
-  vulkan::graphics::PipelineHandle pipeline_handle{};
+  ModelHandle           model_handle{};
+  PipelineHandle pipeline_handle{};
   bool                             is_model_type{};
-  builtin::BufferAssets            buffer_asset{};
+  BufferAssets            buffer_asset{};
   //todo: transform later
 };
 
-}  // namespace wind::scene

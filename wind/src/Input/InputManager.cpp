@@ -2,7 +2,6 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keyboard.h"
 
-namespace wind::input {
 
 InputManger::InputManger()
     : m_key_states(SDL_GetKeyboardState(nullptr))
@@ -34,5 +33,3 @@ WIND_NODISCARD auto InputManger::get_mouse_position() const WIND_NOEXCEPT -> Mou
       .x_rel = m_mouse_x_rel,
   };
 }
-
-};  // namespace wind::input

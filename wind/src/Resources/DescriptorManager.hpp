@@ -9,7 +9,6 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
 
-namespace wind::vulkan {
 using DescriptorHandle = uint32_t;
 
 class DescriptorManager
@@ -25,7 +24,7 @@ public:
   WIND_NODISCARD auto get_set() const -> const vk::raii::DescriptorSet*;
   WIND_NODISCARD auto get_layout() const -> const vk::raii::DescriptorSetLayout*;
 
-  WIND_NODISCARD auto register_texture(const vk::raii::Device& device, const gpu::AllocatedTexture& texture) WIND_NOEXCEPT -> u32
+  WIND_NODISCARD auto register_texture(const vk::raii::Device& device, const AllocatedTexture& texture) WIND_NOEXCEPT -> u32
   {
     vk::DescriptorImageInfo image_info{};
     image_info.imageView   = texture.image.image_view;
@@ -58,5 +57,3 @@ private:
   vk::raii::DescriptorSetLayout m_layout{nullptr};
   u32                           m_index{};
 };
-
-};  // namespace wind::vulkan

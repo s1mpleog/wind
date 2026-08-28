@@ -7,7 +7,6 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-namespace wind::vulkan {
 WIND_NODISCARD auto DescriptorManager::create(const vk::raii::Device& device, vk::DescriptorType descriptor_type) WIND_NOEXCEPT
     -> WindResult<DescriptorManager>
 {
@@ -83,4 +82,3 @@ WIND_NODISCARD auto DescriptorManager::get_layout() const -> const vk::raii::Des
   return &m_layout;
 }
 
-}  // namespace wind::vulkan

@@ -8,11 +8,10 @@
 #include "Scene/RenderObject.hpp"
 #include <vector>
 
-namespace wind::scene {
 class Scene
 {
 public:
-  auto add_render_objects(builtin::BuiltAssets assets, bool is_model = true, Transform transform = {}) WIND_NOEXCEPT -> void;
+  auto add_render_objects(BuiltAssets assets, bool is_model = true, Transform transform = {}) WIND_NOEXCEPT -> void;
 
   auto get() WIND_NOEXCEPT -> std::vector<RenderObject>;
 
@@ -36,5 +35,3 @@ public:
 private:
   std::vector<RenderObject> m_objects;
 };
-
-};  // namespace wind::scene

@@ -8,7 +8,6 @@
 #include <vk_mem_alloc.h>
 #include <glm/glm.hpp>
 
-namespace wind::gpu {
 struct AllocatedBuffer
 {
   VkBuffer      buffer{};
@@ -215,7 +214,7 @@ struct TextureData
 {
   std::span<const std::byte> pixels;
   vk::Extent3D               dimensions{};
-  vulkan::Format             format{};
+  Format                     format{};
 };
 
 struct BufferData
@@ -223,5 +222,3 @@ struct BufferData
   std::span<const std::byte> data;
   vk::BufferUsageFlags       usage{vk::BufferUsageFlagBits::eVertexBuffer};
 };
-
-};  // namespace wind::gpu

@@ -19,7 +19,6 @@
 #include <string_view>
 #include <vector>
 
-namespace wind::asset {
 
 struct WindTexture
 {
@@ -353,5 +352,3 @@ WIND_NODISCARD WIND_INLINE auto open(std::string_view name) WIND_NOEXCEPT -> Win
 
   return asset;
 };
-
-};  // namespace wind::asset

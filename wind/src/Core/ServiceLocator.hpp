@@ -1,6 +1,5 @@
 #pragma once
 
-namespace wind::core {
 class ServiceLocator
 {
 public:
@@ -35,4 +34,3 @@ private:
     return ptr;
   }
 };
-}  // namespace wind::core

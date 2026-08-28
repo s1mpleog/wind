@@ -28,7 +28,6 @@
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 
-namespace wind::resources {
 template <typename T>
 struct Handle
 {
@@ -65,7 +64,7 @@ public:
   ResourceManager(ResourceManager&&)                    = default;
   auto operator=(ResourceManager&&) -> ResourceManager& = default;
 
-  WIND_NODISCARD static auto create(const vulkan::VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>;
+  WIND_NODISCARD static auto create(const VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>;
 
   WIND_NODISCARD auto load_shader(const vk::raii::Device& device, std::string_view shader_path) WIND_NOEXCEPT
       -> WindResult<ShaderHandle>;
@@ -78,15 +77,15 @@ public:
 
   WIND_NODISCARD auto load_model(std::string_view texture_path) WIND_NOEXCEPT -> WindResult<ModelHandle>;
   //TODO: WindResult does not works with reference fix that for now return pointer
-  WIND_NODISCARD auto get_model(ModelHandle handle) WIND_NOEXCEPT -> WindResult<const gpu::Model*>;
-  WIND_NODISCARD auto get_model_unchecked(ModelHandle handle) WIND_NOEXCEPT -> const gpu::Model*;
+  WIND_NODISCARD auto get_model(ModelHandle handle) WIND_NOEXCEPT -> WindResult<const Model*>;
+  WIND_NODISCARD auto get_model_unchecked(ModelHandle handle) WIND_NOEXCEPT -> const Model*;
 
   WIND_NODISCARD auto recreate_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
 
   WIND_NODISCARD auto create_vertex_buffer(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<BufferHandle>;
   WIND_NODISCARD auto create_index_buffer(std::span<const std::byte> indices) -> WindResult<BufferHandle>;
-  WIND_NODISCARD auto get_buffer(BufferHandle handle) const -> WindResult<const gpu::AllocatedBuffer*>;
-  WIND_NODISCARD auto get_buffer_unchecked(BufferHandle handle) const -> const gpu::AllocatedBuffer*;
+  WIND_NODISCARD auto get_buffer(BufferHandle handle) const -> WindResult<const AllocatedBuffer*>;
+  WIND_NODISCARD auto get_buffer_unchecked(BufferHandle handle) const -> const AllocatedBuffer*;
 
   WIND_NODISCARD auto create_dynamic_buffer(u32 size, vk::BufferUsageFlagBits usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
       -> WindResult<DynamicBufferHandle>;
@@ -107,21 +106,19 @@ public:
   }
 
 private:
-  ResourceManager(const vulkan::VulkanContext* context, vulkan::memory::GpuAllocator allocator, vulkan::DescriptorManager descriptor_manager)
+  ResourceManager(const VulkanContext* context, GpuAllocator allocator, DescriptorManager descriptor_manager)
       : m_context{context}
       , m_allocator{std::move(allocator)}
       , m_descriptor_manager{std::move(descriptor_manager)} {};
 
-  const vulkan::VulkanContext*                  m_context;
+  const VulkanContext*                          m_context;
   std::vector<vk::raii::ShaderModule>           m_shaders;
   std::unordered_map<std::string, ShaderHandle> m_shader_cache;
-  vulkan::memory::GpuAllocator                  m_allocator;
+  GpuAllocator                                  m_allocator;
   std::unordered_map<std::string, ModelHandle>  m_model_cache;
-  std::vector<gpu::AllocatedTexture>            m_texture;
-  gpu::AllocatedImage                           m_depth_image;
-  vulkan::DescriptorManager                     m_descriptor_manager;
-  std::vector<gpu::Model>                       m_models;
-  std::vector<gpu::AllocatedBuffer>             m_buffers;  // for things that don't uses models
+  std::vector<AllocatedTexture>                 m_texture;
+  AllocatedImage                                m_depth_image;
+  DescriptorManager                             m_descriptor_manager;
+  std::vector<Model>                            m_models;
+  std::vector<AllocatedBuffer>                  m_buffers;  // for things that don't uses models
 };
-
-};  // namespace wind::resources

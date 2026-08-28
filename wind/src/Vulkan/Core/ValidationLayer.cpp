@@ -3,7 +3,6 @@
 #include <vulkan/vulkan_core.h>
 #include "Vulkan/Types.hpp"
 
-namespace wind::vulkan {
 auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) WIND_NOEXCEPT
     -> WindResult<vk::raii::DebugUtilsMessengerEXT>
 {
@@ -18,4 +17,3 @@ auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& inst
   return messenger;
 }
 
-}  // namespace wind::vulkan

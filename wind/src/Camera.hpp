@@ -10,7 +10,6 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
-namespace wind {
 struct Camera
 {
   glm::vec3 position{0.0F, 1.75F, 7.5F};
@@ -66,7 +65,7 @@ struct Camera
     const glm::vec3 r = right();
     const glm::vec3 u = glm::normalize(glm::cross(r, f));  // proper up
 
-    auto& input = core::ServiceLocator::get<input::InputManger>();
+    auto& input = ServiceLocator::get<InputManger>();
 
     if(input.is_down(SDL_SCANCODE_W))
       position += f * speed;  // Forward
@@ -89,7 +88,7 @@ struct Camera
       return;
     }
 
-    auto& input = core::ServiceLocator::get<input::InputManger>();
+    auto& input = ServiceLocator::get<InputManger>();
 
     const auto mouse = input.get_mouse_position();
 
@@ -103,4 +102,3 @@ struct Camera
 
   auto reset_mouse_ignore() -> void { ignore_next_mouse_motion = true; }
 };
-}  // namespace wind

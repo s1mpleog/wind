@@ -12,7 +12,6 @@
 #include "Vulkan/Graphics/PipelineManager.hpp"
 #include <vulkan/vulkan_raii.hpp>
 
-namespace wind::vulkan {
 class Renderer
 {
 public:
@@ -24,10 +23,10 @@ public:
   // two step initialization
   // todo: later make resource and pipeline manager const
   WIND_NODISCARD static auto create(Configuration               cfg,
-                                    const platform::Window&     window,
+                                    const Window&     window,
                                     const VulkanContext*        context,
-                                    resources::ResourceManager* resource_manager,
-                                    graphics::PipelineManager*  pipeline_manager) WIND_NOEXCEPT -> WindResult<Renderer>;
+                                    ResourceManager* resource_manager,
+                                    PipelineManager*  pipeline_manager) WIND_NOEXCEPT -> WindResult<Renderer>;
 
   WIND_NODISCARD auto shutdown() const WIND_NOEXCEPT -> WindResult<void>
   {
@@ -36,12 +35,12 @@ public:
   }
 
   WIND_NODISCARD auto begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
-  auto                draw(scene::RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void;
+  auto                draw(RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void;
   auto                end() WIND_NOEXCEPT -> void;
 
   // internal functions
-  auto draw_model(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void;
-  auto draw_buffer(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void;
+  auto draw_model(RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void;
+  auto draw_buffer(RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void;
 
   // can cmd buffer be const ?
   auto setup_viewport(vk::raii::CommandBuffer& cmd_buffer) const WIND_NOEXCEPT -> void;
@@ -51,9 +50,9 @@ private:
            const VulkanContext*           context,
            SwapchainContext               swapchain_context,
            std::vector<FrameContext>      frame_context,
-           resources::ResourceManager*    resource_manager,
-           graphics::PipelineManager*     pipeline_manager,
-           resources::DynamicBufferHandle frame_ubo)
+           ResourceManager*    resource_manager,
+           PipelineManager*     pipeline_manager,
+           DynamicBufferHandle frame_ubo)
       : m_config{std::move(cfg)}
       , m_context{context}
       , m_swapchain_context{std::move(swapchain_context)}
@@ -66,12 +65,11 @@ private:
   const VulkanContext*           m_context;
   SwapchainContext               m_swapchain_context;
   std::vector<FrameContext>      m_frame_context;
-  graphics::PipelineManager*     m_pipeline_manager;
-  resources::ResourceManager*    m_resource_manager;
-  resources::DynamicBufferHandle m_frame_ubo{};
+  PipelineManager*     m_pipeline_manager;
+  ResourceManager*    m_resource_manager;
+  DynamicBufferHandle m_frame_ubo{};
 
   u32 m_current_frame{0};
   u32 m_current_image{0};
 };
 
-}  // namespace wind::vulkan

@@ -4,13 +4,12 @@
 #include "Vulkan/Core/Instance.hpp"
 #include "Vulkan/Core/ValidationLayer.hpp"
 
-namespace wind::vulkan {
-auto create_context(const platform::Window& window, const Configuration& cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>
+auto create_context(const Window& window, const Configuration& cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>
 {
   VulkanContext ctx{};
 
   auto platform_extensions = WIND_TRY(window.extensions());
-  ctx.instance             = WIND_TRY(instance::create(cfg, ctx.raii_ctx, std::move(platform_extensions)));
+  ctx.instance             = WIND_TRY(create(cfg, ctx.raii_ctx, std::move(platform_extensions)));
 
 #ifdef WIND_VULKAN_VALIDATION
 #ifdef WIND_LOG_ENABLE
@@ -22,9 +21,7 @@ auto create_context(const platform::Window& window, const Configuration& cfg) WI
   auto* surface_raw = WIND_TRY(window.create_surface(ctx.instance));
   ctx.surface       = vk::raii::SurfaceKHR(ctx.instance, surface_raw);
 
-  ctx.gpu_device = WIND_TRY(device::create(cfg, ctx.instance, ctx.surface));
+  ctx.gpu_device = WIND_TRY(device_create(cfg, ctx.instance, ctx.surface));
 
   return ctx;
 }
-
-}  // namespace wind::vulkan

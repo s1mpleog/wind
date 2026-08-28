@@ -4,7 +4,6 @@
 #include <vulkan/vulkan_core.h>
 #include <string_view>
 
-namespace wind::vulkan {
 enum class VulkanVersion : u8
 {
   VERSION13,
@@ -59,7 +58,6 @@ struct Configuration
 };
 
 
-namespace presets {
 WIND_INLINE constexpr Configuration Default{
     .api_version            = VulkanVersion::VERSION14,
     .vsync                  = true,
@@ -79,7 +77,3 @@ WIND_INLINE constexpr Configuration Development{
     .debug_message_severity = DebugMessageSeverity::Error | DebugMessageSeverity::Warning | DebugMessageSeverity::Verbose,
     .debug_message_type = DebugMessageType::General | DebugMessageType::Performance | DebugMessageType::Validation,
 };
-
-}  // namespace presets
-
-};  // namespace wind::vulkan

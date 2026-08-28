@@ -6,7 +6,6 @@
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
-namespace wind::vulkan {
 
 struct SwapchainContext
 {
@@ -17,13 +16,10 @@ struct SwapchainContext
   vk::Extent2D                     extent{};
 };
 
-namespace swapchain {
-WIND_NODISCARD auto create(const Configuration&        cfg,
-                           u32                         window_width,
-                           u32                         window_height,
-                           const vk::raii::SurfaceKHR& surface,
-                           const GpuDevice&        device_context,
-                           const vk::raii::SwapchainKHR* old_swapchain = nullptr) WIND_NOEXCEPT -> WindResult<SwapchainContext>;
-};
-
-};  // namespace wind::vulkan
+WIND_NODISCARD auto create_swapchain(const Configuration&          cfg,
+                                     u32                           window_width,
+                                     u32                           window_height,
+                                     const vk::raii::SurfaceKHR&   surface,
+                                     const GpuDevice&              device_context,
+                                     const vk::raii::SwapchainKHR* old_swapchain = nullptr) WIND_NOEXCEPT
+    -> WindResult<SwapchainContext>;

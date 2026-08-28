@@ -8,7 +8,6 @@
 #include <optional>
 #include <vulkan/vulkan_core.h>
 
-namespace wind::vulkan {
 
 // maybe use class ?
 struct FrameContext
@@ -71,12 +70,8 @@ struct FrameContext
   }
 };
 
-namespace frame {
-WIND_NODISCARD auto create(u32                          frame_count,
-                           const vk::raii::Device&      device,
-                           const vk::raii::CommandPool& graphics_pool,
-                           const vk::raii::CommandPool* transfer_pool = nullptr) WIND_NOEXCEPT
+WIND_NODISCARD auto create_frame(u32                          frame_count,
+                                 const vk::raii::Device&      device,
+                                 const vk::raii::CommandPool& graphics_pool,
+                                 const vk::raii::CommandPool* transfer_pool = nullptr) WIND_NOEXCEPT
     -> WindResult<std::vector<FrameContext>>;
-}
-
-};  // namespace wind::vulkan

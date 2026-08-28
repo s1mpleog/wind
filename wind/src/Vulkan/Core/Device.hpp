@@ -8,8 +8,6 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
 
-namespace wind::vulkan {
-
 struct GpuDevice
 {
   vk::raii::PhysicalDevice             physical_device{nullptr};
@@ -30,9 +28,6 @@ struct GpuDevice
   }
 };
 
-namespace device {
-WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
-    -> WindResult<GpuDevice>;
-};
 
-};  // namespace wind::vulkan
+WIND_NODISCARD auto device_create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
+    -> WindResult<GpuDevice>;

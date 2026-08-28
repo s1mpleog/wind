@@ -16,13 +16,12 @@
 #include <utility>
 #include <vector>
 
-namespace wind::resources {
-WIND_NODISCARD auto ResourceManager::create(const vulkan::VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>
+WIND_NODISCARD auto ResourceManager::create(const VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>
 {
-  auto allocator = WIND_TRY(vulkan::memory::GpuAllocator::create(context));
+  auto allocator = WIND_TRY(GpuAllocator::create(context));
 
   auto descriptor_manager =
-      WIND_TRY(vulkan::DescriptorManager::create(context->gpu_device.device, vk::DescriptorType::eCombinedImageSampler));
+      WIND_TRY(DescriptorManager::create(context->gpu_device.device, vk::DescriptorType::eCombinedImageSampler));
 
   std::inplace_vector<vk::DescriptorSetLayoutBinding, 2> bindings{
       vk::DescriptorSetLayoutBinding{
@@ -142,13 +141,13 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
     return it->second;
   }
 
-  auto model = gpu::Model{};
+  auto model = Model{};
 
-  auto wind_asset = WIND_TRY(asset::open(texture_path));
+  auto wind_asset = WIND_TRY(open(texture_path));
 
   for(const auto& sub_mesh : wind_asset.mesh.sub_meshes)
   {
-    model.mesh.sub_meshes.emplace_back(gpu::SubMesh{
+    model.mesh.sub_meshes.emplace_back(SubMesh{
         .index_count    = sub_mesh.index_count,
         .index_offset   = sub_mesh.index_offset,
         .material_index = sub_mesh.material_index,
@@ -161,26 +160,26 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
 
   // mesh.index_buffer = WIND_TRY(m_allocator.create_buffer(m_context, ));
 
-  std::inplace_vector<gpu::BufferData, 5> buffers{{gpu::BufferData{
-                                                      .data  = std::as_bytes(std::span{wind_asset.mesh.position}),
-                                                      .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-                                                  }},
-                                                  {gpu::BufferData{
-                                                      .data  = std::as_bytes(std::span{wind_asset.mesh.indices}),
-                                                      .usage = vk::BufferUsageFlagBits::eIndexBuffer,
-                                                  }},
-                                                  {gpu::BufferData{
-                                                      .data  = std::as_bytes(std::span{wind_asset.mesh.normals}),
-                                                      .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-                                                  }},
-                                                  {gpu::BufferData{
-                                                      .data  = std::as_bytes(std::span{wind_asset.mesh.uvs}),
-                                                      .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-                                                  }},
-                                                  {gpu::BufferData{
-                                                      .data  = std::as_bytes(std::span{wind_asset.mesh.tangents}),
-                                                      .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-                                                  }}};
+  std::inplace_vector<BufferData, 5> buffers{{BufferData{
+                                                 .data  = std::as_bytes(std::span{wind_asset.mesh.position}),
+                                                 .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+                                             }},
+                                             {BufferData{
+                                                 .data  = std::as_bytes(std::span{wind_asset.mesh.indices}),
+                                                 .usage = vk::BufferUsageFlagBits::eIndexBuffer,
+                                             }},
+                                             {BufferData{
+                                                 .data  = std::as_bytes(std::span{wind_asset.mesh.normals}),
+                                                 .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+                                             }},
+                                             {BufferData{
+                                                 .data  = std::as_bytes(std::span{wind_asset.mesh.uvs}),
+                                                 .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+                                             }},
+                                             {BufferData{
+                                                 .data  = std::as_bytes(std::span{wind_asset.mesh.tangents}),
+                                                 .usage = vk::BufferUsageFlagBits::eVertexBuffer,
+                                             }}};
 
   //TODO: currently .wind fallbacks for uvs and normals so it will always exists
   // but later its not true so handle that with this
@@ -233,28 +232,28 @@ WIND_NODISCARD auto ResourceManager::load_model(std::string_view texture_path) W
   spdlog::info("buffer created successfully");
 
   // temporary
-  auto format = [](u32 format) -> vulkan::Format {
+  auto format = [](u32 format) -> Format {
     switch(format)
     {
       case 7:
-        return vulkan::Format::BC7_UNORM_BLOCK;
+        return Format::BC7_UNORM_BLOCK;
       case 5:
-        return vulkan::Format::BC5_UNORM_BLOCK;
+        return Format::BC5_UNORM_BLOCK;
 
       default:
-        return vulkan::Format::RGBA32_FLOAT;
+        return Format::RGBA32_FLOAT;
     }
   };
 
   // only if texture and material is not empty
   m_texture.reserve(wind_asset.textures.size());
 
-  std::vector<gpu::TextureData> texture_data;
+  std::vector<TextureData> texture_data;
   texture_data.reserve(wind_asset.textures.size());
 
   for(const auto&& [index, texture] : std::views::enumerate(wind_asset.textures))
   {
-    auto data = gpu::TextureData{
+    auto data = TextureData{
         .pixels     = std::as_bytes(std::span{texture.data}),
         .dimensions = {texture.width, texture.height, 1},
         .format     = format(texture.format),
@@ -319,7 +318,7 @@ WIND_NODISCARD auto ResourceManager::get_default_depth_image_view() const WIND_N
   return m_depth_image.image_view;
 }
 
-WIND_NODISCARD auto ResourceManager::get_model(ModelHandle handle) WIND_NOEXCEPT -> WindResult<const gpu::Model*>
+WIND_NODISCARD auto ResourceManager::get_model(ModelHandle handle) WIND_NOEXCEPT -> WindResult<const Model*>
 {
   if(handle.index >= m_models.size())
     WIND_ERR(WindError::internal());
@@ -327,7 +326,7 @@ WIND_NODISCARD auto ResourceManager::get_model(ModelHandle handle) WIND_NOEXCEPT
   return &m_models[handle.index];
 }
 
-WIND_NODISCARD auto ResourceManager::get_model_unchecked(ModelHandle handle) WIND_NOEXCEPT -> const gpu::Model*
+WIND_NODISCARD auto ResourceManager::get_model_unchecked(ModelHandle handle) WIND_NOEXCEPT -> const Model*
 {
   return &m_models[handle.index];
 }
@@ -348,7 +347,7 @@ WIND_NODISCARD auto ResourceManager::create_vertex_buffer(std::span<const std::b
 {
   auto index = static_cast<u32>(m_buffers.size());
 
-  m_buffers.emplace_back(WIND_TRY(m_allocator.create_buffer(m_context, gpu::BufferData{
+  m_buffers.emplace_back(WIND_TRY(m_allocator.create_buffer(m_context, BufferData{
                                                                            .data = vertices,
                                                                        })));
 
@@ -360,20 +359,20 @@ WIND_NODISCARD auto ResourceManager::create_index_buffer(std::span<const std::by
   auto index = static_cast<u32>(m_buffers.size());
 
   m_buffers.emplace_back(WIND_TRY(
-      m_allocator.create_buffer(m_context, gpu::BufferData{.data = indices, .usage = vk::BufferUsageFlagBits::eIndexBuffer})));
+      m_allocator.create_buffer(m_context, BufferData{.data = indices, .usage = vk::BufferUsageFlagBits::eIndexBuffer})));
 
 
   return BufferHandle{.index = index};
 }
 
-WIND_NODISCARD auto ResourceManager::get_buffer(BufferHandle handle) const -> WindResult<const gpu::AllocatedBuffer*>
+WIND_NODISCARD auto ResourceManager::get_buffer(BufferHandle handle) const -> WindResult<const AllocatedBuffer*>
 {
   if(handle.index >= m_buffers.size())
     WIND_ERR(WindError::internal());
 
   return &m_buffers[handle.index];
 }
-WIND_NODISCARD auto ResourceManager::get_buffer_unchecked(BufferHandle handle) const -> const gpu::AllocatedBuffer*
+WIND_NODISCARD auto ResourceManager::get_buffer_unchecked(BufferHandle handle) const -> const AllocatedBuffer*
 {
   return get_buffer(handle).value();
 }
@@ -409,5 +408,3 @@ WIND_NODISCARD auto ResourceManager::create_dynamic_uniform_buffer(u32 size) WIN
   auto handle = WIND_TRY(create_dynamic_buffer(size, vk::BufferUsageFlagBits::eUniformBuffer));
   return handle;
 }
-
-};  // namespace wind::resources

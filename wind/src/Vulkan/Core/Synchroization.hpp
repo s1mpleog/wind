@@ -2,7 +2,6 @@
 
 #include <vulkan/vulkan.hpp>
 
-namespace wind::vulkan::sync {
 WIND_INLINE auto transition_image(vk::raii::CommandBuffer& cmd, VkImage image, vk::ImageLayout old_layout, vk::ImageLayout new_layout) WIND_NOEXCEPT
     -> void
 {
@@ -198,5 +197,3 @@ WIND_INLINE auto transition_image(vk::raii::CommandBuffer& cmd, VkImage image, v
     return;
   }
 }
-
-};  // namespace wind::vulkan::sync

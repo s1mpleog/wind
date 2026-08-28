@@ -14,7 +14,6 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
 
-namespace wind::vulkan::memory {
 
 class GpuAllocator
 {
@@ -54,18 +53,18 @@ public:
   }
 
   WIND_NODISCARD static auto create(const VulkanContext* context) WIND_NOEXCEPT -> WindResult<GpuAllocator>;
-  WIND_NODISCARD auto upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<gpu::AllocatedBuffer>;
+  WIND_NODISCARD auto upload_staging_buffer(std::span<const std::byte> data) WIND_NOEXCEPT -> WindResult<AllocatedBuffer>;
 
   // TODO: use my custom types for flags
-  WIND_NODISCARD auto create_buffers(const VulkanContext* context, std::span<const gpu::BufferData> buffers) WIND_NOEXCEPT
-      -> WindResult<std::vector<gpu::AllocatedBuffer>>;
+  WIND_NODISCARD auto create_buffers(const VulkanContext* context, std::span<const BufferData> buffers) WIND_NOEXCEPT
+      -> WindResult<std::vector<AllocatedBuffer>>;
 
-  WIND_NODISCARD auto create_buffer(const VulkanContext* context, const gpu::BufferData& buffer) WIND_NOEXCEPT
-      -> WindResult<gpu::AllocatedBuffer>;
+  WIND_NODISCARD auto create_buffer(const VulkanContext* context, const BufferData& buffer) WIND_NOEXCEPT
+      -> WindResult<AllocatedBuffer>;
 
   // TODO: maybe take ownership of data instead of view ?
-  WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const gpu::TextureData> texture_data) WIND_NOEXCEPT
-      -> WindResult<std::vector<gpu::AllocatedTexture>>;
+  WIND_NODISCARD auto create_texture(const VulkanContext* context, std::span<const TextureData> texture_data) WIND_NOEXCEPT
+      -> WindResult<std::vector<AllocatedTexture>>;
 
   WIND_NODISCARD auto create_vk_image(u32                 width,
                                       u32                 height,
@@ -75,7 +74,7 @@ public:
       -> WindResult<std::pair<VkImage, VmaAllocation>>;
 
   WIND_NODISCARD auto create_depth_buffer(const VulkanContext* context, u32 width, u32 height) WIND_NOEXCEPT
-      -> WindResult<gpu::AllocatedImage>;
+      -> WindResult<AllocatedImage>;
 
   WIND_NODISCARD auto begin_command_buffer() WIND_NOEXCEPT -> WindResult<void>;
   WIND_NODISCARD auto end_command_buffer() WIND_NOEXCEPT -> WindResult<void>;
@@ -84,7 +83,7 @@ public:
   auto                is_fence_signaled(const vk::raii::Device& device) WIND_NOEXCEPT -> bool;
 
   WIND_NODISCARD auto create_dynamic_buffer(u32 size, vk::BufferUsageFlagBits usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
-      -> WindResult<gpu::AllocatedBuffer>;
+      -> WindResult<AllocatedBuffer>;
 
 private:
   GpuAllocator(VmaAllocator allocator, vk::raii::CommandBuffer command_buffer, vk::raii::Fence fence)
@@ -96,5 +95,3 @@ private:
   vk::raii::CommandBuffer m_command_buffer{nullptr};
   vk::raii::Fence         m_fence{nullptr};
 };
-
-};  // namespace wind::vulkan::memory

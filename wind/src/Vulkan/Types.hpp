@@ -9,7 +9,6 @@
 #include <span>
 #include <vector>
 
-namespace wind::vulkan {
 
 constexpr auto to_vk(VulkanVersion value) WIND_NOEXCEPT -> uint32_t
 {
@@ -617,7 +616,7 @@ struct PipelineCreateInfo
   vk::PipelineMultisampleStateCreateInfo           multisample;
 };
 
-WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> PipelineCreateInfo
+WIND_INLINE auto to_vk(const GraphicsConfig& config) WIND_NOEXCEPT -> PipelineCreateInfo
 {
   PipelineCreateInfo result{};
 
@@ -662,4 +661,3 @@ WIND_INLINE auto to_vk(const graphics::GraphicsConfig& config) WIND_NOEXCEPT -> 
 
   return result;
 }
-};  // namespace wind::vulkan

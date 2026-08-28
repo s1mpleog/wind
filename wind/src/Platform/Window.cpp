@@ -9,7 +9,6 @@
 #include "SDL3/SDL_vulkan.h"
 #include "Utils/ExpectedUtil.hpp"
 
-namespace wind::platform {
 WIND_NODISCARD auto Window::create() WIND_NOEXCEPT -> WindResult<void>
 {
   if(m_config.width == 0 || m_config.height == 0 || m_config.name.empty())
@@ -89,4 +88,3 @@ auto Window::get_config() const WIND_NOEXCEPT -> const WindowConfiguration&
   return m_config;
 }
 
-}  // namespace wind::platform

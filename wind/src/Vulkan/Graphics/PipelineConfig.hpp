@@ -3,7 +3,6 @@
 #include "Types.hpp"
 #include <vector>
 
-namespace wind::vulkan {
 
 enum class PrimitiveTopology : uint8_t
 {
@@ -340,7 +339,6 @@ struct PushConstantRange
   u32         size{};
 };
 
-namespace graphics {
 struct GraphicsConfig
 {
   std::vector<ShaderInfo>                shader;
@@ -354,7 +352,3 @@ struct GraphicsConfig
   Format                                 color_format{Format::RGBA8_UNORM};
   Format                                 depth_format{Format::Undefined};
 };
-
-};  // namespace graphics
-
-};  // namespace wind::vulkan

@@ -13,7 +13,6 @@
 #include <spdlog/spdlog.h>
 #include <Vulkan/Types.hpp>
 
-namespace wind::vulkan::instance {
 static auto query_instance_layer_support(std::string_view requested_layer) -> WindResult<void>
 {
   auto layers = WIND_TRY(vk::enumerateInstanceLayerProperties());
@@ -112,5 +111,3 @@ WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Context& ct
 
   return inst;
 }
-
-}  // namespace wind::vulkan::instance

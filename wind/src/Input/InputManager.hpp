@@ -4,7 +4,6 @@
 #include "SDL3/SDL_keycode.h"
 #include "Config.hpp"
 
-namespace wind::input {
 
 struct MousePosition
 {
@@ -42,4 +41,3 @@ private:
   float       m_mouse_x_rel{};
 };
 
-}  // namespace wind::input

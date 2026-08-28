@@ -24,21 +24,19 @@
 #include "Vulkan/Graphics/ShaderTypes.hpp"
 #include <vulkan/vulkan.hpp>
 
-namespace wind::vulkan {
-WIND_NODISCARD auto Renderer::create(Configuration               cfg,
-                                     const platform::Window&     window,
-                                     const VulkanContext*        context,
-                                     resources::ResourceManager* resource_manager,
-                                     graphics::PipelineManager*  pipeline_manager) WIND_NOEXCEPT -> WindResult<Renderer>
+WIND_NODISCARD auto Renderer::create(Configuration        cfg,
+                                     const Window&        window,
+                                     const VulkanContext* context,
+                                     ResourceManager*     resource_manager,
+                                     PipelineManager*     pipeline_manager) WIND_NOEXCEPT -> WindResult<Renderer>
 {
   // auto context = std::make_unique<VulkanContext>(WIND_TRY(create_context(window, cfg)));
   auto [width, heigth] = window.drawable_size();
 
-  auto swapchain_context = WIND_TRY(swapchain::create(cfg, width, heigth, context->surface, context->gpu_device));
+  auto swapchain_context = WIND_TRY(create_swapchain(cfg, width, heigth, context->surface, context->gpu_device));
 
-  // frame::create does not stores reference of device or graphics pool
-  auto frame_context =
-      WIND_TRY(frame::create(MAX_FRAME_IN_FLIGHT, context->gpu_device.device, context->gpu_device.graphics_pool));
+  // create does not stores reference of device or graphics pool
+  auto frame_context = WIND_TRY(create_frame(MAX_FRAME_IN_FLIGHT, context->gpu_device.device, context->gpu_device.graphics_pool));
 
   // create depth image
   WIND_TRY(resource_manager->create_default_depth_image(swapchain_context.extent.width, swapchain_context.extent.height));
@@ -46,7 +44,7 @@ WIND_NODISCARD auto Renderer::create(Configuration               cfg,
   // auto ubo_handle = WIND_TRY(resource_manager->create_dynamic_uniform_buffer(sizeof(UboInstance)));
 
   return Renderer(std::move(cfg), context, std::move(swapchain_context), std::move(frame_context), resource_manager,
-                  pipeline_manager, resources::DynamicBufferHandle{.index = 0});
+                  pipeline_manager, DynamicBufferHandle{.index = 0});
 }
 
 WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>
@@ -82,7 +80,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
     auto old_swapchain = std::move(m_swapchain_context);
     auto new_swapchain =
-        WIND_TRY(swapchain::create(m_config, width, height, m_context->surface, m_context->gpu_device, &old_swapchain.handle));
+        WIND_TRY(create_swapchain(m_config, width, height, m_context->surface, m_context->gpu_device, &old_swapchain.handle));
 
     m_swapchain_context = std::move(new_swapchain);
 
@@ -125,8 +123,8 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
 
   // transition swapchain image from undefined to optimal for color attachment
   // we can't use undefined layout for color attachment aka rendering we must transition first
-  sync::transition_image(frame->graphics_command_buffer, m_swapchain_context.images[m_current_image],
-                         vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+  transition_image(frame->graphics_command_buffer, m_swapchain_context.images[m_current_image],
+                   vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
 
   std::array<float, 4> clear_color{0.055F, 0.055F, 0.055F, 1.0F};
 
@@ -165,7 +163,7 @@ WIND_NODISCARD auto Renderer::begin(u32 width, u32 height) WIND_NOEXCEPT -> Wind
   return {};
 }
 
-auto Renderer::draw_buffer(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void
+auto Renderer::draw_buffer(RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void
 {
   WIND_ASSERT(!object.is_model_type && "Trying to draw buffer but object is model");
 
@@ -193,7 +191,7 @@ auto Renderer::draw_buffer(scene::RenderObject object, RenderView camera_view, v
   cmd_buffer.drawIndexed(object.buffer_asset.index_count, 1, 0, 0, 0);
 }
 
-auto Renderer::draw_model(scene::RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void
+auto Renderer::draw_model(RenderObject object, RenderView camera_view, vk::raii::CommandBuffer& cmd_buffer) WIND_NOEXCEPT -> void
 {
   WIND_ASSERT(object.is_model_type && "Trying to draw model but object is not model");
 
@@ -256,7 +254,7 @@ auto Renderer::setup_viewport(vk::raii::CommandBuffer& cmd_buffer) const WIND_NO
   cmd_buffer.setScissor(0, scissor);
 }
 
-auto Renderer::draw(scene::RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void
+auto Renderer::draw(RenderObject object, RenderView camera_view) WIND_NOEXCEPT -> void
 {
   auto* frame = &m_frame_context[m_current_frame];
 
@@ -284,8 +282,8 @@ auto Renderer::end() WIND_NOEXCEPT -> void
   // transition image from color_attachment_optimal to present_src_khr so presentation engine can
   // display it to monitor previous layout was color_attachment which was suitable for rendering now
   // we want a layout which will be suitable for presentation engine
-  sync::transition_image(frame->graphics_command_buffer, m_swapchain_context.images[m_current_image],
-                         vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
+  transition_image(frame->graphics_command_buffer, m_swapchain_context.images[m_current_image],
+                   vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR);
 
   // vk::EndCmdBuffer
   // when we did begin the state of command buffer was in recording now after end the state will transition to executable state
@@ -362,5 +360,3 @@ auto Renderer::end() WIND_NOEXCEPT -> void
 
   m_current_frame = (m_current_frame + 1) % MAX_FRAME_IN_FLIGHT;
 }
-
-}  // namespace wind::vulkan

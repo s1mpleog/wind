@@ -6,7 +6,6 @@
 #include "Vulkan/Core/Device.hpp"
 #include <vulkan/vulkan_core.h>
 
-namespace wind::vulkan {
 constexpr usize MAX_FRAME_IN_FLIGHT = 2;
 
 struct VulkanContext
@@ -20,6 +19,4 @@ struct VulkanContext
   GpuDevice            gpu_device{};
 };
 
-auto create_context(const platform::Window& window, const Configuration& cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>;
-
-}  // namespace wind::vulkan
+auto create_context(const Window& window, const Configuration& cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>;

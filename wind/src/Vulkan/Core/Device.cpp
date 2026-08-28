@@ -15,7 +15,6 @@
 #include "Vulkan/Types.hpp"
 #include <vulkan/vulkan.hpp>
 
-namespace wind::vulkan::device {
 
 struct PhysicalDeviceCandidate
 {
@@ -255,7 +254,7 @@ WIND_NODISCARD static auto create_command_pool(const vk::raii::Device& device, u
   return WIND_TRY(device.createCommandPool(cmd_pool_create_info));
 }
 
-WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
+WIND_NODISCARD auto device_create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
     -> WindResult<GpuDevice>
 {
   auto candidate  = WIND_TRY(select_physical_device(cfg, instance, surface));
@@ -271,5 +270,3 @@ WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Instance& i
 
   return gpu_device;
 }
-
-};  // namespace wind::vulkan::device

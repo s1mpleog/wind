@@ -5,12 +5,11 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-namespace wind::vulkan::frame {
 
-WIND_NODISCARD auto create(u32                          frame_count,
-                           const vk::raii::Device&      device,
-                           const vk::raii::CommandPool& graphics_pool,
-                           const vk::raii::CommandPool* transfer_pool) WIND_NOEXCEPT -> WindResult<std::vector<FrameContext>>
+WIND_NODISCARD auto create_frame(u32                          frame_count,
+                                 const vk::raii::Device&      device,
+                                 const vk::raii::CommandPool& graphics_pool,
+                                 const vk::raii::CommandPool* transfer_pool) WIND_NOEXCEPT -> WindResult<std::vector<FrameContext>>
 {
   WIND_ASSERT(frame_count != 0 && "Frame count is zero");
 
@@ -48,5 +47,3 @@ WIND_NODISCARD auto create(u32                          frame_count,
 
   return frame_context;
 }
-
-};  // namespace wind::vulkan::frame

@@ -131,43 +131,43 @@ public:
       switch(kind)
       {
         case ErrorKind::Vulkan:
-          out += std::format("{}[VULKAN ERROR]{} ", wind::BOLD_RED, wind::RESET);
+          out += std::format("{}[VULKAN ERROR]{} ", BOLD_RED, RESET);
           break;
         case ErrorKind::SDL:
-          out += std::format("{}[SDL ERROR]{} ", wind::BOLD_RED, wind::RESET);
+          out += std::format("{}[SDL ERROR]{} ", BOLD_RED, RESET);
           break;
         case ErrorKind::Internal:
-          out += std::format("{}[INTERNAL ERROR]{} ", wind::BOLD_RED, wind::RESET);
+          out += std::format("{}[INTERNAL ERROR]{} ", BOLD_RED, RESET);
           break;
       }
       // ── main message ───────────────────────────────────────────
-      out += std::format("{}{}{}\n", wind::WHITE, code_message(), wind::RESET);
+      out += std::format("{}{}{}\n", WHITE, code_message(), RESET);
       // ── subsystem detail ───────────────────────────────────────
       switch(kind)
       {
         case ErrorKind::Vulkan:
-          out += std::format("  {}VkResult:{} {}{}{}\n", wind::DIM, wind::RESET, wind::YELLOW, vk::to_string(vk_result), wind::RESET);
+          out += std::format("  {}VkResult:{} {}{}{}\n", DIM, RESET, YELLOW, vk::to_string(vk_result), RESET);
           break;
         case ErrorKind::SDL:
           if(!sdl_message.empty())
-            out += std::format("  {}SDL:{} {}{}{}\n", wind::DIM, wind::RESET, wind::YELLOW, sdl_message, wind::RESET);
+            out += std::format("  {}SDL:{} {}{}{}\n", DIM, RESET, YELLOW, sdl_message, RESET);
           break;
         case ErrorKind::Internal:
           break;
       }
       // ── source location ────────────────────────────────────────
-      out += std::format("\n  {}Location{}  {}{}:{}{} in {}{}{}\n", wind::CYAN, wind::RESET, wind::GRAY,
-                         location.file_name(), location.line(), wind::RESET, wind::DIM, location.function_name(), wind::RESET);
+      out += std::format("\n  {}Location{}  {}{}:{}{} in {}{}{}\n", CYAN, RESET, GRAY,
+                         location.file_name(), location.line(), RESET, DIM, location.function_name(), RESET);
       // ── stack trace ────────────────────────────────────────────
-      out += std::format("\n  {}Stack Trace{}\n", wind::CYAN, wind::RESET);
+      out += std::format("\n  {}Stack Trace{}\n", CYAN, RESET);
       for(size_t i = 0; i < trace.frames.size(); ++i)
       {
         const auto& frame = trace.frames[i];
 
-        out += std::format("  {}#{:<3}{}", wind::CYAN, i, wind::RESET);
-        out += std::format(" {}{:<60}{}", wind::WHITE, frame.symbol, wind::RESET);
+        out += std::format("  {}#{:<3}{}", CYAN, i, RESET);
+        out += std::format(" {}{:<60}{}", WHITE, frame.symbol, RESET);
         if(!frame.filename.empty())
-          out += std::format(" {}{}:{}{}\n", wind::GRAY, frame.filename, frame.line.value_or(0), wind::RESET);
+          out += std::format(" {}{}:{}{}\n", GRAY, frame.filename, frame.line.value_or(0), RESET);
         else
           out += '\n';
       }

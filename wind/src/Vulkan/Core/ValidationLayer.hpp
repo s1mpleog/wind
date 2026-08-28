@@ -5,7 +5,6 @@
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan_core.h>
 
-namespace wind::vulkan {
 WIND_INLINE auto debug_callback(vk::DebugUtilsMessageSeverityFlagBitsEXT           message_severity,
                                 [[maybe_unused]] vk::DebugUtilsMessageTypeFlagsEXT message_type,
                                 const vk::DebugUtilsMessengerCallbackDataEXT*      p_callback_data,
@@ -23,5 +22,3 @@ WIND_INLINE auto debug_callback(vk::DebugUtilsMessageSeverityFlagBitsEXT        
 
 auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) WIND_NOEXCEPT
     -> WindResult<vk::raii::DebugUtilsMessengerEXT>;
-
-};  // namespace wind::vulkan

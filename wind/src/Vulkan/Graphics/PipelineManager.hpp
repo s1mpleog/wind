@@ -7,7 +7,6 @@
 #include "Vulkan/Graphics/PipelineConfig.hpp"
 #include <vector>
 
-namespace wind::vulkan::graphics {
 
 using PipelineHandle = u32;
 
@@ -27,7 +26,7 @@ public:
       -> WindResult<PipelineHandle>
   {
     PipelineHandle handle = m_pipelines.size();
-    m_pipelines.emplace_back(WIND_TRY(graphics::create(device, std::move(config))));
+    m_pipelines.emplace_back(WIND_TRY(create_pipeline(device, std::move(config))));
     return handle;
   }
 
@@ -44,6 +43,3 @@ public:
 private:
   std::vector<GraphicsPipeline> m_pipelines;
 };
-
-
-}  // namespace wind::vulkan::graphics

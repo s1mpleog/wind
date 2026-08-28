@@ -9,7 +9,6 @@
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 
-namespace wind::vulkan::swapchain {
 // presentation mode
 // surface capabilities
 // surface_format
@@ -95,12 +94,12 @@ WIND_NODISCARD static auto create_image_views(std::span<const vk::Image> images,
 }
 
 WIND_NODISCARD
-auto create(const Configuration&          cfg,
-            u32                           window_width,
-            u32                           window_height,
-            const vk::raii::SurfaceKHR&   surface,
-            const GpuDevice&              device_context,
-            const vk::raii::SwapchainKHR* old_swapchain) WIND_NOEXCEPT -> WindResult<SwapchainContext>
+auto create_swapchain(const Configuration&          cfg,
+                      u32                           window_width,
+                      u32                           window_height,
+                      const vk::raii::SurfaceKHR&   surface,
+                      const GpuDevice&              device_context,
+                      const vk::raii::SwapchainKHR* old_swapchain) WIND_NOEXCEPT -> WindResult<SwapchainContext>
 {
   auto surface_capabilities = WIND_TRY(get_surface_capabilities(surface, device_context.physical_device));
   auto surface_format       = WIND_TRY(get_surface_format(surface, device_context.physical_device));
@@ -176,5 +175,3 @@ auto create(const Configuration&          cfg,
                           .format      = surface_format,
                           .extent      = extent};
 }
-
-};  // namespace wind::vulkan::swapchain
