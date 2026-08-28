@@ -1,35 +1,34 @@
 #include "Input/InputManager.hpp"
+
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keyboard.h"
 
-
-InputManger::InputManger()
-    : m_key_states(SDL_GetKeyboardState(nullptr))
+UInputManger::UInputManger() : MKeyStates(SDL_GetKeyboardState(nullptr))
 {
 }
 
-auto InputManger::process_event(SDL_Event& event) WIND_NOEXCEPT -> void
+auto UInputManger::ProcessEvent(SDL_Event &Event) WIND_NOEXCEPT -> void
 {
-  switch(event.type)
-  {
-    case SDL_EVENT_MOUSE_MOTION:
-      m_mouse_x = event.motion.x;
-      m_mouse_y = event.motion.y;
-      m_mouse_x_rel += event.motion.xrel;
-      m_mouse_y_rel += event.motion.yrel;
-      break;
+	switch (Event.type)
+	{
+	case SDL_EVENT_MOUSE_MOTION:
+		MMouseX = Event.motion.x;
+		MMouseY = Event.motion.y;
+		MMouseXRel += Event.motion.xrel;
+		MMouseYRel += Event.motion.yrel;
+		break;
 
-    default:
-      break;
-  }
+	default:
+		break;
+	}
 }
 
-WIND_NODISCARD auto InputManger::get_mouse_position() const WIND_NOEXCEPT -> MousePosition
+WIND_NODISCARD auto UInputManger::GetMousePosition() const WIND_NOEXCEPT -> FMousePosition
 {
-  return MousePosition{
-      .x     = m_mouse_x,
-      .y     = m_mouse_y,
-      .y_rel = m_mouse_y_rel,
-      .x_rel = m_mouse_x_rel,
-  };
+	return FMousePosition{
+	    .X = MMouseX,
+	    .Y = MMouseY,
+	    .YRel = MMouseYRel,
+	    .XRel = MMouseXRel,
+	};
 }

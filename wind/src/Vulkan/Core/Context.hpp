@@ -4,19 +4,20 @@
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
 #include "Vulkan/Core/Device.hpp"
+
 #include <vulkan/vulkan_core.h>
 
-constexpr usize MAX_FRAME_IN_FLIGHT = 2;
+constexpr usize MaxFrameInFlight = 2;
 
-struct VulkanContext
+struct FVulkanContext
 {
-  vk::raii::Context  raii_ctx;
-  vk::raii::Instance instance{nullptr};
+	vk::raii::Context RaiiCtx;
+	vk::raii::Instance Instance{nullptr};
 #ifdef WIND_VULKAN_VALIDATION
-  vk::raii::DebugUtilsMessengerEXT messenger{nullptr};
+	vk::raii::DebugUtilsMessengerEXT Messenger{nullptr};
 #endif
-  vk::raii::SurfaceKHR surface{nullptr};
-  GpuDevice            gpu_device{};
+	vk::raii::SurfaceKHR Surface{nullptr};
+	FGpuDevice GpuDevice{};
 };
 
-auto create_context(const Window& window, const Configuration& cfg) WIND_NOEXCEPT -> WindResult<VulkanContext>;
+auto CreateContext(const UWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> WindResult<FVulkanContext>;

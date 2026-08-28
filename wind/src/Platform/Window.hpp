@@ -2,84 +2,84 @@
 
 /* responsible to create platfrom agnostic window and expose functions for vulkan */
 
-#include "SDL3/SDL_video.h"
 #include "Config.hpp"
+#include "SDL3/SDL_video.h"
 #include "Types.hpp"
 #include "Utils/ExpectedUtil.hpp"
-#include <vulkan/vulkan.hpp>
-
-#include <string>
-#include <utility>
 
 #include <spdlog/spdlog.h>
+#include <string>
+#include <utility>
 #include <vector>
+#include <vulkan/vulkan.hpp>
 
-
-struct WindowConfiguration
+struct FWindowConfiguration
 {
-  std::string name;
-  u16         width{};
-  u16         height{};
+	std::string Name;
+	u16 Width{};
+	u16 Height{};
 };
 
-inline auto make_window_config(const u16 width, const u16 height, std::string name) WIND_NOEXCEPT -> WindowConfiguration
+inline auto MakeWindowConfig(const u16 Width, const u16 Height, std::string Name) WIND_NOEXCEPT -> FWindowConfiguration
 {
-  return WindowConfiguration{.name = std::move(name), .width = width, .height = height};
+	return FWindowConfiguration{.Name = std::move(Name), .Width = Width, .Height = Height};
 }
 
-class Window
+class UWindow
 {
-public:
-  explicit Window(WindowConfiguration cfg)
-      : m_config{std::move(cfg)} {};
+  public:
+	explicit UWindow(FWindowConfiguration Cfg) : MConfig{std::move(Cfg)} {};
 
-  Window(const Window&)                   = delete;
-  auto operator=(const Window&) -> Window = delete;
+	UWindow(const UWindow &) = delete;
+	auto operator=(const UWindow &) -> UWindow = delete;
 
-  Window(Window&& other) WIND_NOEXCEPT : m_config{std::move(other.m_config)}, m_handle{std::exchange(other.m_handle, nullptr)} {};
+	UWindow(UWindow &&Other) WIND_NOEXCEPT : MConfig{std::move(Other.MConfig)},
+	                                         MHandle{std::exchange(Other.MHandle, nullptr)} {};
 
-  auto operator=(Window&& other) WIND_NOEXCEPT->Window&
-  {
-    if(this != &other)
-    {
-      if(m_handle != nullptr)
-        SDL_DestroyWindow(m_handle);
+	auto operator=(UWindow &&Other) WIND_NOEXCEPT->UWindow &
+	{
+		if (this != &Other)
+		{
+			if (MHandle != nullptr)
+				SDL_DestroyWindow(MHandle);
 
-      m_handle = other.m_handle;
-      m_config = std::move(other.m_config);
+			MHandle = Other.MHandle;
+			MConfig = std::move(Other.MConfig);
 
-      other.m_config = {};
-      other.m_handle = nullptr;
-    }
+			Other.MConfig = {};
+			Other.MHandle = nullptr;
+		}
 
-    return *this;
-  };
+		return *this;
+	};
 
-  WIND_NODISCARD auto create() WIND_NOEXCEPT -> WindResult<void>;
-  WIND_NODISCARD auto extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char*>>;
-  WIND_NODISCARD auto create_surface(const vk::Instance& instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>;
-  auto                get_config() const WIND_NOEXCEPT -> const WindowConfiguration&;
+	WIND_NODISCARD auto Create() WIND_NOEXCEPT -> WindResult<void>;
+	WIND_NODISCARD auto Extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char *>>;
+	WIND_NODISCARD auto CreateSurface(const vk::Instance &Instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>;
+	[[nodiscard]] auto GetConfig() const WIND_NOEXCEPT -> const FWindowConfiguration &;
 
-  WIND_NODISCARD auto drawable_size() const WIND_NOEXCEPT -> std::pair<u32, u32>
-  {
-    return {m_config.width, m_config.height};
-  }
+	WIND_NODISCARD auto DrawableSize() const WIND_NOEXCEPT -> std::pair<u32, u32>
+	{
+		return {MConfig.Width, MConfig.Height};
+	}
 
-  WIND_NODISCARD auto handle() WIND_NOEXCEPT -> SDL_Window* { return m_handle; }
+	WIND_NODISCARD auto Handle() WIND_NOEXCEPT -> SDL_Window *
+	{
+		return MHandle;
+	}
 
-  ~Window()
-  {
-    if(m_handle != nullptr)
-    {
-      SDL_DestroyWindow(m_handle);
+	~UWindow()
+	{
+		if (MHandle != nullptr)
+		{
+			SDL_DestroyWindow(MHandle);
 #ifdef WIND_LOG_ENABLE
-      spdlog::info("window handler destroyed");
+			spdlog::info("window handler destroyed");
 #endif
-    }
-  }
+		}
+	}
 
-private:
-  WindowConfiguration m_config{};
-  SDL_Window*         m_handle{nullptr};
+  private:
+	FWindowConfiguration MConfig{};
+	SDL_Window *MHandle{nullptr};
 };
-

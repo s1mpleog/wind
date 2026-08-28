@@ -1,113 +1,115 @@
 #include "Vulkan/Core/Instance.hpp"
+
 #include "Error.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
-#include <vulkan/vulkan.hpp>
+
+#include <Vulkan/Types.hpp>
 #include <algorithm>
 #include <array>
 #include <ranges>
+#include <spdlog/spdlog.h>
 #include <string_view>
 #include <vector>
+#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
-#include <spdlog/spdlog.h>
-#include <Vulkan/Types.hpp>
 
-static auto query_instance_layer_support(std::string_view requested_layer) -> WindResult<void>
+static auto QueryInstanceLayerSupport(std::string_view RequestedLayer) -> WindResult<void>
 {
-  auto layers = WIND_TRY(vk::enumerateInstanceLayerProperties());
+	auto Layers = WIND_TRY(vk::enumerateInstanceLayerProperties());
 
-  // any_of checks if atlease one element in given range satisfies e.g. layers need to have at least one requested_layer
-  auto layer_found = std::ranges::any_of(layers, [requested_layer](const vk::LayerProperties& lp) -> bool {
-    return std::string_view{lp.layerName} == requested_layer;
-  });
+	// any_of checks if atlease one element in given range satisfies e.g. layers need to have at least one
+	// requested_layer
+	auto LayerFound = std::ranges::any_of(Layers, [RequestedLayer](const vk::LayerProperties &Lp) -> bool
+	                                      { return std::string_view{Lp.layerName} == RequestedLayer; });
 
-  if(!layer_found)
-    WIND_ERR(WindError::vulkan(ErrorCode::LayerNotSupported, vk::Result::eErrorLayerNotPresent));
+	if (!LayerFound)
+		WIND_ERR(WindError::vulkan(ErrorCode::LayerNotSupported, vk::Result::eErrorLayerNotPresent));
 
-  return {};
+	return {};
 }
 
-static auto query_instance_extension_support(std::string_view requested_extension) -> WindResult<void>
+static auto QueryInstanceExtensionSupport(std::string_view RequestedExtension) -> WindResult<void>
 {
-  auto extensions = WIND_TRY(vk::enumerateInstanceExtensionProperties());
+	auto Extensions = WIND_TRY(vk::enumerateInstanceExtensionProperties());
 
-  auto layer_found = std::ranges::any_of(extensions, [requested_extension](const vk::ExtensionProperties& lp) -> bool {
-    return std::string_view{lp.extensionName} == requested_extension;
-  });
+	auto LayerFound = std::ranges::any_of(Extensions, [RequestedExtension](const vk::ExtensionProperties &Lp) -> bool
+	                                      { return std::string_view{Lp.extensionName} == RequestedExtension; });
 
-  if(!layer_found)
-    WIND_ERR(WindError::vulkan(ErrorCode::ExtensionNotSupported, vk::Result::eErrorExtensionNotPresent));
+	if (!LayerFound)
+		WIND_ERR(WindError::vulkan(ErrorCode::ExtensionNotSupported, vk::Result::eErrorExtensionNotPresent));
 
-  return {};
+	return {};
 }
 
 // this function takes the ownership of extensions
-WIND_NODISCARD auto create(const Configuration& cfg, const vk::raii::Context& ctx, std::vector<const char*> extensions) WIND_NOEXCEPT
-    -> WindResult<vk::raii::Instance>
+WIND_NODISCARD auto Create(const FConfiguration &Cfg, const vk::raii::Context &Ctx,
+                           std::vector<const char *> Extensions) WIND_NOEXCEPT -> WindResult<vk::raii::Instance>
 {
-  auto inst_version = WIND_TRY(vk::enumerateInstanceVersion());
+	auto InstVersion = WIND_TRY(vk::enumerateInstanceVersion());
 
-  if(inst_version < to_vk(cfg.api_version))
-    WIND_ERR(WindError::vulkan(ErrorCode::VulkanVersion14NotFound, vk::Result::eErrorIncompatibleDriver));
+	if (InstVersion < ToVk(Cfg.ApiVersion))
+		WIND_ERR(WindError::vulkan(ErrorCode::VulkanVersion14NotFound, vk::Result::eErrorIncompatibleDriver));
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("Vulkan API: {}.{}", vk::versionMajor(inst_version), vk::versionMinor(inst_version));
+	spdlog::info("Vulkan API: {}.{}", vk::versionMajor(InstVersion), vk::versionMinor(InstVersion));
 #endif
 
-  // note: it is safe use {cfg.app_name.data(), cfg.engine..} here since its a string literal so it will have null terminator
-  vk::ApplicationInfo app_info{cfg.app_name.data(), VK_MAKE_VERSION(0, 1, 0), cfg.engine_name.data(),
-                               VK_MAKE_VERSION(0, 1, 0), to_vk(cfg.api_version)};
+	// note: it is safe use {cfg.app_name.data(), cfg.engine..} here since its a string literal so it will have null
+	// terminator
+	vk::ApplicationInfo AppInfo{Cfg.AppName.data(), VK_MAKE_VERSION(0, 1, 0), Cfg.EngineName.data(),
+	                            VK_MAKE_VERSION(0, 1, 0), ToVk(Cfg.ApiVersion)};
 
-  vk::InstanceCreateInfo inst_info{};
-  inst_info.pApplicationInfo = &app_info;
+	vk::InstanceCreateInfo InstInfo{};
+	InstInfo.pApplicationInfo = &AppInfo;
 
-  WIND_TRY_VOID(query_instance_extension_support(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME));
-  WIND_TRY_VOID(query_instance_extension_support(VK_KHR_SURFACE_EXTENSION_NAME));
-  WIND_TRY_VOID(query_instance_extension_support(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME));
+	WIND_TRY_VOID(QueryInstanceExtensionSupport(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME));
+	WIND_TRY_VOID(QueryInstanceExtensionSupport(VK_KHR_SURFACE_EXTENSION_NAME));
+	WIND_TRY_VOID(QueryInstanceExtensionSupport(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME));
 
-  extensions.emplace_back(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
-  extensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
-  extensions.emplace_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+	Extensions.emplace_back(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+	Extensions.emplace_back(VK_KHR_SURFACE_EXTENSION_NAME);
+	Extensions.emplace_back(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
 
 #ifdef WIND_VULKAN_VALIDATION
-  std::array layers{"VK_LAYER_KHRONOS_validation"};
+	std::array Layers{"VK_LAYER_KHRONOS_validation"};
 
-  for(auto&& [_, layer] : std::views::enumerate(layers))
-  {
-    WIND_TRY_VOID(query_instance_layer_support(layer));
-  }
+	for (auto &&[_, layer] : std::views::enumerate(Layers))
+	{
+		WIND_TRY_VOID(QueryInstanceLayerSupport(layer));
+	}
 
-  // check for debug util extension
-  WIND_TRY_VOID(query_instance_extension_support(VK_EXT_DEBUG_UTILS_EXTENSION_NAME));
+	// check for debug util extension
+	WIND_TRY_VOID(QueryInstanceExtensionSupport(VK_EXT_DEBUG_UTILS_EXTENSION_NAME));
 
-  extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	Extensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-  inst_info.enabledLayerCount   = layers.size();
-  inst_info.ppEnabledLayerNames = layers.data();
+	InstInfo.enabledLayerCount = Layers.size();
+	InstInfo.ppEnabledLayerNames = Layers.data();
 
-  inst_info.enabledExtensionCount   = extensions.size();
-  inst_info.ppEnabledExtensionNames = extensions.data();
+	InstInfo.enabledExtensionCount = Extensions.size();
+	InstInfo.ppEnabledExtensionNames = Extensions.data();
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("creating instance | layers: {} | extensions: {}", layers.size(), extensions.size());
-  std::ranges::for_each(layers, [](const auto l) -> auto { spdlog::info("  layer:     {}", l); });
-  std::ranges::for_each(extensions, [](const auto e) -> auto { spdlog::info("  extension: {}", e); });
+	spdlog::info("creating instance | layers: {} | extensions: {}", Layers.size(), Extensions.size());
+	std::ranges::for_each(Layers, [](const auto L) -> auto { spdlog::info("  layer:     {}", L); });
+	std::ranges::for_each(Extensions, [](const auto E) -> auto { spdlog::info("  extension: {}", E); });
 #endif
 
-  // don't enable validation layer or debug extensions
+	// don't enable validation layer or debug extensions
 #else
-  inst_info.enabledLayerCount       = 0;
-  inst_info.ppEnabledLayerNames     = nullptr;
-  inst_info.enabledExtensionCount   = extensions.size();
-  inst_info.ppEnabledExtensionNames = extensions.data();
+	inst_info.enabledLayerCount = 0;
+	inst_info.ppEnabledLayerNames = nullptr;
+	inst_info.enabledExtensionCount = extensions.size();
+	inst_info.ppEnabledExtensionNames = extensions.data();
 #endif
 
-  auto inst = WIND_TRY(ctx.createInstance(inst_info), ErrorCode::FailedToCreateInstance);
+	auto Inst = WIND_TRY(Ctx.createInstance(InstInfo), ErrorCode::FailedToCreateInstance);
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("Instance created successfully");
+	spdlog::info("Instance created successfully");
 #endif
 
-  return inst;
+	return Inst;
 }

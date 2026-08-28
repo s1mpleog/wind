@@ -2,32 +2,32 @@
 #include "Platform/Window.hpp"
 #include "Types.hpp"
 #include "Vulkan/Core/Configuration.hpp"
+
 #include <cstdlib>
 #include <spdlog/spdlog.h>
 
-
 auto main() -> i32
 {
-  constexpr u16 WINDOW_WIDTH  = 1280;
-  constexpr u16 WINDOW_HEIGHT = 720;
+	constexpr u16 WindowWidth = 1280;
+	constexpr u16 WindowHeight = 720;
 
-  auto window_cfg = WindowConfiguration{.name = "Wind", .width = WINDOW_WIDTH, .height = WINDOW_HEIGHT};
-  auto vulkan_cfg = Default;
-  vulkan_cfg.app_name = "Wind";
+	auto WindowCfg = FWindowConfiguration{.Name = "Wind", .Width = WindowWidth, .Height = WindowHeight};
+	auto VulkanCfg = Default;
+	VulkanCfg.AppName = "Wind";
 
-  auto engine = Engine::create(std::move(window_cfg), std::move(vulkan_cfg));
+	auto Engine = UEngine::Create(std::move(WindowCfg), VulkanCfg);
 
-  if(!engine)
-  {
-    spdlog::error("{}", engine.error().to_string());
-    return EXIT_FAILURE;
-  }
+	if (!Engine)
+	{
+		spdlog::error("{}", Engine.error().to_string());
+		return EXIT_FAILURE;
+	}
 
-  if(!engine->run())
-  {
-    spdlog::error("{}", engine.error().to_string());
-    return EXIT_FAILURE;
-  }
+	if (!Engine->Run())
+	{
+		spdlog::error("{}", Engine.error().to_string());
+		return EXIT_FAILURE;
+	}
 
-  return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }

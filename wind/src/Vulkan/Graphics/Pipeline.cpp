@@ -1,100 +1,92 @@
 #include "Vulkan/Graphics/Pipeline.hpp"
+
 #include "Error.hpp"
-#include "spdlog/spdlog.h"
 #include "Types.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Graphics/PipelineConfig.hpp"
 #include "Vulkan/Types.hpp"
-#include <vulkan/vulkan.hpp>
+#include "spdlog/spdlog.h"
+
 #include <array>
+#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-WIND_NODISCARD auto create_pipeline(const vk::raii::Device& device, GraphicsConfig cfg) WIND_NOEXCEPT -> WindResult<GraphicsPipeline>
+WIND_NODISCARD auto CreatePipeline(const vk::raii::Device &Device, FGraphicsConfig Cfg) WIND_NOEXCEPT
+    -> WindResult<FGraphicsPipeline>
 {
-  vk::GraphicsPipelineCreateInfo gp_create_info{};
+	vk::GraphicsPipelineCreateInfo GpCreateInfo{};
 
-  for(const auto& shader : cfg.shader)
-  {
-    spdlog::info("config shader module = {}", reinterpret_cast<uintptr_t>(shader.module));
-  }
+	for (const auto &Shader : Cfg.Shader)
+	{
+		spdlog::info("config shader module = {}", reinterpret_cast<uintptr_t>(Shader.Module));
+	}
 
-  auto                                   pipeline_create_info = to_vk(cfg);
-  vk::PipelineVertexInputStateCreateInfo vertex_input{};
-  vertex_input.vertexAttributeDescriptionCount = static_cast<u32>(pipeline_create_info.attributes.size());
-  vertex_input.pVertexAttributeDescriptions    = pipeline_create_info.attributes.data();
-  vertex_input.vertexBindingDescriptionCount   = static_cast<u32>(pipeline_create_info.bindings.size());
-  vertex_input.pVertexBindingDescriptions      = pipeline_create_info.bindings.data();
+	auto PipelineCreateInfo = ToVk(Cfg);
+	vk::PipelineVertexInputStateCreateInfo VertexInput{};
+	VertexInput.vertexAttributeDescriptionCount = static_cast<u32>(PipelineCreateInfo.Attributes.size());
+	VertexInput.pVertexAttributeDescriptions = PipelineCreateInfo.Attributes.data();
+	VertexInput.vertexBindingDescriptionCount = static_cast<u32>(PipelineCreateInfo.Bindings.size());
+	VertexInput.pVertexBindingDescriptions = PipelineCreateInfo.Bindings.data();
 
-  vk::PipelineColorBlendStateCreateInfo color_blend{};
-  color_blend.attachmentCount = 1;
-  color_blend.pAttachments    = &pipeline_create_info.color_blend_attachment;
+	vk::PipelineColorBlendStateCreateInfo ColorBlend{};
+	ColorBlend.attachmentCount = 1;
+	ColorBlend.pAttachments = &PipelineCreateInfo.ColorBlendAttachment;
 
-  std::array                         dynamic_states{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-  vk::PipelineDynamicStateCreateInfo dynamic_state_info{};
-  dynamic_state_info.dynamicStateCount = dynamic_states.size();
-  dynamic_state_info.pDynamicStates    = dynamic_states.data();
+	std::array DynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+	vk::PipelineDynamicStateCreateInfo DynamicStateInfo{};
+	DynamicStateInfo.dynamicStateCount = DynamicStates.size();
+	DynamicStateInfo.pDynamicStates = DynamicStates.data();
 
-  vk::PipelineViewportStateCreateInfo viewport_state{};
-  viewport_state.viewportCount = 1;
-  viewport_state.scissorCount  = 1;
+	vk::PipelineViewportStateCreateInfo ViewportState{};
+	ViewportState.viewportCount = 1;
+	ViewportState.scissorCount = 1;
 
-  vk::Format color_attachment_format = to_vk(cfg.color_format);
+	vk::Format ColorAttachmentFormat = ToVk(Cfg.ColorFormat);
 
-  vk::PipelineRenderingCreateInfo rendering_info{};
-  rendering_info.colorAttachmentCount    = 1;
-  rendering_info.pColorAttachmentFormats = &color_attachment_format;
-  rendering_info.depthAttachmentFormat   = to_vk(cfg.depth_format);
-  rendering_info.stencilAttachmentFormat = vk::Format::eUndefined;
+	vk::PipelineRenderingCreateInfo RenderingInfo{};
+	RenderingInfo.colorAttachmentCount = 1;
+	RenderingInfo.pColorAttachmentFormats = &ColorAttachmentFormat;
+	RenderingInfo.depthAttachmentFormat = ToVk(Cfg.DepthFormat);
+	RenderingInfo.stencilAttachmentFormat = vk::Format::eUndefined;
 
+	std::vector<vk::PushConstantRange> PushConstantRanges;
+	PushConstantRanges.reserve(Cfg.PushConstants.size());
 
-  std::vector<vk::PushConstantRange> push_constant_ranges;
-  push_constant_ranges.reserve(cfg.push_constants.size());
+	for (auto &PushConstant : Cfg.PushConstants)
+	{
+		PushConstantRanges.push_back(ToVk(PushConstant));
+	}
 
-  for(auto& push_constant : cfg.push_constants)
-  {
-    push_constant_ranges.push_back(to_vk(push_constant));
-  }
+	vk::PipelineLayoutCreateInfo LayoutInfo{};
+	LayoutInfo.pushConstantRangeCount = static_cast<u32>(PushConstantRanges.size());
+	LayoutInfo.pPushConstantRanges = PushConstantRanges.data();
 
-  vk::PipelineLayoutCreateInfo layout_info{};
-  layout_info.pushConstantRangeCount = static_cast<u32>(push_constant_ranges.size());
-  layout_info.pPushConstantRanges    = push_constant_ranges.data();
+	if (Cfg.DescriptorSetLayout)
+	{
+		// since we are using bindless descriptor set we only need one layout
+		LayoutInfo.setLayoutCount = 1;
+		LayoutInfo.pSetLayouts = &*Cfg.DescriptorSetLayout;
+	}
 
-  if(cfg.descriptor_set_layout)
-  {
-    // since we are using bindless descriptor set we only need one layout
-    layout_info.setLayoutCount = 1;
-    layout_info.pSetLayouts    = &*cfg.descriptor_set_layout;
-  }
+	auto Layout = WIND_TRY(Device.createPipelineLayout(LayoutInfo), ErrorCode::FailedToCreatePipelineLayout);
 
-  auto layout = WIND_TRY(device.createPipelineLayout(layout_info), ErrorCode::FailedToCreatePipelineLayout);
+	GpCreateInfo.pNext = &RenderingInfo;
+	GpCreateInfo.stageCount = PipelineCreateInfo.ShaderStages.size();
+	GpCreateInfo.pStages = PipelineCreateInfo.ShaderStages.data();
+	GpCreateInfo.pInputAssemblyState = &PipelineCreateInfo.InputAssembly;
+	GpCreateInfo.pViewportState = &ViewportState;
+	GpCreateInfo.pVertexInputState = &VertexInput;
+	GpCreateInfo.pTessellationState = nullptr;
+	GpCreateInfo.pRasterizationState = &PipelineCreateInfo.Rasterization;
+	GpCreateInfo.pMultisampleState = &PipelineCreateInfo.Multisample;
+	GpCreateInfo.pDepthStencilState = &PipelineCreateInfo.DepthStencil;
+	GpCreateInfo.pColorBlendState = &ColorBlend;
+	GpCreateInfo.pDynamicState = &DynamicStateInfo;
+	GpCreateInfo.renderPass = nullptr;
+	GpCreateInfo.layout = Layout;
 
-  gp_create_info.pNext               = &rendering_info;
-  gp_create_info.stageCount          = pipeline_create_info.shader_stages.size();
-  gp_create_info.pStages             = pipeline_create_info.shader_stages.data();
-  gp_create_info.pInputAssemblyState = &pipeline_create_info.input_assembly;
-  gp_create_info.pViewportState      = &viewport_state;
-  gp_create_info.pVertexInputState   = &vertex_input;
-  gp_create_info.pTessellationState  = nullptr;
-  gp_create_info.pRasterizationState = &pipeline_create_info.rasterization;
-  gp_create_info.pMultisampleState   = &pipeline_create_info.multisample;
-  gp_create_info.pDepthStencilState  = &pipeline_create_info.depth_stencil;
-  gp_create_info.pColorBlendState    = &color_blend;
-  gp_create_info.pDynamicState       = &dynamic_state_info;
-  gp_create_info.renderPass          = nullptr;
-  gp_create_info.layout              = layout;
+	auto GraphicsPipeline =
+	    WIND_TRY(Device.createGraphicsPipeline(nullptr, GpCreateInfo), ErrorCode::FailedToCreatePipeline);
 
-  auto graphics_pipeline = WIND_TRY(device.createGraphicsPipeline(nullptr, gp_create_info), ErrorCode::FailedToCreatePipeline);
-
-  const auto& a = pipeline_create_info.color_blend_attachment;
-
-  spdlog::info("blend enable: {}", bool(a.blendEnable));
-  spdlog::info("color write mask: {}", vk::to_string(a.colorWriteMask));
-  spdlog::info("src color: {}", vk::to_string(a.srcColorBlendFactor));
-  spdlog::info("dst color: {}", vk::to_string(a.dstColorBlendFactor));
-  spdlog::info("color op: {}", vk::to_string(a.colorBlendOp));
-  spdlog::info("src alpha: {}", vk::to_string(a.srcAlphaBlendFactor));
-  spdlog::info("dst alpha: {}", vk::to_string(a.dstAlphaBlendFactor));
-  spdlog::info("alpha op: {}", vk::to_string(a.alphaBlendOp));
-
-  return GraphicsPipeline{.pipeline_layout = std::move(layout), .graphics_pipeline = std::move(graphics_pipeline)};
+	return FGraphicsPipeline{.PipelineLayout = std::move(Layout), .GraphicsPipeline = std::move(GraphicsPipeline)};
 }

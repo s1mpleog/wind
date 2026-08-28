@@ -1,224 +1,217 @@
 #pragma once
 
 #include "Vulkan/Graphics/PipelineConfig.hpp"
-#include <vulkan/vulkan.hpp>
+
+#include <glm/glm.hpp>
 #include <optional>
 #include <utility>
 #include <vector>
 #include <vk_mem_alloc.h>
-#include <glm/glm.hpp>
+#include <vulkan/vulkan.hpp>
 
-struct AllocatedBuffer
+struct FAllocatedBuffer
 {
-  VkBuffer      buffer{};
-  VmaAllocation allocation{};
-  VmaAllocator  allocator{};
-  void*         mapped{nullptr};
+	VkBuffer Buffer{};
+	VmaAllocation Allocation{};
+	VmaAllocator Allocator{};
+	void *Mapped{nullptr};
 
-  AllocatedBuffer()                                          = default;
-  AllocatedBuffer(const AllocatedBuffer&)                    = delete;
-  auto operator=(const AllocatedBuffer&) -> AllocatedBuffer& = delete;
+	FAllocatedBuffer() = default;
+	FAllocatedBuffer(const FAllocatedBuffer &) = delete;
+	auto operator=(const FAllocatedBuffer &) -> FAllocatedBuffer & = delete;
 
-  AllocatedBuffer(VkBuffer buffer, VmaAllocation allocation, VmaAllocator allocator, void* mapped = nullptr)
-      : buffer(buffer)
-      , allocation(allocation)
-      , allocator(allocator)
-      , mapped{mapped}
-  {
-  }
+	FAllocatedBuffer(VkBuffer Buffer, VmaAllocation Allocation, VmaAllocator Allocator, void *Mapped = nullptr)
+	    : Buffer(Buffer), Allocation(Allocation), Allocator(Allocator), Mapped{Mapped}
+	{
+	}
 
-  AllocatedBuffer(AllocatedBuffer&& other) noexcept
-      : buffer(std::exchange(other.buffer, VK_NULL_HANDLE))
-      , allocation(std::exchange(other.allocation, nullptr))
-      , allocator(other.allocator)
-      , mapped(std::exchange(other.mapped, nullptr)) {};
+	FAllocatedBuffer(FAllocatedBuffer &&Other) noexcept
+	    : Buffer(std::exchange(Other.Buffer, VK_NULL_HANDLE)), Allocation(std::exchange(Other.Allocation, nullptr)),
+	      Allocator(Other.Allocator), Mapped(std::exchange(Other.Mapped, nullptr)) {};
 
-  auto reset() WIND_NOEXCEPT -> void
-  {
-    if(buffer != VK_NULL_HANDLE)
-    {
-      vmaDestroyBuffer(allocator, buffer, allocation);
+	auto Reset() WIND_NOEXCEPT -> void
+	{
+		if (Buffer != VK_NULL_HANDLE)
+		{
+			vmaDestroyBuffer(Allocator, Buffer, Allocation);
 
-      buffer     = VK_NULL_HANDLE;
-      allocation = nullptr;
-      allocation = nullptr;
-      mapped     = nullptr;
-    }
-  }
+			Buffer = VK_NULL_HANDLE;
+			Allocation = nullptr;
+			Allocation = nullptr;
+			Mapped = nullptr;
+		}
+	}
 
-  auto operator=(AllocatedBuffer&& other) noexcept -> AllocatedBuffer&
-  {
-    if(this != &other)
-    {
-      reset();
+	auto operator=(FAllocatedBuffer &&Other) noexcept -> FAllocatedBuffer &
+	{
+		if (this != &Other)
+		{
+			Reset();
 
-      buffer     = std::exchange(other.buffer, VK_NULL_HANDLE);
-      allocation = std::exchange(other.allocation, nullptr);
-      allocator  = std::exchange(other.allocator, nullptr);
-      mapped     = std::exchange(other.mapped, nullptr);
-    }
+			Buffer = std::exchange(Other.Buffer, VK_NULL_HANDLE);
+			Allocation = std::exchange(Other.Allocation, nullptr);
+			Allocator = std::exchange(Other.Allocator, nullptr);
+			Mapped = std::exchange(Other.Mapped, nullptr);
+		}
 
-    return *this;
-  }
+		return *this;
+	}
 
-  ~AllocatedBuffer()
-  {
-    if(buffer != VK_NULL_HANDLE)
-    {
-      vmaDestroyBuffer(allocator, buffer, allocation);
-      spdlog::info("VkBuffer destroyed successfully");
-    }
-  }
+	~FAllocatedBuffer()
+	{
+		if (Buffer != VK_NULL_HANDLE)
+		{
+			vmaDestroyBuffer(Allocator, Buffer, Allocation);
+			spdlog::info("VkBuffer destroyed successfully");
+		}
+	}
 };
 
-struct SubMesh
+struct FSubMesh
 {
-  u32 index_count{};
-  u32 index_offset{};
-  u32 material_index{};
+	u32 IndexCount{};
+	u32 IndexOffset{};
+	u32 MaterialIndex{};
 };
 
-struct Mesh
+struct FMesh
 {
-  AllocatedBuffer vertex_buffer;
-  AllocatedBuffer index_buffer;
-  AllocatedBuffer normals;
-  AllocatedBuffer uvs;
-  AllocatedBuffer tangents;
+	FAllocatedBuffer VertexBuffer;
+	FAllocatedBuffer IndexBuffer;
+	FAllocatedBuffer Normals;
+	FAllocatedBuffer Uvs;
+	FAllocatedBuffer Tangents;
 
-  u32 index_count{};
-  u32 vertex_count{};
-  u32 normal_count{};
-  u32 uv_count{};
-  u32 tangent_count{};
+	u32 IndexCount{};
+	u32 VertexCount{};
+	u32 NormalCount{};
+	u32 UvCount{};
+	u32 TangentCount{};
 
-  std::vector<SubMesh> sub_meshes;
+	std::vector<FSubMesh> SubMeshes;
 };
 
-struct GpuMaterial
+struct FGpuMaterial
 {
-  std::optional<u32> albedo_texture;
-  std::optional<u32> normal_texture;
-  std::optional<u32> metallic_roughness_texture;
+	std::optional<u32> AlbedoTexture;
+	std::optional<u32> NormalTexture;
+	std::optional<u32> MetallicRoughnessTexture;
 
-  float     metallic{};
-  float     roughness{};
-  glm::vec4 base_color{};
+	float Metallic{};
+	float Roughness{};
+	glm::vec4 BaseColor{};
 };
 
-struct Model
+struct FModel
 {
-  Mesh                     mesh{};
-  std::vector<GpuMaterial> materials;
+	FMesh Mesh{};
+	std::vector<FGpuMaterial> Materials;
 };
 
-struct AllocatedImage
+struct FAllocatedImage
 {
-  VkImage             image{VK_NULL_HANDLE};
-  vk::raii::ImageView image_view{nullptr};
-  VmaAllocator        allocator{VK_NULL_HANDLE};
-  VmaAllocation       allocation{VK_NULL_HANDLE};
-  vk::Format          format{};
-  vk::Extent2D        dimension{};
+	VkImage Image{VK_NULL_HANDLE};
+	vk::raii::ImageView ImageView{nullptr};
+	VmaAllocator Allocator{VK_NULL_HANDLE};
+	VmaAllocation Allocation{VK_NULL_HANDLE};
+	vk::Format Format{};
+	vk::Extent2D Dimension{};
 
-  AllocatedImage(VkImage image, vk::raii::ImageView image_view, VmaAllocator allocator, VmaAllocation allocation, vk::Format format, vk::Extent2D dimension)
-      : image{image}
-      , image_view{std::move(image_view)}
-      , allocator{allocator}
-      , allocation{allocation}
-      , format{format}
-      , dimension{dimension}
-  {
-  }
+	FAllocatedImage(VkImage Image, vk::raii::ImageView ImageView, VmaAllocator Allocator, VmaAllocation Allocation,
+	                vk::Format Format, vk::Extent2D Dimension)
+	    : Image{Image}, ImageView{std::move(ImageView)}, Allocator{Allocator}, Allocation{Allocation}, Format{Format},
+	      Dimension{Dimension}
+	{
+	}
 
-  auto destroy_image() WIND_NOEXCEPT -> void
-  {
-    image_view = nullptr;
+	auto DestroyImage() WIND_NOEXCEPT -> void
+	{
+		ImageView = nullptr;
 
-    if(image != VK_NULL_HANDLE)
-    {
-      vmaDestroyImage(allocator, image, allocation);
-    }
+		if (Image != VK_NULL_HANDLE)
+		{
+			vmaDestroyImage(Allocator, Image, Allocation);
+		}
 
-    image      = VK_NULL_HANDLE;
-    allocation = VK_NULL_HANDLE;
-  }
+		Image = VK_NULL_HANDLE;
+		Allocation = VK_NULL_HANDLE;
+	}
 
-  AllocatedImage()                                         = default;
-  AllocatedImage(const AllocatedImage&)                    = delete;
-  auto operator=(const AllocatedImage&) -> AllocatedImage& = delete;
+	FAllocatedImage() = default;
+	FAllocatedImage(const FAllocatedImage &) = delete;
+	auto operator=(const FAllocatedImage &) -> FAllocatedImage & = delete;
 
-  AllocatedImage(AllocatedImage&& other) WIND_NOEXCEPT : image{std::exchange(other.image, VK_NULL_HANDLE)},
-                                                         image_view{std::move(other.image_view)},
-                                                         allocator{std::exchange(other.allocator, VK_NULL_HANDLE)},
-                                                         allocation{std::exchange(other.allocation, VK_NULL_HANDLE)},
-                                                         format{other.format},
-                                                         dimension{other.dimension}
-  {
-  }
+	FAllocatedImage(FAllocatedImage &&Other) WIND_NOEXCEPT
+	    : Image{std::exchange(Other.Image, VK_NULL_HANDLE)},
+	      ImageView{std::move(Other.ImageView)},
+	      Allocator{std::exchange(Other.Allocator, VK_NULL_HANDLE)},
+	      Allocation{std::exchange(Other.Allocation, VK_NULL_HANDLE)},
+	      Format{Other.Format},
+	      Dimension{Other.Dimension}
+	{
+	}
 
-  auto operator=(AllocatedImage&& other) WIND_NOEXCEPT->AllocatedImage&
-  {
-    if(this == &other)
-      return *this;
+	auto operator=(FAllocatedImage &&Other) WIND_NOEXCEPT->FAllocatedImage &
+	{
+		if (this == &Other)
+			return *this;
 
-    // Destroy our current VMA-owned image first.
-    if(allocation != VK_NULL_HANDLE && allocator != VK_NULL_HANDLE)
-    {
-      vmaDestroyImage(allocator, image, allocation);
-    }
+		// Destroy our current VMA-owned image first.
+		if (Allocation != VK_NULL_HANDLE && Allocator != VK_NULL_HANDLE)
+		{
+			vmaDestroyImage(Allocator, Image, Allocation);
+		}
 
-    image      = std::exchange(other.image, VK_NULL_HANDLE);
-    allocation = std::exchange(other.allocation, VK_NULL_HANDLE);
-    allocator  = std::exchange(other.allocator, VK_NULL_HANDLE);
+		Image = std::exchange(Other.Image, VK_NULL_HANDLE);
+		Allocation = std::exchange(Other.Allocation, VK_NULL_HANDLE);
+		Allocator = std::exchange(Other.Allocator, VK_NULL_HANDLE);
 
-    image_view = std::move(other.image_view);
+		ImageView = std::move(Other.ImageView);
 
-    format    = other.format;
-    dimension = other.dimension;
+		Format = Other.Format;
+		Dimension = Other.Dimension;
 
-    return *this;
-  }
+		return *this;
+	}
 
-  ~AllocatedImage()
-  {
-    if(allocation != VK_NULL_HANDLE && allocator != VK_NULL_HANDLE)
-    {
-      vmaDestroyImage(allocator, image, allocation);
-      spdlog::info("texture destroyed successfully");
-    }
-  }
+	~FAllocatedImage()
+	{
+		if (Allocation != VK_NULL_HANDLE && Allocator != VK_NULL_HANDLE)
+		{
+			vmaDestroyImage(Allocator, Image, Allocation);
+			spdlog::info("texture destroyed successfully");
+		}
+	}
 };
 
-struct AllocatedTexture
+struct FAllocatedTexture
 {
-  AllocatedImage    image{};
-  vk::raii::Sampler sampler{nullptr};
+	FAllocatedImage Image;
+	vk::raii::Sampler Sampler{nullptr};
 
-  AllocatedTexture(AllocatedImage image, vk::raii::Sampler sampler)
-      : image{std::move(image)}
-      , sampler{std::move(sampler)}
-  {
-  }
+	FAllocatedTexture(FAllocatedImage Image, vk::raii::Sampler Sampler)
+	    : Image{std::move(Image)}, Sampler{std::move(Sampler)}
+	{
+	}
 
-  AllocatedTexture(const AllocatedTexture&)                    = delete;
-  auto operator=(const AllocatedTexture&) -> AllocatedTexture& = delete;
+	FAllocatedTexture(const FAllocatedTexture &) = delete;
+	auto operator=(const FAllocatedTexture &) -> FAllocatedTexture & = delete;
 
-  AllocatedTexture(AllocatedTexture&&) WIND_NOEXCEPT                  = default;
-  auto operator=(AllocatedTexture&&) WIND_NOEXCEPT->AllocatedTexture& = default;
+	FAllocatedTexture(FAllocatedTexture &&) WIND_NOEXCEPT = default;
+	auto operator=(FAllocatedTexture &&) WIND_NOEXCEPT->FAllocatedTexture & = default;
 
-  ~AllocatedTexture() = default;
+	~FAllocatedTexture() = default;
 };
 
-struct TextureData
+struct FTextureData
 {
-  std::span<const std::byte> pixels;
-  vk::Extent3D               dimensions{};
-  Format                     format{};
+	std::span<const std::byte> Pixels;
+	vk::Extent3D Dimensions{};
+	EFormat Format{};
 };
 
-struct BufferData
+struct FBufferData
 {
-  std::span<const std::byte> data;
-  vk::BufferUsageFlags       usage{vk::BufferUsageFlagBits::eVertexBuffer};
+	std::span<const std::byte> Data;
+	vk::BufferUsageFlags Usage{vk::BufferUsageFlagBits::eVertexBuffer};
 };

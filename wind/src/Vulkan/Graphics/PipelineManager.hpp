@@ -5,41 +5,44 @@
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Graphics/Pipeline.hpp"
 #include "Vulkan/Graphics/PipelineConfig.hpp"
+
 #include <vector>
 
+using TPipelineHandle = u32;
 
-using PipelineHandle = u32;
-
-class PipelineManager
+class UPipelineManager
 {
-  //TODO: cache it
-public:
-  PipelineManager() = default;
+	// TODO: cache it
+  public:
+	UPipelineManager() = default;
 
-  PipelineManager(const PipelineManager&)                    = delete;
-  auto operator=(const PipelineManager&) -> PipelineManager& = delete;
+	UPipelineManager(const UPipelineManager &) = delete;
+	auto operator=(const UPipelineManager &) -> UPipelineManager & = delete;
 
-  PipelineManager(PipelineManager&&)                    = default;
-  auto operator=(PipelineManager&&) -> PipelineManager& = default;
+	UPipelineManager(UPipelineManager &&) = default;
+	auto operator=(UPipelineManager &&) -> UPipelineManager & = default;
 
-  WIND_NODISCARD auto WIND_INLINE create(GraphicsConfig config, const vk::raii::Device& device) WIND_NOEXCEPT
-      -> WindResult<PipelineHandle>
-  {
-    PipelineHandle handle = m_pipelines.size();
-    m_pipelines.emplace_back(WIND_TRY(create_pipeline(device, std::move(config))));
-    return handle;
-  }
+	WIND_NODISCARD auto WIND_INLINE Create(FGraphicsConfig Config, const vk::raii::Device &Device) WIND_NOEXCEPT
+	    -> WindResult<TPipelineHandle>
+	{
+		TPipelineHandle Handle = MPipelines.size();
+		MPipelines.emplace_back(WIND_TRY(CreatePipeline(Device, std::move(Config))));
+		return Handle;
+	}
 
-  auto get(PipelineHandle handle) -> WindResult<GraphicsPipeline*>
-  {
-    if(handle > m_pipelines.size())
-      WIND_ERR(WindError::internal());
+	auto Get(TPipelineHandle Handle) -> WindResult<FGraphicsPipeline *>
+	{
+		if (Handle > MPipelines.size())
+			WIND_ERR(WindError::internal());
 
-    return &m_pipelines[handle];
-  };
+		return &MPipelines[Handle];
+	};
 
-  auto get_unchecked(PipelineHandle handle) -> GraphicsPipeline* { return &m_pipelines[handle]; }
+	auto GetUnchecked(TPipelineHandle Handle) -> FGraphicsPipeline *
+	{
+		return &MPipelines[Handle];
+	}
 
-private:
-  std::vector<GraphicsPipeline> m_pipelines;
+  private:
+	std::vector<FGraphicsPipeline> MPipelines;
 };

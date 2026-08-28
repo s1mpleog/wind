@@ -1,43 +1,47 @@
 #pragma once
 
+#include "Config.hpp"
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_keycode.h"
-#include "Config.hpp"
 
-
-struct MousePosition
+struct FMousePosition
 {
-  float x{};
-  float y{};
-  float y_rel{};
-  float x_rel{};
+	float X{};
+	float Y{};
+	float YRel{};
+	float XRel{};
 };
 
-class InputManger
+class UInputManger
 {
-public:
-  InputManger();
+  public:
+	UInputManger();
 
-  auto update() const -> void { SDL_PumpEvents(); }
+	static auto Update() -> void
+	{
+		SDL_PumpEvents();
+	}
 
-  // TODO: replace SDL_Keycode with mine
-  WIND_NODISCARD auto is_down(SDL_Keycode key) const WIND_NOEXCEPT -> bool { return m_key_states[key]; }
+	// TODO: replace SDL_Keycode with mine
+	WIND_NODISCARD auto IsDown(SDL_Keycode Key) const WIND_NOEXCEPT -> bool
+	{
+		return MKeyStates[Key];
+	}
 
-  auto process_event(SDL_Event& event) WIND_NOEXCEPT -> void;
+	auto ProcessEvent(SDL_Event &Event) WIND_NOEXCEPT -> void;
 
-  WIND_NODISCARD auto get_mouse_position() const WIND_NOEXCEPT -> MousePosition;
+	WIND_NODISCARD auto GetMousePosition() const WIND_NOEXCEPT -> FMousePosition;
 
-  auto begin_frame() WIND_NOEXCEPT -> void
-  {
-    m_mouse_x_rel = 0;
-    m_mouse_y_rel = 0;
-  }
+	auto BeginFrame() WIND_NOEXCEPT -> void
+	{
+		MMouseXRel = 0;
+		MMouseYRel = 0;
+	}
 
-private:
-  const bool* m_key_states{};
-  float       m_mouse_x{};
-  float       m_mouse_y{};
-  float       m_mouse_y_rel{};
-  float       m_mouse_x_rel{};
+  private:
+	const bool *MKeyStates{};
+	float MMouseX{};
+	float MMouseY{};
+	float MMouseYRel{};
+	float MMouseXRel{};
 };
-

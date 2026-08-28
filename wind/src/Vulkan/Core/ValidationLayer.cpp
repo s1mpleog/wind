@@ -1,19 +1,21 @@
 #include "Vulkan/Core/ValidationLayer.hpp"
+
 #include "Error.hpp"
-#include <vulkan/vulkan_core.h>
 #include "Vulkan/Types.hpp"
 
-auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) WIND_NOEXCEPT
+#include <vulkan/vulkan_core.h>
+
+auto CreateDebugUtils(const FConfiguration &Cfg, const vk::raii::Instance &Instance) WIND_NOEXCEPT
     -> WindResult<vk::raii::DebugUtilsMessengerEXT>
 {
-  vk::DebugUtilsMessengerCreateInfoEXT create_info{};
+	vk::DebugUtilsMessengerCreateInfoEXT CreateInfo{};
 
-  create_info.messageType     = to_vk(cfg.debug_message_type);
-  create_info.messageSeverity = to_vk(cfg.debug_message_severity);
-  create_info.pfnUserCallback = debug_callback;
+	CreateInfo.messageType = ToVk(Cfg.DebugMessageType);
+	CreateInfo.messageSeverity = ToVk(Cfg.DebugMessageSeverity);
+	CreateInfo.pfnUserCallback = DebugCallback;
 
-  auto messenger = WIND_TRY(instance.createDebugUtilsMessengerEXT(create_info), ErrorCode::FailedToCreateDebugMessenger);
+	auto Messenger =
+	    WIND_TRY(Instance.createDebugUtilsMessengerEXT(CreateInfo), ErrorCode::FailedToCreateDebugMessenger);
 
-  return messenger;
+	return Messenger;
 }
-

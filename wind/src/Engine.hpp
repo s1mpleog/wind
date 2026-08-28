@@ -4,48 +4,42 @@
 #include "Input/InputManager.hpp"
 #include "Platform/Window.hpp"
 #include "Resources/ResourceManager.hpp"
+#include "Scene/Scene.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
 #include "Vulkan/Core/Context.hpp"
 #include "Vulkan/Graphics/PipelineManager.hpp"
 #include "Vulkan/Renderer.hpp"
+
 #include <memory>
-#include "Scene/Scene.hpp"
 
-class Engine
+class UEngine
 {
-public:
-  Engine(const Engine&)                    = delete;
-  auto operator=(const Engine&) -> Engine& = delete;
+  public:
+	UEngine(const UEngine &) = delete;
+	auto operator=(const UEngine &) -> UEngine & = delete;
 
-  Engine(Engine&&) noexcept                    = default;
-  auto operator=(Engine&&) noexcept -> Engine& = default;
+	UEngine(UEngine &&) noexcept = default;
+	auto operator=(UEngine &&) noexcept -> UEngine & = default;
 
-  WIND_NODISCARD static auto create(WindowConfiguration window_cfg, Configuration vulkan_cfg) WIND_NOEXCEPT -> WindResult<Engine>;
+	WIND_NODISCARD static auto Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
+	    -> WindResult<UEngine>;
 
-  auto run() WIND_NOEXCEPT -> WindResult<void>;
+	auto Run() WIND_NOEXCEPT -> WindResult<void>;
 
-private:
-  Engine(Window                           window,
-         std::unique_ptr<VulkanContext>   context,
-         Renderer                         renderer,
-         std::unique_ptr<InputManger>     input_manager,
-         std::unique_ptr<ResourceManager> resource_manager,
-         std::unique_ptr<PipelineManager> pipeline_manager,
-         Scene                            scene)
-      : m_window{std::move(window)}
-      , m_vulkan_context{std::move(context)}
-      , m_renderer{std::move(renderer)}
-      , m_pipeline_manager{std::move(pipeline_manager)}
-      , m_resource_manager{std::move(resource_manager)}
-      , m_input_manager{std::move(input_manager)}
-      , m_scene{std::move(scene)} {};
+  private:
+	UEngine(UWindow Window, std::unique_ptr<FVulkanContext> Context, URenderer Renderer,
+	        std::unique_ptr<UInputManger> InputManager, std::unique_ptr<UResourceManager> ResourceManager,
+	        std::unique_ptr<UPipelineManager> PipelineManager, UScene Scene)
+	    : MWindow{std::move(Window)}, MVulkanContext{std::move(Context)}, MRenderer{std::move(Renderer)},
+	      MPipelineManager{std::move(PipelineManager)}, MResourceManager{std::move(ResourceManager)},
+	      MInputManager{std::move(InputManager)}, MScene{std::move(Scene)} {};
 
-  Window                           m_window;
-  std::unique_ptr<VulkanContext>   m_vulkan_context;
-  Renderer                         m_renderer;
-  std::unique_ptr<PipelineManager> m_pipeline_manager;
-  std::unique_ptr<ResourceManager> m_resource_manager;
-  std::unique_ptr<InputManger>     m_input_manager;
-  Scene                            m_scene;
+	UWindow MWindow;
+	std::unique_ptr<FVulkanContext> MVulkanContext;
+	URenderer MRenderer;
+	std::unique_ptr<UPipelineManager> MPipelineManager;
+	std::unique_ptr<UResourceManager> MResourceManager;
+	std::unique_ptr<UInputManger> MInputManager;
+	UScene MScene;
 };

@@ -2,33 +2,33 @@
 
 #include "Resources/ResourceManager.hpp"
 #include "Vulkan/Graphics/PipelineManager.hpp"
+
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 
-
-struct ModelAssets
+struct FModelAssets
 {
-  // descriptor set and push constant exists for model
-  ModelHandle model{};
+	// descriptor set and push constant exists for model
+	TModelHandle Model{};
 };
 
-struct BufferAssets
+struct FBufferAssets
 {
-  BufferHandle vertex_handle{};
-  BufferHandle index_handle{};
+	TBufferHandle VertexHandle{};
+	TBufferHandle IndexHandle{};
 
-  u32 index_count{};
-  u32 vertex_count{};
+	u32 IndexCount{};
+	u32 VertexCount{};
 };
 
-struct BuiltAssets
+struct FBuiltAssets
 {
-  ModelHandle    models{};
-  PipelineHandle pipelines{};
-  bool           has_descriptor_sets{false};
-  bool           is_model{true};
-  BufferAssets   buffer_assets{};
+	TModelHandle Models{};
+	TPipelineHandle Pipelines{};
+	bool HasDescriptorSets{false};
+	bool IsModel{true};
+	FBufferAssets BufferAssets{};
 };
 
-WIND_NODISCARD auto build(ResourceManager* resource_manager, PipelineManager* pipeline_manager, const vk::raii::Device& device) WIND_NOEXCEPT
-    -> WindResult<std::vector<BuiltAssets>>;
+WIND_NODISCARD auto Build(UResourceManager *ResourceManager, UPipelineManager *PipelineManager,
+                          const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<std::vector<FBuiltAssets>>;

@@ -1,90 +1,91 @@
 #include "Platform/Window.hpp"
+
+#include "Error.hpp"
 #include "SDL3/SDL_init.h"
 #include "SDL3/SDL_video.h"
-#include "Error.hpp"
+#include "SDL3/SDL_vulkan.h"
 #include "Types.hpp"
+#include "Utils/ExpectedUtil.hpp"
+
 #include <cassert>
 #include <spdlog/spdlog.h>
 #include <vector>
-#include "SDL3/SDL_vulkan.h"
-#include "Utils/ExpectedUtil.hpp"
 
-WIND_NODISCARD auto Window::create() WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto UWindow::Create() WIND_NOEXCEPT -> WindResult<void>
 {
-  if(m_config.width == 0 || m_config.height == 0 || m_config.name.empty())
-  {
-    WIND_ERR(WindError::internal(ErrorCode::InvalidWindowConfig));
-  }
+	if (MConfig.Width == 0 || MConfig.Height == 0 || MConfig.Name.empty())
+	{
+		WIND_ERR(WindError::internal(ErrorCode::InvalidWindowConfig));
+	}
 
-  if(!SDL_Init(SDL_INIT_VIDEO))
-  {
-    WIND_ERR(WindError::sdl(ErrorCode::FailedToInitSDL));
-  }
+	if (!SDL_Init(SDL_INIT_VIDEO))
+	{
+		WIND_ERR(WindError::sdl(ErrorCode::FailedToInitSDL));
+	}
 
-  m_handle = SDL_CreateWindow(m_config.name.c_str(), m_config.width, m_config.height,
-                              SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+	MHandle = SDL_CreateWindow(MConfig.Name.c_str(), MConfig.Width, MConfig.Height,
+	                           SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 
-  if(m_handle == nullptr)
-  {
-    WIND_ERR(WindError::sdl(ErrorCode::FailedToCreateWindow));
-  }
+	if (MHandle == nullptr)
+	{
+		WIND_ERR(WindError::sdl(ErrorCode::FailedToCreateWindow));
+	}
 
-  SDL_SetWindowRelativeMouseMode(m_handle, true);
+	SDL_SetWindowRelativeMouseMode(MHandle, true);
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("Window created: {}x{}", m_config.width, m_config.height);
+	spdlog::info("Window created: {}x{}", MConfig.Width, MConfig.Height);
 #endif
 
-  return {};
+	return {};
 }
 
-WIND_NODISCARD auto Window::extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char*>>
+WIND_NODISCARD auto UWindow::Extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char *>>
 {
-  WIND_ASSERT(m_handle != nullptr && "window handler is nullptr");
+	WIND_ASSERT(MHandle != nullptr && "window handler is nullptr");
 
-  u32 extensions_count{0};
-  // extensions is a pointer to a const pointer to const char
-  const auto* const extensions_raw = SDL_Vulkan_GetInstanceExtensions(&extensions_count);
+	u32 ExtensionsCount{0};
+	// extensions is a pointer to a const pointer to const char
+	const auto *const ExtensionsRaw = SDL_Vulkan_GetInstanceExtensions(&ExtensionsCount);
 
-  if(extensions_count == 0)
-  {
-    WIND_ERR(WindError::internal(ErrorCode::ExtensionNotSupported));
-  }
+	if (ExtensionsCount == 0)
+	{
+		WIND_ERR(WindError::internal(ErrorCode::ExtensionNotSupported));
+	}
 
-  std::vector<const char*> extensions;
-  extensions.reserve(extensions_count);
+	std::vector<const char *> Extensions;
+	Extensions.reserve(ExtensionsCount);
 
-  for(usize i = 0; i < extensions_count; ++i)
-  {
-    extensions.emplace_back(extensions_raw[i]);
-  }
+	for (usize I = 0; I < ExtensionsCount; ++I)
+	{
+		Extensions.emplace_back(ExtensionsRaw[I]);
+	}
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("SDL3 returns {} extensions", extensions_count);
-  std::ranges::for_each(extensions, [](auto extension) -> auto { spdlog::info("extension: {}", extension); });
+	spdlog::info("SDL3 returns {} extensions", ExtensionsCount);
+	std::ranges::for_each(Extensions, [](auto Extension) -> auto { spdlog::info("extension: {}", Extension); });
 #endif
 
-  return extensions;
+	return Extensions;
 }
 
-WIND_NODISCARD auto Window::create_surface(const vk::Instance& instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>
+WIND_NODISCARD auto UWindow::CreateSurface(const vk::Instance &Instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>
 {
-  WIND_ASSERT(m_handle != nullptr && "trying to create vulkan surface but window handle is null");
+	WIND_ASSERT(MHandle != nullptr && "trying to create vulkan surface but window handle is null");
 
-  VkSurfaceKHR surface{};
+	VkSurfaceKHR Surface{};
 
-  if(!SDL_Vulkan_CreateSurface(m_handle, instance, nullptr, &surface))
-    WIND_ERR(WindError::sdl(ErrorCode::FailedToCreateSurface));
+	if (!SDL_Vulkan_CreateSurface(MHandle, Instance, nullptr, &Surface))
+		WIND_ERR(WindError::sdl(ErrorCode::FailedToCreateSurface));
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("successfully created vulkan surface");
+	spdlog::info("successfully created vulkan surface");
 #endif
 
-  return surface;
+	return Surface;
 }
 
-auto Window::get_config() const WIND_NOEXCEPT -> const WindowConfiguration&
+auto UWindow::GetConfig() const WIND_NOEXCEPT -> const FWindowConfiguration &
 {
-  return m_config;
+	return MConfig;
 }
-

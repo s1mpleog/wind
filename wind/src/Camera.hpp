@@ -1,104 +1,121 @@
 #pragma once
 
-#include "SDL3/SDL_scancode.h"
 #include "Core/ServiceLocator.hpp"
+#include "Input/InputManager.hpp"
+#include "RenderView.hpp"
+#include "SDL3/SDL_scancode.h"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/trigonometric.hpp"
-#include "Input/InputManager.hpp"
-#include "RenderView.hpp"
+
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
-struct Camera
+struct FCamera
 {
-  glm::vec3 position{0.0F, 1.75F, 7.5F};
-  float     yaw{glm::radians(180.0F)};
-  float     pitch{glm::radians(-9.0F)};
+	glm::vec3 Position{0.0F, 1.75F, 7.5F};
+	float Yaw{glm::radians(180.0F)};
+	float Pitch{glm::radians(-9.0F)};
 
-  float fov                      = 60.0F;
-  float aspect                   = 16.0F / 9.0F;
-  float near                     = 0.1F;
-  float far                      = 1000.0F;
-  bool  ignore_next_mouse_motion = true;
+	float Fov = 60.0F;
+	float Aspect = 16.0F / 9.0F;
+	float Near = 0.1F;
+	float Far = 1000.0F;
+	bool IgnoreNextMouseMotion = true;
 
-  WIND_NODISCARD auto forward() const WIND_NOEXCEPT -> glm::vec3
-  {
-    return glm::normalize(glm::vec3(glm::cos(pitch) * glm::sin(yaw), glm::sin(pitch), glm::cos(pitch) * glm::cos(yaw)));
-  }
+	WIND_NODISCARD auto Forward() const WIND_NOEXCEPT -> glm::vec3
+	{
+		return glm::normalize(
+		    glm::vec3(glm::cos(Pitch) * glm::sin(Yaw), glm::sin(Pitch), glm::cos(Pitch) * glm::cos(Yaw)));
+	}
 
-  // auto right() const -> glm::vec3 { return glm::normalize(glm::cross(glm::vec3(0.0F, 1.0F, 0.0F), forward())); }
+	// auto right() const -> glm::vec3 { return glm::normalize(glm::cross(glm::vec3(0.0F, 1.0F, 0.0F), forward())); }
 
-  auto right() const -> glm::vec3 { return glm::normalize(glm::cross(forward(), glm::vec3(0.0F, 1.0F, 0.0F))); }
+	[[nodiscard]] auto Right() const -> glm::vec3
+	{
+		return glm::normalize(glm::cross(Forward(), glm::vec3(0.0F, 1.0F, 0.0F)));
+	}
 
-  auto view() const -> glm::mat4 { return glm::lookAt(position, position + forward(), glm::vec3(0.0F, 1.0F, 0.0F)); }
+	[[nodiscard]] auto View() const -> glm::mat4
+	{
+		return glm::lookAt(Position, Position + Forward(), glm::vec3(0.0F, 1.0F, 0.0F));
+	}
 
-  auto skybox_view() const -> glm::mat4 { return glm::mat4(glm::mat3(view())); }
+	[[nodiscard]] auto SkyboxView() const -> glm::mat4
+	{
+		return glm::mat4(glm::mat3(View()));
+	}
 
-  WIND_NODISCARD auto projection() const WIND_NOEXCEPT -> glm::mat4
-  {
-    auto proj = glm::perspective(glm::radians(fov), aspect, near, far);
-    proj[1][1] *= -1.0F;  // Vulkan Y-Flip
-    return proj;
-  }
+	WIND_NODISCARD auto Projection() const WIND_NOEXCEPT -> glm::mat4
+	{
+		auto Proj = glm::perspective(glm::radians(Fov), Aspect, Near, Far);
+		Proj[1][1] *= -1.0F; // Vulkan Y-Flip
+		return Proj;
+	}
 
-  auto view_proj() const -> glm::mat4 { return projection() * view(); }
+	[[nodiscard]] auto ViewProj() const -> glm::mat4
+	{
+		return Projection() * View();
+	}
 
-  auto update_aspect(u32 width, u32 height) WIND_NOEXCEPT -> void
-  {
-    aspect = static_cast<float>(width) / static_cast<float>(height);
-  }
+	auto UpdateAspect(u32 Width, u32 Height) WIND_NOEXCEPT -> void
+	{
+		Aspect = static_cast<float>(Width) / static_cast<float>(Height);
+	}
 
-  WIND_NODISCARD auto render_view() const WIND_NOEXCEPT -> RenderView
-  {
-    return RenderView{
-        .view       = view(),
-        .projection = projection(),
-    };
-  }
+	WIND_NODISCARD auto RenderView() const WIND_NOEXCEPT -> FRenderView
+	{
+		return FRenderView{
+		    .View = View(),
+		    .Projection = Projection(),
+		};
+	}
 
-  auto process_keyboard(float delta) -> void
-  {
-    const float speed = 10.0F * delta;
+	auto ProcessKeyboard(float Delta) -> void
+	{
+		const float Speed = 10.0F * Delta;
 
-    const glm::vec3 f = forward();
-    const glm::vec3 r = right();
-    const glm::vec3 u = glm::normalize(glm::cross(r, f));  // proper up
+		const glm::vec3 F = Forward();
+		const glm::vec3 R = Right();
+		const glm::vec3 U = glm::normalize(glm::cross(R, F)); // proper up
 
-    auto& input = ServiceLocator::get<InputManger>();
+		auto &Input = UServiceLocator::Get<UInputManger>();
 
-    if(input.is_down(SDL_SCANCODE_W))
-      position += f * speed;  // Forward
+		if (Input.IsDown(SDL_SCANCODE_W))
+			Position += F * Speed; // Forward
 
-    if(input.is_down(SDL_SCANCODE_S))
-      position -= f * speed;  // Backward
+		if (Input.IsDown(SDL_SCANCODE_S))
+			Position -= F * Speed; // Backward
 
-    if(input.is_down(SDL_SCANCODE_A))
-      position -= r * speed;  // Left
+		if (Input.IsDown(SDL_SCANCODE_A))
+			Position -= R * Speed; // Left
 
-    if(input.is_down(SDL_SCANCODE_D))
-      position += r * speed;  // Right
-  }
+		if (Input.IsDown(SDL_SCANCODE_D))
+			Position += R * Speed; // Right
+	}
 
-  auto process_mouse() -> void
-  {
-    if(ignore_next_mouse_motion)
-    {
-      ignore_next_mouse_motion = false;
-      return;
-    }
+	auto ProcessMouse() -> void
+	{
+		if (IgnoreNextMouseMotion)
+		{
+			IgnoreNextMouseMotion = false;
+			return;
+		}
 
-    auto& input = ServiceLocator::get<InputManger>();
+		auto &Input = UServiceLocator::Get<UInputManger>();
 
-    const auto mouse = input.get_mouse_position();
+		const auto Mouse = Input.GetMousePosition();
 
-    constexpr float sensitivity = 0.0025F;
+		constexpr float Sensitivity = 0.0025F;
 
-    yaw += mouse.x_rel * sensitivity;
-    pitch -= mouse.y_rel * sensitivity;
+		Yaw += Mouse.XRel * Sensitivity;
+		Pitch -= Mouse.YRel * Sensitivity;
 
-    pitch = glm::clamp(pitch, glm::radians(-89.0F), glm::radians(89.0F));
-  }
+		Pitch = glm::clamp(Pitch, glm::radians(-89.0F), glm::radians(89.0F));
+	}
 
-  auto reset_mouse_ignore() -> void { ignore_next_mouse_motion = true; }
+	auto ResetMouseIgnore() -> void
+	{
+		IgnoreNextMouseMotion = true;
+	}
 };

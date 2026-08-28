@@ -1,37 +1,36 @@
 #pragma once
 
-
 // scene will own all the render_object and camera
 // but someone have to push all the handles into scene
 
 #include "Camera.hpp"
 #include "Scene/RenderObject.hpp"
+
 #include <vector>
 
-class Scene
+class UScene
 {
-public:
-  auto add_render_objects(BuiltAssets assets, bool is_model = true, Transform transform = {}) WIND_NOEXCEPT -> void;
+  public:
+	auto AddRenderObjects(FBuiltAssets Assets, bool IsModel = true, FTransform Transform = {}) WIND_NOEXCEPT -> void;
 
-  auto get() WIND_NOEXCEPT -> std::vector<RenderObject>;
+	auto Get() WIND_NOEXCEPT -> std::vector<FRenderObject>;
 
-  Scene()
-  {
-    camera = Camera{.position = {0.0F, 1.75F, 7.5F},
-                    // .position = {0.0f, 0.0f, 3.0f},
-                    .yaw   = glm::radians(180.0F),
-                    .pitch = glm::radians(-9.0F),
-                    // .pitch = glm::radians(0.0f),
-                    .fov    = 60.0F,
-                    .aspect = static_cast<float>(1200.0F) / static_cast<float>(700.0F),
-                    .near   = 0.1F,
-                    .far    = 1000.0f};
-  }
+	UScene()
+	{
+		Camera = FCamera{.Position = {0.0F, 1.75F, 7.5F},
+		                 // .Position = {0.0f, 0.0f, 3.0f},
+		                 .Yaw = glm::radians(180.0F),
+		                 .Pitch = glm::radians(-9.0F),
+		                 // .pitch = glm::radians(0.0f),
+		                 .Fov = 60.0F,
+		                 .Aspect = 1200.0F / 700.0F,
+		                 .Near = 0.1F,
+		                 .Far = 1000.0F};
+	}
 
+	// make camera public for now it does not have any dependency to hide
+	FCamera Camera;
 
-  // make camera public for now it does not have any dependency to hide
-  Camera camera;
-
-private:
-  std::vector<RenderObject> m_objects;
+  private:
+	std::vector<FRenderObject> MObjects;
 };

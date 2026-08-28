@@ -1,177 +1,179 @@
 #include "Vulkan/Core/Swapchain.hpp"
+
 #include "Error.hpp"
-#include "spdlog/spdlog.h"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
-#include <vulkan/vulkan.hpp>
+#include "spdlog/spdlog.h"
+
 #include <algorithm>
 #include <span>
 #include <vector>
+#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
 // presentation mode
 // surface capabilities
 // surface_format
 
-WIND_NODISCARD static auto get_surface_capabilities(const vk::raii::SurfaceKHR&     surface,
-                                                    const vk::raii::PhysicalDevice& physical_device) WIND_NOEXCEPT
+WIND_NODISCARD static auto GetSurfaceCapabilities(const vk::raii::SurfaceKHR &Surface,
+                                                  const vk::raii::PhysicalDevice &PhysicalDevice) WIND_NOEXCEPT
     -> WindResult<vk::SurfaceCapabilitiesKHR>
 {
-  return WIND_TRY(physical_device.getSurfaceCapabilitiesKHR(surface));
+	return WIND_TRY(PhysicalDevice.getSurfaceCapabilitiesKHR(Surface));
 }
 
-WIND_NODISCARD static auto get_surface_format(const vk::raii::SurfaceKHR& surface, const vk::raii::PhysicalDevice& physical_device) WIND_NOEXCEPT
+WIND_NODISCARD static auto GetSurfaceFormat(const vk::raii::SurfaceKHR &Surface,
+                                            const vk::raii::PhysicalDevice &PhysicalDevice) WIND_NOEXCEPT
     -> WindResult<vk::SurfaceFormatKHR>
 {
-  auto available_formats = WIND_TRY(physical_device.getSurfaceFormatsKHR(surface));
-  WIND_ENSURE_NOT_EMPTY(available_formats, WindError::vulkan(ErrorCode::FailedToGetSurfaceFormats));
+	auto AvailableFormats = WIND_TRY(PhysicalDevice.getSurfaceFormatsKHR(Surface));
+	WIND_ENSURE_NOT_EMPTY(AvailableFormats, WindError::vulkan(ErrorCode::FailedToGetSurfaceFormats));
 
-  constexpr vk::SurfaceFormatKHR preferred{vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear};
+	constexpr vk::SurfaceFormatKHR Preferred{vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear};
 
-  auto it = std::ranges::find(available_formats, preferred);
+	auto It = std::ranges::find(AvailableFormats, Preferred);
 
-  if(it != available_formats.end())
-    return *it;
+	if (It != AvailableFormats.end())
+		return *It;
 
-  return available_formats.front();
+	return AvailableFormats.front();
 }
 
-WIND_NODISCARD static auto get_presentation_mode(const Configuration&            cfg,
-                                                 const vk::raii::SurfaceKHR&     surface,
-                                                 const vk::raii::PhysicalDevice& physical_device) WIND_NOEXCEPT
+WIND_NODISCARD static auto GetPresentationMode(const FConfiguration &Cfg, const vk::raii::SurfaceKHR &Surface,
+                                               const vk::raii::PhysicalDevice &PhysicalDevice) WIND_NOEXCEPT
     -> WindResult<vk::PresentModeKHR>
 {
-  auto available_modes = WIND_TRY(physical_device.getSurfacePresentModesKHR(surface));
-  WIND_ENSURE_NOT_EMPTY(available_modes, WindError::vulkan(ErrorCode::FailedToGetSurfacePresentModes));
+	auto AvailableModes = WIND_TRY(PhysicalDevice.getSurfacePresentModesKHR(Surface));
+	WIND_ENSURE_NOT_EMPTY(AvailableModes, WindError::vulkan(ErrorCode::FailedToGetSurfacePresentModes));
 
-  // if cfg.vsync is false then just return immediate_mode or if vsync is enable then return fifo mode
-  // or if cfg.vsync and cfg.triple_buffering then return mailbox mode
+	// if cfg.vsync is false then just return immediate_mode or if vsync is enable then return fifo mode
+	// or if cfg.vsync and cfg.triple_buffering then return mailbox mode
 
-  auto supported = [&](vk::PresentModeKHR mode) -> bool {
-    return std::ranges::find(available_modes, mode) != available_modes.end();
-  };
+	auto Supported = [&](vk::PresentModeKHR Mode) -> bool
+	{ return std::ranges::find(AvailableModes, Mode) != AvailableModes.end(); };
 
-  auto preferred_mode = [&]() -> vk::PresentModeKHR {
-    if(!cfg.vsync)
-      return supported(vk::PresentModeKHR::eImmediate) ? vk::PresentModeKHR::eImmediate : vk::PresentModeKHR::eFifo;
+	auto PreferredMode = [&]() -> vk::PresentModeKHR
+	{
+		if (!Cfg.Vsync)
+			return Supported(vk::PresentModeKHR::eImmediate) ? vk::PresentModeKHR::eImmediate
+			                                                 : vk::PresentModeKHR::eFifo;
 
-    if(cfg.buffering == Buffering::TripleBuffering)
-      return supported(vk::PresentModeKHR::eMailbox) ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
+		if (Cfg.Buffering == EBuffering::TripleBuffering)
+			return Supported(vk::PresentModeKHR::eMailbox) ? vk::PresentModeKHR::eMailbox : vk::PresentModeKHR::eFifo;
 
-    return vk::PresentModeKHR::eFifo;
-  }();
+		return vk::PresentModeKHR::eFifo;
+	}();
 
-  return preferred_mode;
+	return PreferredMode;
 }
 
-WIND_NODISCARD static auto get_images(const vk::raii::SwapchainKHR& swapchain) WIND_NOEXCEPT -> WindResult<std::vector<vk::Image>>
+WIND_NODISCARD static auto GetImages(const vk::raii::SwapchainKHR &Swapchain) WIND_NOEXCEPT
+    -> WindResult<std::vector<vk::Image>>
 {
-  return WIND_TRY(swapchain.getImages());
+	return WIND_TRY(Swapchain.getImages());
 }
 
-WIND_NODISCARD static auto create_image_views(std::span<const vk::Image> images, const vk::raii::Device& device, vk::Format format) WIND_NOEXCEPT
+WIND_NODISCARD static auto CreateImageViews(std::span<const vk::Image> Images, const vk::raii::Device &Device,
+                                            vk::Format Format) WIND_NOEXCEPT
     -> WindResult<std::vector<vk::raii::ImageView>>
 {
-  std::vector<vk::raii::ImageView> image_views;
-  image_views.reserve(images.size());
+	std::vector<vk::raii::ImageView> ImageViews;
+	ImageViews.reserve(Images.size());
 
-  for(const auto& image : images)
-  {
-    vk::ImageViewCreateInfo create_info{};
-    create_info.image                           = image;
-    create_info.format                          = format;
-    create_info.viewType                        = vk::ImageViewType::e2D;
-    create_info.subresourceRange.levelCount     = 1;
-    create_info.subresourceRange.layerCount     = 1;
-    create_info.subresourceRange.aspectMask     = vk::ImageAspectFlagBits::eColor;
-    create_info.subresourceRange.baseMipLevel   = 0;
-    create_info.subresourceRange.baseArrayLayer = 0;
+	for (const auto &Image : Images)
+	{
+		vk::ImageViewCreateInfo CreateInfo{};
+		CreateInfo.image = Image;
+		CreateInfo.format = Format;
+		CreateInfo.viewType = vk::ImageViewType::e2D;
+		CreateInfo.subresourceRange.levelCount = 1;
+		CreateInfo.subresourceRange.layerCount = 1;
+		CreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		CreateInfo.subresourceRange.baseMipLevel = 0;
+		CreateInfo.subresourceRange.baseArrayLayer = 0;
 
-    image_views.emplace_back(WIND_TRY(device.createImageView(create_info)));
-  }
+		ImageViews.emplace_back(WIND_TRY(Device.createImageView(CreateInfo)));
+	}
 
-  return image_views;
+	return ImageViews;
 }
 
 WIND_NODISCARD
-auto create_swapchain(const Configuration&          cfg,
-                      u32                           window_width,
-                      u32                           window_height,
-                      const vk::raii::SurfaceKHR&   surface,
-                      const GpuDevice&              device_context,
-                      const vk::raii::SwapchainKHR* old_swapchain) WIND_NOEXCEPT -> WindResult<SwapchainContext>
+auto CreateSwapchain(const FConfiguration &Cfg, u32 WindowWidth, u32 WindowHeight, const vk::raii::SurfaceKHR &Surface,
+                     const FGpuDevice &DeviceContext, const vk::raii::SwapchainKHR *OldSwapchain) WIND_NOEXCEPT
+    -> WindResult<FSwapchainContext>
 {
-  auto surface_capabilities = WIND_TRY(get_surface_capabilities(surface, device_context.physical_device));
-  auto surface_format       = WIND_TRY(get_surface_format(surface, device_context.physical_device));
-  auto presentation_mode    = WIND_TRY(get_presentation_mode(cfg, surface, device_context.physical_device));
+	auto SurfaceCapabilities = WIND_TRY(GetSurfaceCapabilities(Surface, DeviceContext.PhysicalDevice));
+	auto SurfaceFormat = WIND_TRY(GetSurfaceFormat(Surface, DeviceContext.PhysicalDevice));
+	auto PresentationMode = WIND_TRY(GetPresentationMode(Cfg, Surface, DeviceContext.PhysicalDevice));
 
-  spdlog::info("USING {} PRESENTATION MODE", vk::to_string(presentation_mode));
+	spdlog::info("USING {} PRESENTATION MODE", vk::to_string(PresentationMode));
 
-  vk::SwapchainCreateInfoKHR create_info{};
+	vk::SwapchainCreateInfoKHR CreateInfo{};
 
-  create_info.presentMode      = presentation_mode;
-  create_info.surface          = surface;
-  create_info.clipped          = vk::True;
-  create_info.compositeAlpha   = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-  create_info.preTransform     = surface_capabilities.currentTransform;
-  create_info.imageUsage       = vk::ImageUsageFlagBits::eColorAttachment;
-  create_info.imageArrayLayers = 1;
-  create_info.imageFormat      = surface_format.format;
-  create_info.imageColorSpace  = surface_format.colorSpace;
+	CreateInfo.presentMode = PresentationMode;
+	CreateInfo.surface = Surface;
+	CreateInfo.clipped = vk::True;
+	CreateInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+	CreateInfo.preTransform = SurfaceCapabilities.currentTransform;
+	CreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+	CreateInfo.imageArrayLayers = 1;
+	CreateInfo.imageFormat = SurfaceFormat.format;
+	CreateInfo.imageColorSpace = SurfaceFormat.colorSpace;
 
-  u32 image_count = surface_capabilities.minImageCount + 1;
+	u32 ImageCount = SurfaceCapabilities.minImageCount + 1;
 
-  if(surface_capabilities.maxImageCount > 0 && image_count > surface_capabilities.maxImageCount)
-    image_count = surface_capabilities.maxImageCount;
+	if (SurfaceCapabilities.maxImageCount > 0 && ImageCount > SurfaceCapabilities.maxImageCount)
+		ImageCount = SurfaceCapabilities.maxImageCount;
 
-  create_info.minImageCount = image_count;
+	CreateInfo.minImageCount = ImageCount;
 
-  vk::Extent2D extent{};
+	vk::Extent2D Extent{};
 
-  if(surface_capabilities.currentExtent.width != UINT32_MAX)
-  {
-    extent = surface_capabilities.currentExtent;
-  }
-  else
-  {
-    extent.width =
-        std::clamp(window_width, surface_capabilities.minImageExtent.width, surface_capabilities.maxImageExtent.width);
+	if (SurfaceCapabilities.currentExtent.width != UINT32_MAX)
+	{
+		Extent = SurfaceCapabilities.currentExtent;
+	}
+	else
+	{
+		Extent.width =
+		    std::clamp(WindowWidth, SurfaceCapabilities.minImageExtent.width, SurfaceCapabilities.maxImageExtent.width);
 
-    extent.height =
-        std::clamp(window_height, surface_capabilities.minImageExtent.height, surface_capabilities.maxImageExtent.height);
-  }
+		Extent.height = std::clamp(WindowHeight, SurfaceCapabilities.minImageExtent.height,
+		                           SurfaceCapabilities.maxImageExtent.height);
+	}
 
-  create_info.imageExtent = extent;
+	CreateInfo.imageExtent = Extent;
 
-  const std::array queues_index = {device_context.graphics_queue_idx.value(), device_context.presentation_queue_idx.value()};
+	const std::array QueuesIndex = {DeviceContext.GraphicsQueueIdx.value(), DeviceContext.PresentationQueueIdx.value()};
 
-  if(device_context.graphics_queue_idx != device_context.presentation_queue_idx)
-  {
-    create_info.imageSharingMode      = vk::SharingMode::eConcurrent;
-    create_info.queueFamilyIndexCount = queues_index.size();
-    create_info.pQueueFamilyIndices   = queues_index.data();
-  }
-  else
-  {
-    create_info.imageSharingMode      = vk::SharingMode::eExclusive;
-    create_info.queueFamilyIndexCount = 0;
-    create_info.pQueueFamilyIndices   = nullptr;
-  }
+	if (DeviceContext.GraphicsQueueIdx != DeviceContext.PresentationQueueIdx)
+	{
+		CreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+		CreateInfo.queueFamilyIndexCount = QueuesIndex.size();
+		CreateInfo.pQueueFamilyIndices = QueuesIndex.data();
+	}
+	else
+	{
+		CreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
+		CreateInfo.queueFamilyIndexCount = 0;
+		CreateInfo.pQueueFamilyIndices = nullptr;
+	}
 
-  create_info.oldSwapchain = (old_swapchain != nullptr) ? **old_swapchain : vk::SwapchainKHR{};
+	CreateInfo.oldSwapchain = (OldSwapchain != nullptr) ? **OldSwapchain : vk::SwapchainKHR{};
 
-  auto swapchain = WIND_TRY(device_context.device.createSwapchainKHR(create_info));
+	auto Swapchain = WIND_TRY(DeviceContext.Device.createSwapchainKHR(CreateInfo));
 
-  auto images      = WIND_TRY(get_images(swapchain));
-  auto image_views = WIND_TRY(create_image_views(images, device_context.device, surface_format.format));
+	auto Images = WIND_TRY(GetImages(Swapchain));
+	auto ImageViews = WIND_TRY(CreateImageViews(Images, DeviceContext.Device, SurfaceFormat.format));
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("Swapchain created dimension: {}x{}, images: {}", extent.width, extent.height, images.size());
+	spdlog::info("Swapchain created dimension: {}x{}, images: {}", Extent.width, Extent.height, Images.size());
 #endif
 
-  return SwapchainContext{.handle      = std::move(swapchain),
-                          .images      = std::move(images),
-                          .image_views = std::move(image_views),
-                          .format      = surface_format,
-                          .extent      = extent};
+	return FSwapchainContext{.Handle = std::move(Swapchain),
+	                         .Images = std::move(Images),
+	                         .ImageViews = std::move(ImageViews),
+	                         .Format = SurfaceFormat,
+	                         .Extent = Extent};
 }

@@ -3,29 +3,29 @@
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/vector_float4.hpp"
 
-struct PushConstants
+struct FPushConstants
 {
-  glm::mat4 transform;
-  u32       albedo_texture;
-  u32       normal_index;
-  u32       metallic_roughness_index;
-  glm::vec4 base_color;
+	glm::mat4 Transform;
+	u32 AlbedoTexture;
+	u32 NormalIndex;
+	u32 MetallicRoughnessIndex;
+	glm::vec4 BaseColor;
 };
 
-struct UboInstance
+struct FUboInstance
 {
-  glm::mat4 transform;
+	glm::mat4 Transform;
 };
 
-struct Vertex
+struct FVertex
 {
-  glm::vec3 position;
-  glm::vec3 color;
+	glm::vec3 Position;
+	glm::vec3 Color;
 };
 
-static_assert(sizeof(Vertex) == 24);
-static_assert(offsetof(Vertex, position) == 0);
-static_assert(offsetof(Vertex, color) == 12);
+static_assert(sizeof(FVertex) == 24);
+static_assert(offsetof(FVertex, Position) == 0);
+static_assert(offsetof(FVertex, Color) == 12);
 
 // static std::array<Vertex, 3> default_vertices{{
 //     {{0.0F, 0.5F, 0.0F, 1.0F}, {1.0F, 0.0F, 0.0F, 1.0F}},
@@ -33,21 +33,21 @@ static_assert(offsetof(Vertex, color) == 12);
 //     {{-0.5F, -0.5F, 0.0F, 1.0F}, {0.0F, 0.0F, 1.0F, 1.0F}},
 // }};
 
-static constexpr std::array<Vertex, 8> cube_vertices{{
+static constexpr std::array<FVertex, 8> CubeVertices{{
     // Front face
-    {{-0.5F, -0.5F, 0.5F}, {1.0F, 0.0F, 0.0F}},  // 0
-    {{0.5F, -0.5F, 0.5F}, {0.0F, 1.0F, 0.0F}},   // 1
-    {{0.5F, 0.5F, 0.5F}, {0.0F, 0.0F, 1.0F}},    // 2
-    {{-0.5F, 0.5F, 0.5F}, {1.0F, 1.0F, 0.0F}},   // 3
+    {.Position = {-0.5F, -0.5F, 0.5F}, .Color = {1.0F, 0.0F, 0.0F}}, // 0
+    {.Position = {0.5F, -0.5F, 0.5F}, .Color = {0.0F, 1.0F, 0.0F}},  // 1
+    {.Position = {0.5F, 0.5F, 0.5F}, .Color = {0.0F, 0.0F, 1.0F}},   // 2
+    {.Position = {-0.5F, 0.5F, 0.5F}, .Color = {1.0F, 1.0F, 0.0F}},  // 3
 
     // Back face
-    {{-0.5F, -0.5F, -0.5F}, {1.0F, 0.0F, 1.0F}},  // 4
-    {{0.5F, -0.5F, -0.5F}, {0.0F, 1.0F, 1.0F}},   // 5
-    {{0.5F, 0.5F, -0.5F}, {1.0F, 1.0F, 1.0F}},    // 6
-    {{-0.5F, 0.5F, -0.5F}, {0.2F, 0.2F, 0.2F}},   // 7
+    {.Position = {-0.5F, -0.5F, -0.5F}, .Color = {1.0F, 0.0F, 1.0F}}, // 4
+    {.Position = {0.5F, -0.5F, -0.5F}, .Color = {0.0F, 1.0F, 1.0F}},  // 5
+    {.Position = {0.5F, 0.5F, -0.5F}, .Color = {1.0F, 1.0F, 1.0F}},   // 6
+    {.Position = {-0.5F, 0.5F, -0.5F}, .Color = {0.2F, 0.2F, 0.2F}},  // 7
 }};
 
-static constexpr std::array<std::uint16_t, 36> cube_indices{{
+static constexpr std::array<std::uint16_t, 36> CubeIndices{{
     // Front
     0,
     1,
@@ -97,4 +97,4 @@ static constexpr std::array<std::uint16_t, 36> cube_indices{{
     4,
 }};
 
-static_assert(cube_indices.size() == 36);
+static_assert(CubeIndices.size() == 36);

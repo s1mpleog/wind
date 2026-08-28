@@ -18,107 +18,107 @@
 #include "Vulkan/Core/Context.hpp"
 #include "Vulkan/Memory/Allocator.hpp"
 #include "Vulkan/Memory/ResourceTypes.hpp"
-#include <vulkan/vulkan.hpp>
-#include <array>
+
 #include <cstddef>
 #include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-template <typename T>
-struct Handle
+template <typename T_>
+struct FHandle
 {
-  u32 index{};
+	u32 Index{};
 };
 
 struct Texture;
 struct Shader;
 
-using TextureHandle       = Handle<Texture>;
-using ShaderHandle        = Handle<Shader>;
-using VertexHandle        = Handle<u32>;
-using IndexHandle         = Handle<u32>;
-using ModelHandle         = Handle<u32>;
-using BufferHandle        = Handle<u32>;
-using DynamicBufferHandle = Handle<u32>;
+using TExtureHandle = FHandle<Texture>;
+using TShaderHandle = FHandle<Shader>;
+using TVertexHandle = FHandle<u32>;
+using TIndexHandle = FHandle<u32>;
+using TModelHandle = FHandle<u32>;
+using TBufferHandle = FHandle<u32>;
+using TDynamicBufferHandle = FHandle<u32>;
 
-static_assert(sizeof(TextureHandle) == 4);
-static_assert(sizeof(ShaderHandle) == 4);
+static_assert(sizeof(TExtureHandle) == 4);
+static_assert(sizeof(TShaderHandle) == 4);
 
-static_assert(!std::is_same_v<TextureHandle, ShaderHandle>);
+static_assert(!std::is_same_v<TExtureHandle, TShaderHandle>);
 
-struct MeshHandle
+struct FMeshHandle
 {
-  u32 index{};
+	u32 Index{};
 };
 
-class ResourceManager
+class UResourceManager
 {
-public:
-  ResourceManager(const ResourceManager&)                    = delete;
-  auto operator=(const ResourceManager&) -> ResourceManager& = delete;
+  public:
+	UResourceManager(const UResourceManager &) = delete;
+	auto operator=(const UResourceManager &) -> UResourceManager & = delete;
 
-  ResourceManager(ResourceManager&&)                    = default;
-  auto operator=(ResourceManager&&) -> ResourceManager& = default;
+	UResourceManager(UResourceManager &&) = default;
+	auto operator=(UResourceManager &&) -> UResourceManager & = default;
 
-  WIND_NODISCARD static auto create(const VulkanContext* context) WIND_NOEXCEPT -> WindResult<ResourceManager>;
+	WIND_NODISCARD static auto Create(const FVulkanContext *Context) WIND_NOEXCEPT -> WindResult<UResourceManager>;
 
-  WIND_NODISCARD auto load_shader(const vk::raii::Device& device, std::string_view shader_path) WIND_NOEXCEPT
-      -> WindResult<ShaderHandle>;
-  WIND_NODISCARD auto get_shader(ShaderHandle handle) WIND_NOEXCEPT -> WindResult<vk::raii::ShaderModule*>;
-  WIND_NODISCARD auto get_shader_unchecked(ShaderHandle handle) WIND_NOEXCEPT -> vk::raii::ShaderModule*;
-  auto                destroy_shader(ShaderHandle handle) WIND_NOEXCEPT -> void;
+	WIND_NODISCARD auto LoadShader(const vk::raii::Device &Device, std::string_view ShaderPath) WIND_NOEXCEPT
+	    -> WindResult<TShaderHandle>;
+	WIND_NODISCARD auto GetShader(TShaderHandle Handle) WIND_NOEXCEPT -> WindResult<vk::raii::ShaderModule *>;
+	WIND_NODISCARD auto GetShaderUnchecked(TShaderHandle Handle) WIND_NOEXCEPT -> vk::raii::ShaderModule *;
+	auto DestroyShader(TShaderHandle Handle) WIND_NOEXCEPT -> void;
 
-  WIND_NODISCARD auto create_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
-  WIND_NODISCARD auto get_default_depth_image_view() const WIND_NOEXCEPT -> const vk::raii::ImageView&;
+	WIND_NODISCARD auto CreateDefaultDepthImage(u32 Width, u32 Height) WIND_NOEXCEPT -> WindResult<void>;
+	WIND_NODISCARD auto GetDefaultDepthImageView() const WIND_NOEXCEPT -> const vk::raii::ImageView &;
 
-  WIND_NODISCARD auto load_model(std::string_view texture_path) WIND_NOEXCEPT -> WindResult<ModelHandle>;
-  //TODO: WindResult does not works with reference fix that for now return pointer
-  WIND_NODISCARD auto get_model(ModelHandle handle) WIND_NOEXCEPT -> WindResult<const Model*>;
-  WIND_NODISCARD auto get_model_unchecked(ModelHandle handle) WIND_NOEXCEPT -> const Model*;
+	WIND_NODISCARD auto LoadModel(std::string_view TexturePath) WIND_NOEXCEPT -> WindResult<TModelHandle>;
+	// TODO: WindResult does not works with reference fix that for now return pointer
+	WIND_NODISCARD auto GetModel(TModelHandle Handle) WIND_NOEXCEPT -> WindResult<const FModel *>;
+	WIND_NODISCARD auto GetModelUnchecked(TModelHandle Handle) WIND_NOEXCEPT -> const FModel *;
 
-  WIND_NODISCARD auto recreate_default_depth_image(u32 width, u32 height) WIND_NOEXCEPT -> WindResult<void>;
+	WIND_NODISCARD auto RecreateDefaultDepthImage(u32 Width, u32 Height) WIND_NOEXCEPT -> WindResult<void>;
 
-  WIND_NODISCARD auto create_vertex_buffer(std::span<const std::byte> vertices) WIND_NOEXCEPT -> WindResult<BufferHandle>;
-  WIND_NODISCARD auto create_index_buffer(std::span<const std::byte> indices) -> WindResult<BufferHandle>;
-  WIND_NODISCARD auto get_buffer(BufferHandle handle) const -> WindResult<const AllocatedBuffer*>;
-  WIND_NODISCARD auto get_buffer_unchecked(BufferHandle handle) const -> const AllocatedBuffer*;
+	WIND_NODISCARD auto CreateVertexBuffer(std::span<const std::byte> Vertices) WIND_NOEXCEPT
+	    -> WindResult<TBufferHandle>;
+	WIND_NODISCARD auto CreateIndexBuffer(std::span<const std::byte> Indices) -> WindResult<TBufferHandle>;
+	WIND_NODISCARD auto GetBuffer(TBufferHandle Handle) const -> WindResult<const FAllocatedBuffer *>;
+	WIND_NODISCARD auto GetBufferUnchecked(TBufferHandle Handle) const -> const FAllocatedBuffer *;
 
-  WIND_NODISCARD auto create_dynamic_buffer(u32 size, vk::BufferUsageFlagBits usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
-      -> WindResult<DynamicBufferHandle>;
+	WIND_NODISCARD auto
+	CreateDynamicBuffer(u32 Size, vk::BufferUsageFlagBits Usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
+	    -> WindResult<TDynamicBufferHandle>;
 
-  WIND_NODISCARD auto create_dynamic_uniform_buffer(u32 size) WIND_NOEXCEPT -> WindResult<DynamicBufferHandle>;
+	WIND_NODISCARD auto CreateDynamicUniformBuffer(u32 Size) WIND_NOEXCEPT -> WindResult<TDynamicBufferHandle>;
 
-  WIND_NODISCARD auto get_mapped_data(DynamicBufferHandle handle) WIND_NOEXCEPT -> WindResult<void*>;
-  WIND_NODISCARD auto get_mapped_data_unchecked(DynamicBufferHandle handle) WIND_NOEXCEPT -> void*;
+	WIND_NODISCARD auto GetMappedData(TDynamicBufferHandle Handle) WIND_NOEXCEPT -> WindResult<void *>;
+	WIND_NODISCARD auto GetMappedDataUnchecked(TDynamicBufferHandle Handle) WIND_NOEXCEPT -> void *;
 
-  WIND_NODISCARD auto get_bindless_descriptor_set() WIND_NOEXCEPT -> const vk::raii::DescriptorSet*
-  {
-    return m_descriptor_manager.get_set();
-  }
+	WIND_NODISCARD auto GetBindlessDescriptorSet() WIND_NOEXCEPT -> const vk::raii::DescriptorSet *
+	{
+		return MDescriptorManager.GetSet();
+	}
 
-  WIND_NODISCARD auto get_bindless_descriptor_layout() WIND_NOEXCEPT -> const vk::raii::DescriptorSetLayout*
-  {
-    return m_descriptor_manager.get_layout();
-  }
+	WIND_NODISCARD auto GetBindlessDescriptorLayout() WIND_NOEXCEPT -> const vk::raii::DescriptorSetLayout *
+	{
+		return MDescriptorManager.GetLayout();
+	}
 
-private:
-  ResourceManager(const VulkanContext* context, GpuAllocator allocator, DescriptorManager descriptor_manager)
-      : m_context{context}
-      , m_allocator{std::move(allocator)}
-      , m_descriptor_manager{std::move(descriptor_manager)} {};
+  private:
+	UResourceManager(const FVulkanContext *Context, UGpuAllocator Allocator, UDescriptorManager DescriptorManager)
+	    : MContext{Context}, MAllocator{std::move(Allocator)}, MDescriptorManager{std::move(DescriptorManager)} {};
 
-  const VulkanContext*                          m_context;
-  std::vector<vk::raii::ShaderModule>           m_shaders;
-  std::unordered_map<std::string, ShaderHandle> m_shader_cache;
-  GpuAllocator                                  m_allocator;
-  std::unordered_map<std::string, ModelHandle>  m_model_cache;
-  std::vector<AllocatedTexture>                 m_texture;
-  AllocatedImage                                m_depth_image;
-  DescriptorManager                             m_descriptor_manager;
-  std::vector<Model>                            m_models;
-  std::vector<AllocatedBuffer>                  m_buffers;  // for things that don't uses models
+	const FVulkanContext *MContext;
+	std::vector<vk::raii::ShaderModule> MShaders;
+	std::unordered_map<std::string, TShaderHandle> MShaderCache;
+	UGpuAllocator MAllocator;
+	std::unordered_map<std::string, TModelHandle> MModelCache;
+	std::vector<FAllocatedTexture> MTexture;
+	FAllocatedImage MDepthImage;
+	UDescriptorManager MDescriptorManager;
+	std::vector<FModel> MModels;
+	std::vector<FAllocatedBuffer> MBuffers; // for things that don't uses models
 };

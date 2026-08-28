@@ -1,19 +1,20 @@
 #include "Scene/Scene.hpp"
-#include "Scene/RenderObject.hpp"
+
 #include "Resources/Builtin.hpp"
 #include "Resources/ResourceManager.hpp"
+#include "Scene/RenderObject.hpp"
 
-auto Scene::add_render_objects(BuiltAssets assets, bool is_model, Transform transform) WIND_NOEXCEPT -> void
+auto UScene::AddRenderObjects(FBuiltAssets Assets, bool IsModel, FTransform Transform) WIND_NOEXCEPT -> void
 {
-  auto render_object = RenderObject{.model_handle    = is_model ? assets.models : ModelHandle{},
-                                    .pipeline_handle = assets.pipelines,
-                                    .is_model_type   = is_model,
-                                    .buffer_asset    = is_model ? BufferAssets{} : assets.buffer_assets};
+	auto RenderObject = FRenderObject{.ModelHandle = IsModel ? Assets.Models : TModelHandle{},
+	                                  .PipelineHandle = Assets.Pipelines,
+	                                  .IsModelType = IsModel,
+	                                  .BufferAsset = IsModel ? FBufferAssets{} : Assets.BufferAssets};
 
-  m_objects.push_back(render_object);
+	MObjects.push_back(RenderObject);
 }
 
-auto Scene::get() WIND_NOEXCEPT -> std::vector<RenderObject>
+auto UScene::Get() WIND_NOEXCEPT -> std::vector<FRenderObject>
 {
-  return m_objects;
+	return MObjects;
 }

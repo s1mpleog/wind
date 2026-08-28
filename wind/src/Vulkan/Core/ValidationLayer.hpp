@@ -2,23 +2,24 @@
 
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
+
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan_core.h>
 
-WIND_INLINE auto debug_callback(vk::DebugUtilsMessageSeverityFlagBitsEXT           message_severity,
-                                [[maybe_unused]] vk::DebugUtilsMessageTypeFlagsEXT message_type,
-                                const vk::DebugUtilsMessengerCallbackDataEXT*      p_callback_data,
-                                [[maybe_unused]] void*                             p_user_data) -> vk::Bool32
+WIND_INLINE auto DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT MessageSeverity,
+                               [[maybe_unused]] vk::DebugUtilsMessageTypeFlagsEXT MessageType,
+                               const vk::DebugUtilsMessengerCallbackDataEXT *PCallbackData,
+                               [[maybe_unused]] void *PUserData) -> vk::Bool32
 {
-  if(message_severity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
-    spdlog::error("[VK] {}", p_callback_data->pMessage);
-  else if(message_severity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
-    spdlog::warn("[VK] {}", p_callback_data->pMessage);
-  else if(message_severity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
-    spdlog::info("[VK] {}", p_callback_data->pMessage);
+	if (MessageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
+		spdlog::error("[VK] {}", PCallbackData->pMessage);
+	else if (MessageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
+		spdlog::warn("[VK] {}", PCallbackData->pMessage);
+	else if (MessageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
+		spdlog::info("[VK] {}", PCallbackData->pMessage);
 
-  return VK_FALSE;
+	return VK_FALSE;
 }
 
-auto create_debug_utils(const Configuration& cfg, const vk::raii::Instance& instance) WIND_NOEXCEPT
+auto CreateDebugUtils(const FConfiguration &Cfg, const vk::raii::Instance &Instance) WIND_NOEXCEPT
     -> WindResult<vk::raii::DebugUtilsMessengerEXT>;

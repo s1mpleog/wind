@@ -2,11 +2,12 @@
 
 #include "Config.hpp"
 #include "Error.hpp"
+#include "Utils/ExpectedUtil.hpp"
 #include "glm/ext/vector_float2.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/ext/vector_float4.hpp"
 #include "spdlog/spdlog.h"
-#include "Utils/ExpectedUtil.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -19,336 +20,350 @@
 #include <string_view>
 #include <vector>
 
-
-struct WindTexture
+struct FWindTexture
 {
-  u32             width{};
-  u32             height{};
-  u32             format{};
-  std::vector<u8> data;
+	u32 Width{};
+	u32 Height{};
+	u32 Format{};
+	std::vector<u8> Data;
 };
 
-struct WindMaterial
+struct FWindMaterial
 {
-  std::optional<u32>   albedo_index;
-  std::optional<u32>   normal_index;
-  std::optional<u32>   metallic_roughness_index;
-  float                metallic{};
-  float                roughness{};
-  std::array<float, 4> base_color{};
+	std::optional<u32> AlbedoIndex;
+	std::optional<u32> NormalIndex;
+	std::optional<u32> MetallicRoughnessIndex;
+	float Metallic{};
+	float Roughness{};
+	std::array<float, 4> BaseColor{};
 };
 
-struct WindSubMesh
+struct FWindSubMesh
 {
-  u32 index_count{};
-  u32 index_offset{};
-  u32 material_index{};
+	u32 IndexCount{};
+	u32 IndexOffset{};
+	u32 MaterialIndex{};
 };
 
-struct WindMesh
+struct FWindMesh
 {
-  std::vector<glm::vec3>   position;
-  std::vector<u32>         indices;
-  std::vector<glm::vec2>   uvs;
-  std::vector<glm::vec3>   normals;
-  std::vector<glm::vec4>   tangents;
-  std::vector<WindSubMesh> sub_meshes;
+	std::vector<glm::vec3> Position;
+	std::vector<u32> Indices;
+	std::vector<glm::vec2> Uvs;
+	std::vector<glm::vec3> Normals;
+	std::vector<glm::vec4> Tangents;
+	std::vector<FWindSubMesh> SubMeshes;
 };
 
-struct WindAsset
+struct FWindAsset
 {
-  WindMesh                  mesh;
-  std::vector<WindTexture>  textures;
-  std::vector<WindMaterial> materials;
+	FWindMesh Mesh;
+	std::vector<FWindTexture> Textures;
+	std::vector<FWindMaterial> Materials;
 };
 
-WIND_NODISCARD WIND_INLINE auto decode_wind_asset(std::span<const u8> buffer) WIND_NOEXCEPT -> WindResult<WindAsset>
+WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND_NOEXCEPT -> WindResult<FWindAsset>
 {
-  size_t cursor{0};
+	size_t Cursor{0};
 
-  std::array<const u8, 8> WIND_MAGIC{
-      u8{87}, u8{73}, u8{78}, u8{68}, 0, 0, 0, 0,
-  };
+	std::array<const u8, 8> WindMagic{
+	    u8{87}, u8{73}, u8{78}, u8{68}, 0, 0, 0, 0,
+	};
 
-  auto magic = buffer.subspan(0, 8);
+	auto Magic = Buffer.subspan(0, 8);
 
-  if(!std::ranges::equal(magic, WIND_MAGIC))
-  {
-    WIND_ERR(WindError::internal());
-  }
+	if (!std::ranges::equal(Magic, WindMagic))
+	{
+		WIND_ERR(WindError::internal());
+	}
 
-  cursor += magic.size();
+	Cursor += Magic.size();
 
-  auto read_u32 = [](std::span<const u8> buf, size_t& cursor) -> u32 {
-    u32 value{};
-    std::memcpy(&value, buf.data() + cursor, sizeof(u32));
-    cursor += sizeof(u32);
-    return value;
-  };
+	auto ReadU32 = [](std::span<const u8> Buf, size_t &Cursor) -> u32
+	{
+		u32 Value{};
+		std::memcpy(&Value, Buf.data() + Cursor, sizeof(u32));
+		Cursor += sizeof(u32);
+		return Value;
+	};
 
-  auto read_u64 = [](std::span<const u8> buf, size_t& cursor) -> u64 {
-    u64 value{};
-    std::memcpy(&value, buf.data() + cursor, sizeof(u64));
-    cursor += sizeof(u64);
-    return value;
-  };
+	auto ReadU64 = [](std::span<const u8> Buf, size_t &Cursor) -> u64
+	{
+		u64 Value{};
+		std::memcpy(&Value, Buf.data() + Cursor, sizeof(u64));
+		Cursor += sizeof(u64);
+		return Value;
+	};
 
-  auto read_f32 = [](std::span<const u8> buf, size_t& cursor) -> float {
-    float value{};
-    std::memcpy(&value, buf.data() + cursor, sizeof(float));
-    cursor += sizeof(float);
-    return value;
-  };
+	auto ReadF32 = [](std::span<const u8> Buf, size_t &Cursor) -> float
+	{
+		float Value{};
+		std::memcpy(&Value, Buf.data() + Cursor, sizeof(float));
+		Cursor += sizeof(float);
+		return Value;
+	};
 
-  // u32 version     = read_u32(buffer, cursor);
-  cursor += sizeof(u32);
-  u32 chunk_count = read_u32(buffer, cursor);
+	// u32 version     = read_u32(buffer, cursor);
+	Cursor += sizeof(u32);
+	u32 ChunkCount = ReadU32(Buffer, Cursor);
 
-  if(chunk_count < 2)
-    WIND_ERR(WindError::internal());
+	if (ChunkCount < 2)
+		WIND_ERR(WindError::internal());
 
-  constexpr u32 CHUNK_VERT = 0x54524556;  // "VERT"
-  constexpr u32 CHUNK_INDC = 0x43444E49;  // "INDC"
-  constexpr u32 CHUNK_IUV_ = 0x5F565549;  // "IUV_"
-  constexpr u32 CHUNK_INOR = 0x524F4E49;  // "INOR"
-  constexpr u32 CHUNK_ITAN = 0x4E415449;  // "ITAN"
-  constexpr u32 CHUNK_ISUB = 0x42555349;  // "ISUB"
-  constexpr u32 CHUNK_TEXT = 0x54584554;  // "TEXT"
-  constexpr u32 CHUNK_MATE = 0x4554414D;  // "MATE"
-  constexpr u32 CHUNK_END  = 0x444E4549;  // "IEND"
+	constexpr u32 ChunkVert = 0x54524556; // "VERT"
+	constexpr u32 ChunkIndc = 0x43444E49; // "INDC"
+	constexpr u32 ChunkIuv = 0x5F565549;  // "IUV_"
+	constexpr u32 ChunkInor = 0x524F4E49; // "INOR"
+	constexpr u32 ChunkItan = 0x4E415449; // "ITAN"
+	constexpr u32 ChunkIsub = 0x42555349; // "ISUB"
+	constexpr u32 ChunkText = 0x54584554; // "TEXT"
+	constexpr u32 ChunkMate = 0x4554414D; // "MATE"
+	constexpr u32 ChunkEnd = 0x444E4549;  // "IEND"
 
-  // at this point we have read the header now comes the data
+	// at this point we have read the header now comes the data
 
-  WindAsset asset{};
+	FWindAsset Asset{};
 
-  for(u32 i = 0; i < chunk_count; i++)
-  {
-    auto type = read_u32(buffer, cursor);
+	for (u32 I = 0; I < ChunkCount; I++)
+	{
+		auto Type = ReadU32(Buffer, Cursor);
 
-    switch(type)
-    {
-      case CHUNK_VERT: {
-        auto size     = read_u64(buffer, cursor);
-        auto vertices = buffer.subspan(cursor, size);
+		switch (Type)
+		{
+		case ChunkVert:
+		{
+			auto Size = ReadU64(Buffer, Cursor);
+			auto Vertices = Buffer.subspan(Cursor, Size);
 
-        asset.mesh.position.resize(vertices.size());
+			Asset.Mesh.Position.resize(Vertices.size());
 
-        std::memcpy(asset.mesh.position.data(), vertices.data(), vertices.size());
+			std::memcpy(Asset.Mesh.Position.data(), Vertices.data(), Vertices.size());
 
-        WIND_ASSERT(vertices.size() == asset.mesh.position.size() && "Memcpy failed");
+			WIND_ASSERT(Vertices.size() == Asset.Mesh.Position.size() && "Memcpy failed");
 
-        cursor += size;
-        break;
-      }
+			Cursor += Size;
+			break;
+		}
 
-      case CHUNK_INDC: {
-        auto size    = read_u64(buffer, cursor);
-        auto indices = buffer.subspan(cursor, size);
+		case ChunkIndc:
+		{
+			auto Size = ReadU64(Buffer, Cursor);
+			auto Indices = Buffer.subspan(Cursor, Size);
 
-        asset.mesh.indices.resize(indices.size());
+			Asset.Mesh.Indices.resize(Indices.size());
 
-        std::memcpy(asset.mesh.indices.data(), indices.data(), indices.size());
+			std::memcpy(Asset.Mesh.Indices.data(), Indices.data(), Indices.size());
 
-        WIND_ASSERT(indices.size() == asset.mesh.indices.size() && "Memcpy failed");
+			WIND_ASSERT(Indices.size() == Asset.Mesh.Indices.size() && "Memcpy failed");
 
-        cursor += size;
-        break;
-      }
+			Cursor += Size;
+			break;
+		}
 
-      case CHUNK_IUV_: {
-        auto size = read_u64(buffer, cursor);
-        auto uvs  = buffer.subspan(cursor, size);
+		case ChunkIuv:
+		{
+			auto Size = ReadU64(Buffer, Cursor);
+			auto Uvs = Buffer.subspan(Cursor, Size);
 
-        spdlog::info("found uvs: {}", uvs.size());
+			spdlog::info("found uvs: {}", Uvs.size());
 
-        asset.mesh.uvs.resize(uvs.size());
-        std::memcpy(asset.mesh.uvs.data(), uvs.data(), uvs.size());
+			Asset.Mesh.Uvs.resize(Uvs.size());
+			std::memcpy(Asset.Mesh.Uvs.data(), Uvs.data(), Uvs.size());
 
-        WIND_ASSERT(uvs.size() == asset.mesh.uvs.size() && "Memcpy failed");
+			WIND_ASSERT(Uvs.size() == Asset.Mesh.Uvs.size() && "Memcpy failed");
 
-        cursor += size;
-        break;
-      }
+			Cursor += Size;
+			break;
+		}
 
-      case CHUNK_INOR: {
-        auto size    = read_u64(buffer, cursor);
-        auto normals = buffer.subspan(cursor, size);
+		case ChunkInor:
+		{
+			auto Size = ReadU64(Buffer, Cursor);
+			auto Normals = Buffer.subspan(Cursor, Size);
 
-        spdlog::info("found normals: {}", normals.size());
+			spdlog::info("found normals: {}", Normals.size());
 
-        asset.mesh.normals.resize(normals.size());
-        std::memcpy(asset.mesh.normals.data(), normals.data(), normals.size());
+			Asset.Mesh.Normals.resize(Normals.size());
+			std::memcpy(Asset.Mesh.Normals.data(), Normals.data(), Normals.size());
 
-        WIND_ASSERT(normals.size() == asset.mesh.normals.size() && "Memcpy failed");
+			WIND_ASSERT(Normals.size() == Asset.Mesh.Normals.size() && "Memcpy failed");
 
-        cursor += size;
-        break;
-      }
+			Cursor += Size;
+			break;
+		}
 
-      case CHUNK_ITAN: {
-        u64  size    = read_u64(buffer, cursor);
-        auto tangent = buffer.subspan(cursor, size);
+		case ChunkItan:
+		{
+			u64 Size = ReadU64(Buffer, Cursor);
+			auto Tangent = Buffer.subspan(Cursor, Size);
 
-        asset.mesh.tangents.resize(tangent.size());
+			Asset.Mesh.Tangents.resize(Tangent.size());
 
-        std::memcpy(asset.mesh.tangents.data(), tangent.data(), tangent.size());
+			std::memcpy(Asset.Mesh.Tangents.data(), Tangent.data(), Tangent.size());
 
-        WIND_ASSERT(tangent.size() == asset.mesh.tangents.size() && "Memcpy failed");
+			WIND_ASSERT(Tangent.size() == Asset.Mesh.Tangents.size() && "Memcpy failed");
 
-        cursor += size;
+			Cursor += Size;
 
-        break;
-      }
+			break;
+		}
 
-      case CHUNK_ISUB: {
-        // auto size = read_u64(buffer, cursor);
-        cursor += sizeof(u64);
-        // spdlog::info("sub_mesh size: {}", size);
-        asset.mesh.sub_meshes.emplace_back(WindSubMesh{.index_count    = read_u32(buffer, cursor),
-                                                       .index_offset   = read_u32(buffer, cursor),
-                                                       .material_index = read_u32(buffer, cursor)});
-        break;
-      }
+		case ChunkIsub:
+		{
+			// auto size = read_u64(buffer, cursor);
+			Cursor += sizeof(u64);
+			// spdlog::info("sub_mesh size: {}", size);
+			Asset.Mesh.SubMeshes.emplace_back(FWindSubMesh{.IndexCount = ReadU32(Buffer, Cursor),
+			                                               .IndexOffset = ReadU32(Buffer, Cursor),
+			                                               .MaterialIndex = ReadU32(Buffer, Cursor)});
+			break;
+		}
 
-      case CHUNK_TEXT: {
-        auto width  = read_u32(buffer, cursor);
-        auto height = read_u32(buffer, cursor);
-        auto format = read_u32(buffer, cursor);
+		case ChunkText:
+		{
+			auto Width = ReadU32(Buffer, Cursor);
+			auto Height = ReadU32(Buffer, Cursor);
+			auto Format = ReadU32(Buffer, Cursor);
 
-        WIND_ASSERT(format > 0 || format < 7 && "invalid texture format");
+			WIND_ASSERT(Format > 0 || Format < 7 && "invalid texture format");
 
-        auto size = read_u64(buffer, cursor);
+			auto Size = ReadU64(Buffer, Cursor);
 
-        auto texture_data = buffer.subspan(cursor, size);
+			auto TextureData = Buffer.subspan(Cursor, Size);
 
-        auto texture = WindTexture{.width = width, .height = height, .format = format, .data{}};
-        texture.data.resize(texture_data.size());
+			auto Texture = FWindTexture{.Width = Width, .Height = Height, .Format = Format, .Data{}};
+			Texture.Data.resize(TextureData.size());
 
-        std::memcpy(texture.data.data(), texture_data.data(), texture_data.size());
+			std::memcpy(Texture.Data.data(), TextureData.data(), TextureData.size());
 
-        WIND_ASSERT(texture.data.size() == texture_data.size() && "MEMCPY failed");
+			WIND_ASSERT(Texture.Data.size() == TextureData.size() && "MEMCPY failed");
 
-        asset.textures.push_back(std::move(texture));
+			Asset.Textures.push_back(std::move(Texture));
 
-        cursor += size;
+			Cursor += Size;
 
-        break;
-      }
+			break;
+		}
 
-      case CHUNK_MATE: {
-        // auto size = read_u64(buffer, cursor);
-        cursor += sizeof(u64);
-        // skip if index == U32::MAX that means there is no index
-        auto albedo_index             = read_u32(buffer, cursor);
-        auto normal_index             = read_u32(buffer, cursor);
-        auto metallic_roughness_index = read_u32(buffer, cursor);
+		case ChunkMate:
+		{
+			// auto size = read_u64(buffer, cursor);
+			Cursor += sizeof(u64);
+			// skip if index == U32::MAX that means there is no index
+			auto AlbedoIndex = ReadU32(Buffer, Cursor);
+			auto NormalIndex = ReadU32(Buffer, Cursor);
+			auto MetallicRoughnessIndex = ReadU32(Buffer, Cursor);
 
-        auto metallic  = read_f32(buffer, cursor);
-        auto roughness = read_f32(buffer, cursor);
+			auto Metallic = ReadF32(Buffer, Cursor);
+			auto Roughness = ReadF32(Buffer, Cursor);
 
-        auto base_r = read_f32(buffer, cursor);
-        auto base_g = read_f32(buffer, cursor);
-        auto base_b = read_f32(buffer, cursor);
-        auto base_a = read_f32(buffer, cursor);
+			auto BaseR = ReadF32(Buffer, Cursor);
+			auto BaseG = ReadF32(Buffer, Cursor);
+			auto BaseB = ReadF32(Buffer, Cursor);
+			auto BaseA = ReadF32(Buffer, Cursor);
 
-        WIND_ASSERT(base_r > 0 || base_r < 1 || base_g > 0 || base_g < 1 || base_b > 0 || base_b < 1 || base_a > 0
-                    || base_a < 1 && "invalid color");
+			WIND_ASSERT(BaseR > 0 || BaseR < 1 || BaseG > 0 || BaseG < 1 || BaseB > 0 || BaseB < 1 || BaseA > 0 ||
+			            BaseA < 1 && "invalid color");
 
-        asset.materials.emplace_back(WindMaterial{
-            .albedo_index = albedo_index == UINT32_MAX ? std::optional<u32>{std::nullopt} : std::optional{albedo_index},
-            .normal_index = normal_index == UINT32_MAX ? std::optional<u32>{std::nullopt} : std::optional{normal_index},
-            .metallic_roughness_index = metallic_roughness_index == UINT32_MAX ? std::optional<u32>{std::nullopt} :
-                                                                                 std::optional{metallic_roughness_index},
-            .metallic   = metallic,
-            .roughness  = roughness,
-            .base_color = {base_r, base_g, base_b, base_a},
-        });
+			Asset.Materials.emplace_back(FWindMaterial{
+			    .AlbedoIndex =
+			        AlbedoIndex == UINT32_MAX ? std::optional<u32>{std::nullopt} : std::optional{AlbedoIndex},
+			    .NormalIndex =
+			        NormalIndex == UINT32_MAX ? std::optional<u32>{std::nullopt} : std::optional{NormalIndex},
+			    .MetallicRoughnessIndex = MetallicRoughnessIndex == UINT32_MAX ? std::optional<u32>{std::nullopt}
+			                                                                   : std::optional{MetallicRoughnessIndex},
+			    .Metallic = Metallic,
+			    .Roughness = Roughness,
+			    .BaseColor = {BaseR, BaseG, BaseB, BaseA},
+			});
 
-        break;
-      }
+			break;
+		}
 
-      default:
-        spdlog::info("unknown type: {}", type);
-        break;
-    }
-  }
+		default:
+			spdlog::info("unknown type: {}", Type);
+			break;
+		}
+	}
 
-  auto type = read_u32(buffer, cursor);
+	auto Type = ReadU32(Buffer, Cursor);
 
-  if(type != CHUNK_END)
-    WIND_ERR(WindError::internal());
+	if (Type != ChunkEnd)
+		WIND_ERR(WindError::internal());
 
-  return asset;
+	return Asset;
 }
 
-WIND_NODISCARD WIND_INLINE auto read_file(std::string_view name) WIND_NOEXCEPT -> WindResult<std::vector<u8>>
+WIND_NODISCARD WIND_INLINE auto ReadFile(std::string_view Name) WIND_NOEXCEPT -> WindResult<std::vector<u8>>
 {
-  auto path = std::filesystem::path(name);
+	auto Path = std::filesystem::path(Name);
 
-  if(!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
-    WIND_ERR(WindError::internal(ErrorCode::ResourceNotFound));
+	if (!std::filesystem::exists(Path) || !std::filesystem::is_regular_file(Path))
+		WIND_ERR(WindError::internal(ErrorCode::ResourceNotFound));
 
-  auto file_size = std::filesystem::file_size(path);
+	auto FileSize = std::filesystem::file_size(Path);
 
-  if(file_size == 0)
-    WIND_ERR(WindError::internal());
+	if (FileSize == 0)
+		WIND_ERR(WindError::internal());
 
-  std::ifstream file_stream(path, std::ios::binary);
+	std::ifstream FileStream(Path, std::ios::binary);
 
-  if(!file_stream.is_open())
-    WIND_ERR(WindError::internal());
+	if (!FileStream.is_open())
+		WIND_ERR(WindError::internal());
 
-  std::vector<u8> buffer(file_size);
+	std::vector<u8> Buffer(FileSize);
 
-  if(!file_stream.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(file_size)))
-    WIND_ERR(WindError::internal());
+	if (!FileStream.read(reinterpret_cast<char *>(Buffer.data()), static_cast<std::streamsize>(FileSize)))
+		WIND_ERR(WindError::internal());
 
-  return buffer;
+	return Buffer;
 }
 
-WIND_NODISCARD WIND_INLINE auto open(std::string_view name) WIND_NOEXCEPT -> WindResult<WindAsset>
+WIND_NODISCARD WIND_INLINE auto Open(std::string_view Name) WIND_NOEXCEPT -> WindResult<FWindAsset>
 {
-  auto buffer = WIND_TRY(read_file(name));
+	auto Buffer = WIND_TRY(ReadFile(Name));
 
-  // spdlog::info("read {} bytes", buffer.size());
+	// spdlog::info("read {} bytes", buffer.size());
 
-  auto asset = WIND_TRY(decode_wind_asset(buffer));
+	auto Asset = WIND_TRY(DecodeWindAsset(Buffer));
 
-  spdlog::info("read vertex data: {} bytes, index data: {} bytes", asset.mesh.position.size(), asset.mesh.indices.size());
+	spdlog::info("read vertex data: {} bytes, index data: {} bytes", Asset.Mesh.Position.size(),
+	             Asset.Mesh.Indices.size());
 
-  if(!asset.textures.empty())
-  {
-    spdlog::info("total textures: {}", asset.textures.size());
-    for(const auto& texture : asset.textures)
-    {
-      spdlog::info("width: {}, height: {}, format: {}, data length: {}", texture.width, texture.height, texture.format,
-                   texture.data.size());
-    }
-  }
+	if (!Asset.Textures.empty())
+	{
+		spdlog::info("total textures: {}", Asset.Textures.size());
+		for (const auto &Texture : Asset.Textures)
+		{
+			spdlog::info("width: {}, height: {}, format: {}, data length: {}", Texture.Width, Texture.Height,
+			             Texture.Format, Texture.Data.size());
+		}
+	}
 
-  if(!asset.materials.empty())
-  {
-    spdlog::info("total materials: {}", asset.materials.size());
-    for(const auto& material : asset.materials)
-    {
-      spdlog::info("albedo: {}, normal: {}, metallic_roughness: {}, roughness: {}, metallic {}, base_color: {}, {}, {}, {}",
-                   !material.albedo_index || material.albedo_index.value(),
-                   !material.normal_index || material.normal_index.value(),
-                   !material.metallic_roughness_index || material.metallic_roughness_index.value(), material.roughness,
-                   material.metallic, material.base_color[0], material.base_color[1], material.base_color[2],
-                   material.base_color[3]);
-    }
-  }
+	if (!Asset.Materials.empty())
+	{
+		spdlog::info("total materials: {}", Asset.Materials.size());
+		for (const auto &Material : Asset.Materials)
+		{
+			spdlog::info("albedo: {}, normal: {}, metallic_roughness: {}, roughness: {}, metallic {}, base_color: {}, "
+			             "{}, {}, {}",
+			             !Material.AlbedoIndex || (Material.AlbedoIndex.value() != 0U),
+			             !Material.NormalIndex || (Material.NormalIndex.value() != 0U),
+			             !Material.MetallicRoughnessIndex || (Material.MetallicRoughnessIndex.value() != 0U),
+			             Material.Roughness, Material.Metallic, Material.BaseColor[0], Material.BaseColor[1],
+			             Material.BaseColor[2], Material.BaseColor[3]);
+		}
+	}
 
-  if(!asset.mesh.sub_meshes.empty())
-  {
-    spdlog::info("read: {} sub_meshes", asset.mesh.sub_meshes.size());
-    for(const auto& submesh : asset.mesh.sub_meshes)
-    {
-      spdlog::info("sub_mesh -> index_count: {}, index_offset: {}, material_index: {}", submesh.index_count,
-                   submesh.index_offset, submesh.material_index);
-    }
-  }
+	if (!Asset.Mesh.SubMeshes.empty())
+	{
+		spdlog::info("read: {} sub_meshes", Asset.Mesh.SubMeshes.size());
+		for (const auto &Submesh : Asset.Mesh.SubMeshes)
+		{
+			spdlog::info("sub_mesh -> index_count: {}, index_offset: {}, material_index: {}", Submesh.IndexCount,
+			             Submesh.IndexOffset, Submesh.MaterialIndex);
+		}
+	}
 
-  return asset;
+	return Asset;
 };

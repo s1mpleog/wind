@@ -3,31 +3,31 @@
 #include "Types.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
-#include <vulkan/vulkan.hpp>
+
 #include <optional>
+#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
 
-struct GpuDevice
+struct FGpuDevice
 {
-  vk::raii::PhysicalDevice             physical_device{nullptr};
-  vk::raii::Device                     device{nullptr};
-  vk::raii::Queue                      graphics_queue{nullptr};
-  vk::raii::Queue                      presentation_queue{nullptr};
-  std::optional<vk::raii::Queue>       transfer_queue;
-  std::optional<u32>                   graphics_queue_idx;
-  std::optional<u32>                   presentation_queue_idx;
-  std::optional<u32>                   transfer_queue_idx;
-  vk::PhysicalDeviceProperties         physical_device_props{};
-  vk::raii::CommandPool                graphics_pool{nullptr};
-  std::optional<vk::raii::CommandPool> transfer_pool;
+	vk::raii::PhysicalDevice PhysicalDevice{nullptr};
+	vk::raii::Device Device{nullptr};
+	vk::raii::Queue GraphicsQueue{nullptr};
+	vk::raii::Queue PresentationQueue{nullptr};
+	std::optional<vk::raii::Queue> TransferQueue;
+	std::optional<u32> GraphicsQueueIdx;
+	std::optional<u32> PresentationQueueIdx;
+	std::optional<u32> TransferQueueIdx;
+	vk::PhysicalDeviceProperties PhysicalDeviceProps{};
+	vk::raii::CommandPool GraphicsPool{nullptr};
+	std::optional<vk::raii::CommandPool> TransferPool;
 
-  constexpr auto has_transfer_queue() const WIND_NOEXCEPT -> bool
-  {
-    return transfer_queue_idx.has_value() && transfer_queue.has_value();
-  }
+	[[nodiscard]] constexpr auto HasTransferQueue() const WIND_NOEXCEPT -> bool
+	{
+		return TransferQueueIdx.has_value() && TransferQueue.has_value();
+	}
 };
 
-
-WIND_NODISCARD auto device_create(const Configuration& cfg, const vk::raii::Instance& instance, const vk::raii::SurfaceKHR& surface) WIND_NOEXCEPT
-    -> WindResult<GpuDevice>;
+WIND_NODISCARD auto DeviceCreate(const FConfiguration &Cfg, const vk::raii::Instance &Instance,
+                                 const vk::raii::SurfaceKHR &Surface) WIND_NOEXCEPT -> WindResult<FGpuDevice>;

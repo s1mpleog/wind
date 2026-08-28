@@ -1,36 +1,35 @@
 #pragma once
 
-class ServiceLocator
+class UServiceLocator
 {
-public:
-  template <typename T>
-  auto static provide(T& service) WIND_NOEXCEPT->void
-  {
-    instance<T>() = service;
-  }
+  public:
+	template <typename T_>
+	auto static Provide(T_ &Service) WIND_NOEXCEPT->void
+	{
+		instance<T_>() = Service;
+	}
 
-  template <typename T>
-  auto static provide(T* service) WIND_NOEXCEPT->void
-  {
-    instance<T>() = service;
-  }
+	template <typename T_>
+	auto static Provide(T_ *Service) WIND_NOEXCEPT->void
+	{
+		Instance<T_>() = Service;
+	}
 
+	template <typename T_>
+	static auto Get() WIND_NOEXCEPT -> T_ &
+	{
+		T_ *Service = Instance<T_>();
 
-  template <typename T>
-  static auto get() WIND_NOEXCEPT -> T&
-  {
-    T* service = instance<T>();
+		WIND_ASSERT(Service && "Service has not been registered");
 
-    WIND_ASSERT(service && "Service has not been registered");
+		return *Service;
+	}
 
-    return *service;
-  }
-
-private:
-  template <typename T>
-  static auto instance() -> T*&
-  {
-    static T* ptr = nullptr;
-    return ptr;
-  }
+  private:
+	template <typename T_>
+	static auto Instance() -> T_ *&
+	{
+		static T_ *SPtr = nullptr;
+		return SPtr;
+	}
 };

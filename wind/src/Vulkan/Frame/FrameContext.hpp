@@ -3,75 +3,74 @@
 #include "Config.hpp"
 #include "Error.hpp"
 #include "Utils/ExpectedUtil.hpp"
-#include <vulkan/vulkan.hpp>
+
 #include <cstdint>
 #include <optional>
+#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 
-
 // maybe use class ?
-struct FrameContext
+struct FRameContext
 {
-  vk::raii::CommandBuffer                graphics_command_buffer{nullptr};
-  std::optional<vk::raii::CommandBuffer> transfer_command_buffer;
-  vk::raii::Semaphore                    image_available{nullptr};
-  vk::raii::Semaphore                    render_finished{nullptr};
-  vk::raii::Fence                        in_flight{nullptr};
-  vk::raii::Fence                        present_fence{nullptr};
+	vk::raii::CommandBuffer GraphicsCommandBuffer{nullptr};
+	std::optional<vk::raii::CommandBuffer> TransferCommandBuffer;
+	vk::raii::Semaphore ImageAvailable{nullptr};
+	vk::raii::Semaphore RenderFinished{nullptr};
+	vk::raii::Fence InFlight{nullptr};
+	vk::raii::Fence PresentFence{nullptr};
 
-  WIND_NODISCARD auto wait_in_flight_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
-  {
-    auto result = device.waitForFences(*this->in_flight, vk::True, UINT64_MAX);
-    if(result != vk::Result::eSuccess)
-      WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+	WIND_NODISCARD auto WaitInFlightFence(const vk::raii::Device &Device) const WIND_NOEXCEPT -> WindResult<void>
+	{
+		auto Result = Device.waitForFences(*this->InFlight, vk::True, UINT64_MAX);
+		if (Result != vk::Result::eSuccess)
+			WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, Result));
 
-    return {};
-  };
+		return {};
+	};
 
-  WIND_NODISCARD auto wait_present_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
-  {
-    auto result = device.waitForFences(*this->present_fence, vk::True, UINT64_MAX);
-    if(result != vk::Result::eSuccess)
-      WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, result));
+	WIND_NODISCARD auto WaitPresentFence(const vk::raii::Device &Device) const WIND_NOEXCEPT -> WindResult<void>
+	{
+		auto Result = Device.waitForFences(*this->PresentFence, vk::True, UINT64_MAX);
+		if (Result != vk::Result::eSuccess)
+			WIND_ERR(WindError::vulkan(ErrorCode::FailedToWaitForFence, Result));
 
-    return {};
-  };
+		return {};
+	};
 
-  WIND_NODISCARD auto reset_in_flight_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
-  {
-    WIND_TRY(device.resetFences(*this->in_flight));
-    return {};
-  }
+	WIND_NODISCARD auto ResetInFlightFence(const vk::raii::Device &Device) const WIND_NOEXCEPT -> WindResult<void>
+	{
+		WIND_TRY(Device.resetFences(*this->InFlight));
+		return {};
+	}
 
-  WIND_NODISCARD auto reset_present_fence(const vk::raii::Device& device) const WIND_NOEXCEPT -> WindResult<void>
-  {
-    WIND_TRY(device.resetFences(*this->present_fence));
-    return {};
-  }
+	WIND_NODISCARD auto ResetPresentFence(const vk::raii::Device &Device) const WIND_NOEXCEPT -> WindResult<void>
+	{
+		WIND_TRY(Device.resetFences(*this->PresentFence));
+		return {};
+	}
 
-  WIND_NODISCARD auto reset_cmd_buffer() const WIND_NOEXCEPT -> WindResult<void>
-  {
-    WIND_TRY(this->graphics_command_buffer.reset());
-    return {};
-  }
+	WIND_NODISCARD auto ResetCmdBuffer() const WIND_NOEXCEPT -> WindResult<void>
+	{
+		WIND_TRY(this->GraphicsCommandBuffer.reset());
+		return {};
+	}
 
-  WIND_NODISCARD auto begin() const WIND_NOEXCEPT -> WindResult<void>
-  {
-    WIND_TRY(graphics_command_buffer.begin(vk::CommandBufferBeginInfo{}));
+	WIND_NODISCARD auto Begin() const WIND_NOEXCEPT -> WindResult<void>
+	{
+		WIND_TRY(GraphicsCommandBuffer.begin(vk::CommandBufferBeginInfo{}));
 
-    return {};
-  }
+		return {};
+	}
 
-  WIND_NODISCARD auto end() const WIND_NOEXCEPT -> WindResult<void>
-  {
-    WIND_TRY(graphics_command_buffer.end());
+	WIND_NODISCARD auto End() const WIND_NOEXCEPT -> WindResult<void>
+	{
+		WIND_TRY(GraphicsCommandBuffer.end());
 
-    return {};
-  }
+		return {};
+	}
 };
 
-WIND_NODISCARD auto create_frame(u32                          frame_count,
-                                 const vk::raii::Device&      device,
-                                 const vk::raii::CommandPool& graphics_pool,
-                                 const vk::raii::CommandPool* transfer_pool = nullptr) WIND_NOEXCEPT
-    -> WindResult<std::vector<FrameContext>>;
+WIND_NODISCARD auto CreateFrame(u32 FrameCount, const vk::raii::Device &Device,
+                                const vk::raii::CommandPool &GraphicsPool,
+                                const vk::raii::CommandPool *TransferPool = nullptr) WIND_NOEXCEPT
+    -> WindResult<std::vector<FRameContext>>;

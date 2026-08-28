@@ -3,14 +3,14 @@
 #include "Config.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Graphics/PipelineConfig.hpp"
+
 #include <vulkan/vulkan_core.h>
 
-
-struct GraphicsPipeline
+struct FGraphicsPipeline
 {
-  vk::raii::PipelineLayout pipeline_layout{nullptr};
-  vk::raii::Pipeline       graphics_pipeline{nullptr};
+	vk::raii::PipelineLayout PipelineLayout{nullptr};
+	vk::raii::Pipeline GraphicsPipeline{nullptr};
 };
 
-WIND_NODISCARD auto create_pipeline(const vk::raii::Device& device, GraphicsConfig cfg) WIND_NOEXCEPT
-    -> WindResult<GraphicsPipeline>;
+WIND_NODISCARD auto CreatePipeline(const vk::raii::Device &Device, FGraphicsConfig Cfg) WIND_NOEXCEPT
+    -> WindResult<FGraphicsPipeline>;

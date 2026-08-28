@@ -2,9 +2,8 @@
 
 #include "glm/ext/matrix_float4x4.hpp"
 
-struct RenderView
+struct FRenderView
 {
-  glm::mat4 view;
-  glm::mat4 projection;
+	glm::mat4 View;
+	glm::mat4 Projection;
 };
-

@@ -1,191 +1,191 @@
 #pragma once
 
 #include "Types.hpp"
+
 #include <vector>
 
-
-enum class PrimitiveTopology : uint8_t
+enum class EPrimitiveTopology : uint8_t
 {
-  PointList,
-  LineList,
-  LineStrip,
-  TriangleList,
-  TriangleStrip,
-  TriangleFan,
+	PointList,
+	LineList,
+	LineStrip,
+	TriangleList,
+	TriangleStrip,
+	TriangleFan,
 };
 
-enum class CullMode : u8
+enum class ECullMode : u8
 {
-  Back,
-  FontAndBack,
-  None,
+	Back,
+	FontAndBack,
+	None,
 };
 
-enum class PolygonMode : u8
+enum class EPolygonMode : u8
 {
-  Fill,
-  Line,
-  Point
+	Fill,
+	Line,
+	Point
 };
 
-enum class FrontFace : u8
+enum class EFrontFace : u8
 {
-  CounterClockwise,
-  ClockWise
+	CounterClockwise,
+	ClockWise
 };
 
-enum class Format : uint16_t
+enum class EFormat : uint16_t
 {
-  Undefined,
+	Undefined,
 
-  // --- 8-bit Unsigned / Signed / Int Formats ---
-  R8_UNORM,
-  R8_SNORM,
-  R8_UINT,
-  R8_SINT,
-  R8_SRGB,
+	// --- 8-bit Unsigned / Signed / Int Formats ---
+	R8Unorm,
+	R8Snorm,
+	R8Uint,
+	R8Sint,
+	R8Srgb,
 
-  RG8_UNORM,
-  RG8_SNORM,
-  RG8_UINT,
-  RG8_SINT,
-  RG8_SRGB,
+	RG8Unorm,
+	RG8Snorm,
+	RG8Uint,
+	RG8Sint,
+	RG8Srgb,
 
-  RGBA8_UNORM,
-  RGBA8_SNORM,
-  RGBA8_UINT,
-  RGBA8_SINT,
-  RGBA8_SRGB,
+	RgbA8Unorm,
+	RgbA8Snorm,
+	RgbA8Uint,
+	RgbA8Sint,
+	RgbA8Srgb,
 
-  BGRA8_UNORM,
-  BGRA8_SRGB,
+	BgrA8Unorm,
+	BgrA8Srgb,
 
-  // --- Packed 8/10/16-bit Normalized Formats ---
-  RGB565_UNORM_PACK16,
-  RGBA4_UNORM_PACK16,
-  RGB5A1_UNORM_PACK16,
-  A2B10G10R10_UNORM_PACK32,
-  A2B10G10R10_UINT_PACK32,
-  A2R10G10B10_UNORM_PACK32,
-  B10G11R11_UFLOAT_PACK32,
-  E5B9G9R9_UFLOAT_PACK32,
+	// --- Packed 8/10/16-bit Normalized Formats ---
+	RgB565UnormPacK16,
+	RgbA4UnormPacK16,
+	RgB5A1UnormPacK16,
+	A2B10G10R10UnormPacK32,
+	A2B10G10R10UintPacK32,
+	A2R10G10B10UnormPacK32,
+	B10G11R11UfloatPacK32,
+	E5B9G9R9UfloatPacK32,
 
-  // --- 16-bit Formats ---
-  R16_UNORM,
-  R16_SNORM,
-  R16_UINT,
-  R16_SINT,
-  R16_FLOAT,
+	// --- 16-bit Formats ---
+	R16Unorm,
+	R16Snorm,
+	R16Uint,
+	R16Sint,
+	R16Float,
 
-  RG16_UNORM,
-  RG16_SNORM,
-  RG16_UINT,
-  RG16_SINT,
-  RG16_FLOAT,
+	RG16Unorm,
+	RG16Snorm,
+	RG16Uint,
+	RG16Sint,
+	RG16Float,
 
-  RGBA16_UNORM,
-  RGBA16_SNORM,
-  RGBA16_UINT,
-  RGBA16_SINT,
-  RGBA16_FLOAT,
+	RgbA16Unorm,
+	RgbA16Snorm,
+	RgbA16Uint,
+	RgbA16Sint,
+	RgbA16Float,
 
-  // --- 32-bit Formats ---
-  R32_UINT,
-  R32_SINT,
-  R32_FLOAT,
+	// --- 32-bit Formats ---
+	R32Uint,
+	R32Sint,
+	R32Float,
 
-  RG32_UINT,
-  RG32_SINT,
-  RG32_FLOAT,
+	RG32Uint,
+	RG32Sint,
+	RG32Float,
 
-  RGB32_UINT,
-  RGB32_SINT,
-  RGB32_FLOAT,
+	RgB32Uint,
+	RgB32Sint,
+	RgB32Float,
 
-  RGBA32_UINT,
-  RGBA32_SINT,
-  RGBA32_FLOAT,
+	RgbA32Uint,
+	RgbA32Sint,
+	RgbA32Float,
 
-  // --- Depth / Stencil Formats ---
-  D16_UNORM,
-  X8_D24_UNORM_PACK32,
-  D32_FLOAT,
-  S8_UINT,
-  D16_UNORM_S8_UINT,
-  D24_UNORM_S8_UINT,
-  D32_FLOAT_S8_UINT,
+	// --- Depth / Stencil Formats ---
+	D16Unorm,
+	X8D24UnormPacK32,
+	D32Float,
+	S8Uint,
+	D16UnormS8Uint,
+	D24UnormS8Uint,
+	D32FloatS8Uint,
 
-  // --- BC Compressed Textures (Desktop / Core) ---
-  BC1_RGB_UNORM_BLOCK,
-  BC1_RGB_SRGB_BLOCK,
-  BC1_RGBA_UNORM_BLOCK,
-  BC1_RGBA_SRGB_BLOCK,
-  BC2_UNORM_BLOCK,
-  BC2_SRGB_BLOCK,
-  BC3_UNORM_BLOCK,
-  BC3_SRGB_BLOCK,
-  BC4_UNORM_BLOCK,
-  BC4_SNORM_BLOCK,
-  BC5_UNORM_BLOCK,
-  BC5_SNORM_BLOCK,
-  BC6H_UFLOAT_BLOCK,
-  BC6H_SFLOAT_BLOCK,
-  BC7_UNORM_BLOCK,
-  BC7_SRGB_BLOCK,
+	// --- BC Compressed Textures (Desktop / Core) ---
+	BC1RgbUnormBlock,
+	BC1RgbSrgbBlock,
+	BC1RgbaUnormBlock,
+	BC1RgbaSrgbBlock,
+	BC2UnormBlock,
+	BC2SrgbBlock,
+	BC3UnormBlock,
+	BC3SrgbBlock,
+	BC4UnormBlock,
+	BC4SnormBlock,
+	BC5UnormBlock,
+	BC5SnormBlock,
+	BC6HUfloatBlock,
+	BC6HSfloatBlock,
+	BC7UnormBlock,
+	BC7SrgbBlock,
 
 };
 
-enum class VertexFormat : u8
+enum class EVertexFormat : u8
 {
-  Float,
-  Float2,
-  Float3,
-  Float4,
+	Float,
+	Float2,
+	Float3,
+	Float4,
 
-  Int,
-  Int2,
-  Int3,
-  Int4,
+	Int,
+	Int2,
+	Int3,
+	Int4,
 
-  UInt,
-  UInt2,
-  UInt3,
-  UInt4,
+	UInt,
+	UInt2,
+	UInt3,
+	UInt4,
 };
 
-enum class VertexInputRate : u8
+enum class EVertexInputRate : u8
 {
-  Vertex,
-  Instance,
+	Vertex,
+	Instance,
 };
 
-struct VertexAttribute
+struct FVertexAttribute
 {
-  u32          location{};
-  u32          binding{};
-  VertexFormat format{};
-  u32          offset{};
+	u32 Location{};
+	u32 Binding{};
+	EVertexFormat Format{};
+	u32 Offset{};
 };
 
-struct VertexBinding
+struct FVertexBinding
 {
-  uint32_t        binding;
-  uint32_t        stride;
-  VertexInputRate input_rate;
+	uint32_t Binding;
+	uint32_t Stride;
+	EVertexInputRate InputRate;
 };
 
-struct VertexInputState
+struct FVertexInputState
 {
-  std::vector<VertexAttribute> attributes;
-  std::vector<VertexBinding>   bindings;
+	std::vector<FVertexAttribute> Attributes;
+	std::vector<FVertexBinding> Bindings;
 };
 
-enum class CompareOp : u8
+enum class ECompareOp : u8
 {
-  Less,
-  Always,
-  Never,
-  Greater
+	Less,
+	Always,
+	Never,
+	Greater
 };
 
 // enum class ShaderStage : u8
@@ -195,160 +195,163 @@ enum class CompareOp : u8
 //   Compute
 // };
 
-enum class ShaderStage : u8
+enum class EShaderStage : u8
 {
-  Vertex   = 1 << 0,
-  Fragment = 1 << 1,
-  Compute  = 1 << 2,
+	Vertex = 1 << 0,
+	Fragment = 1 << 1,
+	Compute = 1 << 2,
 };
 
-constexpr auto operator|(ShaderStage lhs, ShaderStage rhs) WIND_NOEXCEPT->ShaderStage
+constexpr auto operator|(EShaderStage Lhs, EShaderStage Rhs) WIND_NOEXCEPT->EShaderStage
 {
-  using T = std::underlying_type_t<ShaderStage>;
+	using T_ = std::underlying_type_t<EShaderStage>;
 
-  return static_cast<ShaderStage>(static_cast<T>(lhs) | static_cast<T>(rhs));
+	return static_cast<EShaderStage>(static_cast<T_>(Lhs) | static_cast<T_>(Rhs));
 }
 
-constexpr auto operator&(ShaderStage lhs, ShaderStage rhs) WIND_NOEXCEPT->ShaderStage
+constexpr auto operator&(EShaderStage Lhs, EShaderStage Rhs) WIND_NOEXCEPT->EShaderStage
 {
-  using T = std::underlying_type_t<ShaderStage>;
+	using T_ = std::underlying_type_t<EShaderStage>;
 
-  return static_cast<ShaderStage>(static_cast<T>(lhs) & static_cast<T>(rhs));
+	return static_cast<EShaderStage>(static_cast<T_>(Lhs) & static_cast<T_>(Rhs));
 }
 
-constexpr auto operator|=(ShaderStage& lhs, ShaderStage rhs) WIND_NOEXCEPT->ShaderStage&
+constexpr auto operator|=(EShaderStage &Lhs, EShaderStage Rhs) WIND_NOEXCEPT->EShaderStage &
 {
-  lhs = lhs | rhs;
-  return lhs;
+	Lhs = Lhs | Rhs;
+	return Lhs;
 }
 
-struct ShaderInfo
+struct FShaderInfo
 {
-  ShaderStage                   stage{ShaderStage::Vertex};
-  std::string_view              entry_point{"main"};
-  const vk::raii::ShaderModule* module{nullptr};
+	EShaderStage Stage{EShaderStage::Vertex};
+	std::string_view EntryPoint{"main"};
+	const vk::raii::ShaderModule *Module{nullptr};
 };
 
-struct RasterizationState
+struct FRasterizationState
 {
-  CullMode    cull_mode{CullMode::Back};
-  PolygonMode polygon_mode{PolygonMode::Fill};
-  FrontFace   front_face{FrontFace::ClockWise};
+	ECullMode CullMode{ECullMode::Back};
+	EPolygonMode PolygonMode{EPolygonMode::Fill};
+	EFrontFace FrontFace{EFrontFace::ClockWise};
 
-  bool depth_clamp{false};
-  bool discard{false};
+	bool DepthClamp{false};
+	bool Discard{false};
 };
 
-struct InputAssemblyState
+struct FInputAssemblyState
 {
-  PrimitiveTopology topology{PrimitiveTopology::TriangleList};
+	EPrimitiveTopology Topology{EPrimitiveTopology::TriangleList};
 };
 
-struct DepthStencilState
+struct FDepthStencilState
 {
-  bool      depth_test{false};
-  bool      depth_write{false};
-  CompareOp depth_compare{CompareOp::Less};
+	bool DepthTest{false};
+	bool DepthWrite{false};
+	ECompareOp DepthCompare{ECompareOp::Less};
 
-  bool stencil_test{false};
+	bool StencilTest{false};
 };
 
-enum class BlendFactor : u8
+enum class EBlendFactor : u8
 {
-  Zero,
-  One,
+	Zero,
+	One,
 
-  SrcColor,
-  OneMinusSrcColor,
-  DstColor,
-  OneMinusDstColor,
+	SrcColor,
+	OneMinusSrcColor,
+	DstColor,
+	OneMinusDstColor,
 
-  SrcAlpha,
-  OneMinusSrcAlpha,
-  DstAlpha,
-  OneMinusDstAlpha,
+	SrcAlpha,
+	OneMinusSrcAlpha,
+	DstAlpha,
+	OneMinusDstAlpha,
 
-  ConstantColor,
-  OneMinusConstantColor,
-  ConstantAlpha,
-  OneMinusConstantAlpha,
+	ConstantColor,
+	OneMinusConstantColor,
+	ConstantAlpha,
+	OneMinusConstantAlpha,
 
-  SrcAlphaSaturate,
+	SrcAlphaSaturate,
 
-  Src1Color,
-  OneMinusSrc1Color,
-  Src1Alpha,
-  OneMinusSrc1Alpha,
+	Src1Color,
+	OneMinusSrc1Color,
+	Src1Alpha,
+	OneMinusSrc1Alpha,
 };
 
-enum class BlendOp : u8
+enum class EBlendOp : u8
 {
-  Add,
-  Subtract,
-  ReverseSubtract,
-  Min,
-  Max,
+	Add,
+	Subtract,
+	ReverseSubtract,
+	Min,
+	Max,
 };
 
-enum class ColorWrite : u8
+enum class EColorWrite : u8
 {
-  None = 0,
-  R    = 1 << 0,
-  G    = 1 << 1,
-  B    = 1 << 2,
-  A    = 1 << 3,
-  RGBA = R | G | B | A
+	None = 0,
+	R = 1 << 0,
+	G = 1 << 1,
+	B = 1 << 2,
+	A = 1 << 3,
+	RGBA = R | G | B | A
 };
 
-struct ColorBlendState
+struct FColorBlendState
 {
-  bool enabled{false};
+	bool Enabled{false};
 
-  BlendFactor src_color{BlendFactor::One};
-  BlendFactor dst_color{BlendFactor::Zero};
-  BlendOp     color_op{BlendOp::Add};
+	EBlendFactor SrcColor{EBlendFactor::One};
+	EBlendFactor DstColor{EBlendFactor::Zero};
+	EBlendOp ColorOp{EBlendOp::Add};
 
-  BlendFactor src_alpha{BlendFactor::One};
-  BlendFactor dst_alpha{BlendFactor::Zero};
-  BlendOp     alpha_op{BlendOp::Add};
+	EBlendFactor SrcAlpha{EBlendFactor::One};
+	EBlendFactor DstAlpha{EBlendFactor::Zero};
+	EBlendOp AlphaOp{EBlendOp::Add};
 
-  ColorWrite write_mask{ColorWrite::RGBA};
+	EColorWrite WriteMask{EColorWrite::RGBA};
 
-  static constexpr auto opaque() WIND_NOEXCEPT -> ColorBlendState { return {}; }
+	static constexpr auto Opaque() WIND_NOEXCEPT -> FColorBlendState
+	{
+		return {};
+	}
 
-  static constexpr auto alpha_blend() WIND_NOEXCEPT -> ColorBlendState
-  {
-    return {
-        .enabled    = true,
-        .src_color  = BlendFactor::SrcAlpha,
-        .dst_color  = BlendFactor::OneMinusSrcAlpha,
-        .color_op   = BlendOp::Add,
-        .src_alpha  = BlendFactor::One,
-        .dst_alpha  = BlendFactor::OneMinusSrcAlpha,
-        .alpha_op   = BlendOp::Add,
-        .write_mask = ColorWrite::RGBA,
-    };
-  }
+	static constexpr auto AlphaBlend() WIND_NOEXCEPT -> FColorBlendState
+	{
+		return {
+		    .Enabled = true,
+		    .SrcColor = EBlendFactor::SrcAlpha,
+		    .DstColor = EBlendFactor::OneMinusSrcAlpha,
+		    .ColorOp = EBlendOp::Add,
+		    .SrcAlpha = EBlendFactor::One,
+		    .DstAlpha = EBlendFactor::OneMinusSrcAlpha,
+		    .AlphaOp = EBlendOp::Add,
+		    .WriteMask = EColorWrite::RGBA,
+		};
+	}
 };
 
-struct PushConstantRange
+struct FPushConstantRange
 {
-  // temporary introduce custom type
-  ShaderStage stage_flags{ShaderStage::Vertex};
-  u32         offset{};
-  u32         size{};
+	// temporary introduce custom type
+	EShaderStage StageFlags{EShaderStage::Vertex};
+	u32 Offset{};
+	u32 Size{};
 };
 
-struct GraphicsConfig
+struct FGraphicsConfig
 {
-  std::vector<ShaderInfo>                shader;
-  RasterizationState                     rasterization{};
-  VertexInputState                       vertex_input_state{};
-  InputAssemblyState                     input_assembly{};
-  DepthStencilState                      depth_stencil{};
-  ColorBlendState                        color_blend{};
-  std::vector<PushConstantRange>         push_constants;
-  std::optional<vk::DescriptorSetLayout> descriptor_set_layout;
-  Format                                 color_format{Format::RGBA8_UNORM};
-  Format                                 depth_format{Format::Undefined};
+	std::vector<FShaderInfo> Shader;
+	FRasterizationState Rasterization{};
+	FVertexInputState VertexInputState{};
+	FInputAssemblyState InputAssembly{};
+	FDepthStencilState DepthStencil{};
+	FColorBlendState ColorBlend{};
+	std::vector<FPushConstantRange> PushConstants;
+	std::optional<vk::DescriptorSetLayout> DescriptorSetLayout;
+	EFormat ColorFormat{EFormat::RgbA8Unorm};
+	EFormat DepthFormat{EFormat::Undefined};
 };

@@ -1,79 +1,80 @@
 #pragma once
 
 #include "Types.hpp"
-#include <vulkan/vulkan_core.h>
+
 #include <string_view>
+#include <vulkan/vulkan_core.h>
 
-enum class VulkanVersion : u8
+enum class EVulkanVersion : u8
 {
-  VERSION13,
-  VERSION14,
+	VERSION13,
+	VERSION14,
 };
 
-enum class Buffering : u8
+enum class EBuffering : u8
 {
-  DoubleBuffering = 2,
-  TripleBuffering = 3,
+	DoubleBuffering = 2,
+	TripleBuffering = 3,
 };
 
-enum class DebugMessageSeverity : u16
+enum class EDebugMessageSeverity : u16
 {
-  Verbose = 0x00000001,
-  Info    = 0x00000010,
-  Warning = 0x00000100,
-  Error   = 0x00001000,
+	Verbose = 0x00000001,
+	Info = 0x00000010,
+	Warning = 0x00000100,
+	Error = 0x00001000,
 };
 
-enum class DebugMessageType : u8
+enum class EDebugMessageType : u8
 {
-  General              = 1 << 0,
-  Validation           = 1 << 1,
-  Performance          = 1 << 2,
-  DeviceAddressBinding = 1 << 3
+	General = 1 << 0,
+	Validation = 1 << 1,
+	Performance = 1 << 2,
+	DeviceAddressBinding = 1 << 3
 };
 
-constexpr auto operator|(DebugMessageSeverity lhs, DebugMessageSeverity rhs) WIND_NOEXCEPT->DebugMessageSeverity
+constexpr auto operator|(EDebugMessageSeverity Lhs, EDebugMessageSeverity Rhs) WIND_NOEXCEPT->EDebugMessageSeverity
 {
-  using U = std::underlying_type_t<DebugMessageSeverity>;
+	using TU = std::underlying_type_t<EDebugMessageSeverity>;
 
-  return static_cast<DebugMessageSeverity>(static_cast<U>(lhs) | static_cast<U>(rhs));
+	return static_cast<EDebugMessageSeverity>(static_cast<TU>(Lhs) | static_cast<TU>(Rhs));
 }
 
-constexpr auto operator|(DebugMessageType lhs, DebugMessageType rhs) WIND_NOEXCEPT->DebugMessageType
+constexpr auto operator|(EDebugMessageType Lhs, EDebugMessageType Rhs) WIND_NOEXCEPT->EDebugMessageType
 {
-  using U = std::underlying_type_t<DebugMessageType>;
+	using TU = std::underlying_type_t<EDebugMessageType>;
 
-  return static_cast<DebugMessageType>(static_cast<U>(lhs) | static_cast<U>(rhs));
+	return static_cast<EDebugMessageType>(static_cast<TU>(Lhs) | static_cast<TU>(Rhs));
 }
 
-struct Configuration
+struct FConfiguration
 {
-  VulkanVersion        api_version{VulkanVersion::VERSION14};
-  bool                 vsync{true};
-  Buffering            buffering{Buffering::DoubleBuffering};
-  std::string_view     app_name;
-  std::string_view     engine_name{"NoEngine"};
-  DebugMessageSeverity debug_message_severity{DebugMessageSeverity::Error};
-  DebugMessageType     debug_message_type{DebugMessageType::General};
+	EVulkanVersion ApiVersion{EVulkanVersion::VERSION14};
+	bool Vsync{true};
+	EBuffering Buffering{EBuffering::DoubleBuffering};
+	std::string_view AppName;
+	std::string_view EngineName{"NoEngine"};
+	EDebugMessageSeverity DebugMessageSeverity{EDebugMessageSeverity::Error};
+	EDebugMessageType DebugMessageType{EDebugMessageType::General};
 };
 
-
-WIND_INLINE constexpr Configuration Default{
-    .api_version            = VulkanVersion::VERSION14,
-    .vsync                  = true,
-    .buffering              = Buffering::DoubleBuffering,
-    .app_name               = "application",
-    .engine_name            = "NoEngine",
-    .debug_message_severity = DebugMessageSeverity::Error,
-    .debug_message_type     = DebugMessageType::General,
+WIND_INLINE constexpr FConfiguration Default{
+    .ApiVersion = EVulkanVersion::VERSION14,
+    .Vsync = true,
+    .Buffering = EBuffering::DoubleBuffering,
+    .AppName = "application",
+    .EngineName = "NoEngine",
+    .DebugMessageSeverity = EDebugMessageSeverity::Error,
+    .DebugMessageType = EDebugMessageType::General,
 };
 
-WIND_INLINE constexpr Configuration Development{
-    .api_version = VulkanVersion::VERSION14,
-    .vsync       = false,
-    .buffering   = Buffering::DoubleBuffering,
-    .app_name    = "application",
-    .engine_name = "NoEngine",
-    .debug_message_severity = DebugMessageSeverity::Error | DebugMessageSeverity::Warning | DebugMessageSeverity::Verbose,
-    .debug_message_type = DebugMessageType::General | DebugMessageType::Performance | DebugMessageType::Validation,
+WIND_INLINE constexpr FConfiguration Development{
+    .ApiVersion = EVulkanVersion::VERSION14,
+    .Vsync = false,
+    .Buffering = EBuffering::DoubleBuffering,
+    .AppName = "application",
+    .EngineName = "NoEngine",
+    .DebugMessageSeverity =
+        EDebugMessageSeverity::Error | EDebugMessageSeverity::Warning | EDebugMessageSeverity::Verbose,
+    .DebugMessageType = EDebugMessageType::General | EDebugMessageType::Performance | EDebugMessageType::Validation,
 };

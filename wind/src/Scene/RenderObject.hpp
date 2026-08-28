@@ -4,27 +4,25 @@
 #include "Resources/ResourceManager.hpp"
 #include "Vulkan/Graphics/PipelineManager.hpp"
 
-
-struct ModelComponent
+struct FModelComponent
 {
-  ModelHandle handle;
+	TModelHandle Handle;
 };
 
-struct PipelineComponent
+struct FPipelineComponent
 {
-  PipelineHandle handle;
+	TPipelineHandle Handle;
 };
 
-struct Transform
+struct FTransform
 {
 };
 
-struct RenderObject
+struct FRenderObject
 {
-  ModelHandle           model_handle{};
-  PipelineHandle pipeline_handle{};
-  bool                             is_model_type{};
-  BufferAssets            buffer_asset{};
-  //todo: transform later
+	TModelHandle ModelHandle{};
+	TPipelineHandle PipelineHandle{};
+	bool IsModelType{};
+	FBufferAssets BufferAsset{};
+	// todo: transform later
 };
-

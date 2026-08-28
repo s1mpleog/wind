@@ -1,134 +1,133 @@
 #include "Engine.hpp"
-#include "SDL3/SDL_events.h"
+
 #include "Core/ServiceLocator.hpp"
 #include "Error.hpp"
 #include "Input/InputManager.hpp"
 #include "Platform/Window.hpp"
 #include "Resources/Builtin.hpp"
 #include "Resources/ResourceManager.hpp"
+#include "SDL3/SDL_events.h"
 #include "Scene/RenderObject.hpp"
 #include "Scene/Scene.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Context.hpp"
 #include "Vulkan/Graphics/PipelineManager.hpp"
 #include "Vulkan/Renderer.hpp"
+
+#include <SDL3/SDL_timer.h>
 #include <memory>
 #include <spdlog/spdlog.h>
-#include <SDL3/SDL_timer.h>
 
-WIND_NODISCARD auto Engine::create(WindowConfiguration window_cfg, Configuration vulkan_cfg) WIND_NOEXCEPT
-    -> WindResult<Engine>
+WIND_NODISCARD auto UEngine::Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
+    -> WindResult<UEngine>
 {
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("initializing Engine...");
+	spdlog::info("initializing Engine...");
 #endif
 
-  auto window = Window{std::move(window_cfg)};
-  WIND_TRY_VOID(window.create());
+	auto Window = UWindow{std::move(WindowCfg)};
+	WIND_TRY_VOID(Window.Create());
 
-  auto input_manager = std::make_unique<InputManger>(InputManger{});
-  ServiceLocator::provide(input_manager.get());
+	auto InputManager = std::make_unique<UInputManger>(UInputManger{});
+	UServiceLocator::Provide(InputManager.get());
 
-  auto vulkan_context = std::make_unique<VulkanContext>(WIND_TRY(create_context(window, vulkan_cfg)));
+	auto VulkanContext = std::make_unique<FVulkanContext>(WIND_TRY(CreateContext(Window, VulkanCfg)));
 
-  auto resource_manager =
-      std::make_unique<ResourceManager>(WIND_TRY(ResourceManager::create(vulkan_context.get())));
+	auto ResourceManager = std::make_unique<UResourceManager>(WIND_TRY(UResourceManager::Create(VulkanContext.get())));
 
-  auto pipeline_manager = std::make_unique<PipelineManager>(PipelineManager{});
+	auto PipelineManager = std::make_unique<UPipelineManager>(UPipelineManager{});
 
-  // load all the models and pipelines
-  auto assets = WIND_TRY(build(resource_manager.get(), pipeline_manager.get(), vulkan_context->gpu_device.device));
+	// load all the models and pipelines
+	auto Assets = WIND_TRY(Build(ResourceManager.get(), PipelineManager.get(), VulkanContext->GpuDevice.Device));
 
-  Scene scene{};
+	UScene Scene{};
 
-  for(const auto& asset : assets)
-  {
-    scene.add_render_objects(asset, asset.is_model);
-  }
+	for (const auto &Asset : Assets)
+	{
+		Scene.AddRenderObjects(Asset, Asset.IsModel);
+	}
 
-  auto renderer = WIND_TRY(Renderer::create(vulkan_cfg, window, vulkan_context.get(), resource_manager.get(),
-                                                    pipeline_manager.get()));
+	auto Renderer = WIND_TRY(
+	    URenderer::Create(VulkanCfg, Window, VulkanContext.get(), ResourceManager.get(), PipelineManager.get()));
 
 #ifdef WIND_LOG_ENABLE
-  spdlog::info("Engine created successfully");
+	spdlog::info("Engine created successfully");
 #endif
 
-  return Engine(std::move(window), std::move(vulkan_context), std::move(renderer), std::move(input_manager),
-                std::move(resource_manager), std::move(pipeline_manager), std::move(scene));
+	return UEngine(std::move(Window), std::move(VulkanContext), std::move(Renderer), std::move(InputManager),
+	               std::move(ResourceManager), std::move(PipelineManager), std::move(Scene));
 }
 
-auto Engine::run() WIND_NOEXCEPT -> WindResult<void>
+auto UEngine::Run() WIND_NOEXCEPT -> WindResult<void>
 {
-  bool running = true;
+	bool Running = true;
 
-  [[maybe_unused]] float time = 0.0F;
+	[[maybe_unused]] float Time = 0.0F;
 
-  u64 last = SDL_GetPerformanceCounter();
+	u64 Last = SDL_GetPerformanceCounter();
 
-  //TODO: abstract this
-  while(running)
-  {
-    uint64_t now   = SDL_GetPerformanceCounter();
-    float    delta = static_cast<float>(now - last) / static_cast<float>(SDL_GetPerformanceFrequency());
-    last           = now;
-    time += delta;
+	// TODO: abstract this
+	while (Running)
+	{
+		uint64_t Now = SDL_GetPerformanceCounter();
+		float Delta = static_cast<float>(Now - Last) / static_cast<float>(SDL_GetPerformanceFrequency());
+		Last = Now;
+		Time += Delta;
 
-    SDL_Event event{};
+		SDL_Event Event{};
 
-    m_input_manager->begin_frame();
+		MInputManager->BeginFrame();
 
-    while(SDL_PollEvent(&event))
-    {
-      m_input_manager->process_event(event);
+		while (SDL_PollEvent(&Event))
+		{
+			MInputManager->ProcessEvent(Event);
 
+			if (Event.type == SDL_EVENT_WINDOW_RESIZED)
+			{
+				int NewWidth = Event.window.data1;
+				int NewHeight = Event.window.data2;
+				// Handle new dimensions here
+				break;
+			}
 
-      if(event.type == SDL_EVENT_WINDOW_RESIZED)
-      {
-        int new_width  = event.window.data1;
-        int new_height = event.window.data2;
-        // Handle new dimensions here
-        break;
-      }
+			if (Event.type == SDL_EVENT_QUIT)
+				Running = false;
+		}
 
-      if(event.type == SDL_EVENT_QUIT)
-        running = false;
-    }
+		// TODO: do not use this
+		// m_input_manager->update();
 
-    // TODO: do not use this
-    // m_input_manager->update();
+		int Width{};
+		int Height{};
 
-    int width{};
-    int height{};
+		SDL_GetWindowSizeInPixels(MWindow.Handle(), &Width, &Height);
 
-    SDL_GetWindowSizeInPixels(m_window.handle(), &width, &height);
+		MScene.Camera.UpdateAspect(Width, Height);
 
-    m_scene.camera.update_aspect(width, height);
+		MScene.Camera.ProcessMouse();
+		MScene.Camera.ProcessKeyboard(Delta);
 
-    m_scene.camera.process_mouse();
-    m_scene.camera.process_keyboard(delta);
+		auto BeginResult = MRenderer.Begin(static_cast<u32>(Width), static_cast<u32>(Height));
 
-    auto begin_result = m_renderer.begin(static_cast<u32>(width), static_cast<u32>(height));
+		if (!BeginResult)
+		{
+			if (BeginResult.error().code == ErrorCode::SwapchainOutOfDate)
+				continue;
 
-    if(!begin_result)
-    {
-      if(begin_result.error().code == ErrorCode::SwapchainOutOfDate)
-        continue;
+			WIND_ERR(BeginResult.error());
+		}
 
-      WIND_ERR(begin_result.error());
-    }
+		auto CameraView = MScene.Camera.RenderView();
 
-    auto camera_view = m_scene.camera.render_view();
+		for (const auto &Object : MScene.Get())
+		{
+			MRenderer.Draw(Object, CameraView);
+		}
 
-    for(const auto& object : m_scene.get())
-    {
-      m_renderer.draw(object, camera_view);
-    }
+		MRenderer.End();
+	}
 
-    m_renderer.end();
-  }
+	WIND_TRY(MRenderer.Shutdown());
 
-  WIND_TRY(m_renderer.shutdown());
-
-  return {};
+	return {};
 }
-

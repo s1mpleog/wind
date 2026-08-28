@@ -3,23 +3,20 @@
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
 #include "Vulkan/Core/Device.hpp"
+
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
-
-struct SwapchainContext
+struct FSwapchainContext
 {
-  vk::raii::SwapchainKHR           handle{nullptr};
-  std::vector<vk::Image>           images;
-  std::vector<vk::raii::ImageView> image_views;
-  vk::SurfaceFormatKHR             format{};
-  vk::Extent2D                     extent{};
+	vk::raii::SwapchainKHR Handle{nullptr};
+	std::vector<vk::Image> Images;
+	std::vector<vk::raii::ImageView> ImageViews;
+	vk::SurfaceFormatKHR Format{};
+	vk::Extent2D Extent{};
 };
 
-WIND_NODISCARD auto create_swapchain(const Configuration&          cfg,
-                                     u32                           window_width,
-                                     u32                           window_height,
-                                     const vk::raii::SurfaceKHR&   surface,
-                                     const GpuDevice&              device_context,
-                                     const vk::raii::SwapchainKHR* old_swapchain = nullptr) WIND_NOEXCEPT
-    -> WindResult<SwapchainContext>;
+WIND_NODISCARD auto CreateSwapchain(const FConfiguration &Cfg, u32 WindowWidth, u32 WindowHeight,
+                                    const vk::raii::SurfaceKHR &Surface, const FGpuDevice &DeviceContext,
+                                    const vk::raii::SwapchainKHR *OldSwapchain = nullptr) WIND_NOEXCEPT
+    -> WindResult<FSwapchainContext>;
