@@ -5,19 +5,19 @@
 #include <string_view>
 #include <vulkan/vulkan_core.h>
 
-enum class EVulkanVersion : u8
+enum class EVulkanVersion : TU8
 {
 	VERSION13,
 	VERSION14,
 };
 
-enum class EBuffering : u8
+enum class EBuffering : TU8
 {
 	DoubleBuffering = 2,
 	TripleBuffering = 3,
 };
 
-enum class EDebugMessageSeverity : u16
+enum class EDebugMessageSeverity : TU16
 {
 	Verbose = 0x00000001,
 	Info = 0x00000010,
@@ -25,7 +25,7 @@ enum class EDebugMessageSeverity : u16
 	Error = 0x00001000,
 };
 
-enum class EDebugMessageType : u8
+enum class EDebugMessageType : TU8
 {
 	General = 1 << 0,
 	Validation = 1 << 1,

@@ -25,12 +25,12 @@ constexpr auto ToVk(EVulkanVersion Value) WIND_NOEXCEPT -> uint32_t
 
 constexpr auto ToVk(EDebugMessageSeverity Value) WIND_NOEXCEPT -> vk::DebugUtilsMessageSeverityFlagBitsEXT
 {
-	return static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(static_cast<u32>(Value));
+	return static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(static_cast<TU32>(Value));
 }
 
 constexpr auto ToVk(EDebugMessageType Value) WIND_NOEXCEPT -> vk::DebugUtilsMessageTypeFlagsEXT
 {
-	return static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(static_cast<u32>(Value));
+	return static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(static_cast<TU32>(Value));
 }
 
 auto ToVk(EPrimitiveTopology Topology) WIND_NOEXCEPT -> vk::PrimitiveTopology;

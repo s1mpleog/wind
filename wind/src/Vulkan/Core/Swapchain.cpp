@@ -17,14 +17,14 @@
 
 WIND_NODISCARD static auto GetSurfaceCapabilities(const vk::raii::SurfaceKHR &Surface,
                                                   const vk::raii::PhysicalDevice &PhysicalDevice) WIND_NOEXCEPT
-    -> WindResult<vk::SurfaceCapabilitiesKHR>
+    -> TWindResult<vk::SurfaceCapabilitiesKHR>
 {
 	return WIND_TRY(PhysicalDevice.getSurfaceCapabilitiesKHR(Surface));
 }
 
 WIND_NODISCARD static auto GetSurfaceFormat(const vk::raii::SurfaceKHR &Surface,
                                             const vk::raii::PhysicalDevice &PhysicalDevice) WIND_NOEXCEPT
-    -> WindResult<vk::SurfaceFormatKHR>
+    -> TWindResult<vk::SurfaceFormatKHR>
 {
 	auto AvailableFormats = WIND_TRY(PhysicalDevice.getSurfaceFormatsKHR(Surface));
 	WIND_ENSURE_NOT_EMPTY(AvailableFormats, WindError::vulkan(ErrorCode::FailedToGetSurfaceFormats));
@@ -41,7 +41,7 @@ WIND_NODISCARD static auto GetSurfaceFormat(const vk::raii::SurfaceKHR &Surface,
 
 WIND_NODISCARD static auto GetPresentationMode(const FConfiguration &Cfg, const vk::raii::SurfaceKHR &Surface,
                                                const vk::raii::PhysicalDevice &PhysicalDevice) WIND_NOEXCEPT
-    -> WindResult<vk::PresentModeKHR>
+    -> TWindResult<vk::PresentModeKHR>
 {
 	auto AvailableModes = WIND_TRY(PhysicalDevice.getSurfacePresentModesKHR(Surface));
 	WIND_ENSURE_NOT_EMPTY(AvailableModes, WindError::vulkan(ErrorCode::FailedToGetSurfacePresentModes));
@@ -68,14 +68,14 @@ WIND_NODISCARD static auto GetPresentationMode(const FConfiguration &Cfg, const 
 }
 
 WIND_NODISCARD static auto GetImages(const vk::raii::SwapchainKHR &Swapchain) WIND_NOEXCEPT
-    -> WindResult<std::vector<vk::Image>>
+    -> TWindResult<std::vector<vk::Image>>
 {
 	return WIND_TRY(Swapchain.getImages());
 }
 
 WIND_NODISCARD static auto CreateImageViews(std::span<const vk::Image> Images, const vk::raii::Device &Device,
                                             vk::Format Format) WIND_NOEXCEPT
-    -> WindResult<std::vector<vk::raii::ImageView>>
+    -> TWindResult<std::vector<vk::raii::ImageView>>
 {
 	std::vector<vk::raii::ImageView> ImageViews;
 	ImageViews.reserve(Images.size());
@@ -99,9 +99,9 @@ WIND_NODISCARD static auto CreateImageViews(std::span<const vk::Image> Images, c
 }
 
 WIND_NODISCARD
-auto CreateSwapchain(const FConfiguration &Cfg, u32 WindowWidth, u32 WindowHeight, const vk::raii::SurfaceKHR &Surface,
+auto CreateSwapchain(const FConfiguration &Cfg, TU32 WindowWidth, TU32 WindowHeight, const vk::raii::SurfaceKHR &Surface,
                      const FGpuDevice &DeviceContext, const vk::raii::SwapchainKHR *OldSwapchain) WIND_NOEXCEPT
-    -> WindResult<FSwapchainContext>
+    -> TWindResult<FSwapchainContext>
 {
 	auto SurfaceCapabilities = WIND_TRY(GetSurfaceCapabilities(Surface, DeviceContext.PhysicalDevice));
 	auto SurfaceFormat = WIND_TRY(GetSurfaceFormat(Surface, DeviceContext.PhysicalDevice));
@@ -121,7 +121,7 @@ auto CreateSwapchain(const FConfiguration &Cfg, u32 WindowWidth, u32 WindowHeigh
 	CreateInfo.imageFormat = SurfaceFormat.format;
 	CreateInfo.imageColorSpace = SurfaceFormat.colorSpace;
 
-	u32 ImageCount = SurfaceCapabilities.minImageCount + 1;
+	TU32 ImageCount = SurfaceCapabilities.minImageCount + 1;
 
 	if (SurfaceCapabilities.maxImageCount > 0 && ImageCount > SurfaceCapabilities.maxImageCount)
 		ImageCount = SurfaceCapabilities.maxImageCount;

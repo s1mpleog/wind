@@ -19,12 +19,12 @@
 
 struct FPhysicalDeviceCandidate
 {
-	u32 Score{};
+	TU32 Score{};
 	vk::raii::PhysicalDevice Device{nullptr};
 	vk::PhysicalDeviceProperties DeviceProps{};
-	std::optional<u32> GraphicsQueueIndex;
-	std::optional<u32> PresentQueueIndex;
-	std::optional<u32> TransferQueueIndex;
+	std::optional<TU32> GraphicsQueueIndex;
+	std::optional<TU32> PresentQueueIndex;
+	std::optional<TU32> TransferQueueIndex;
 };
 
 static auto MakePhysicalDeviceCandidate(const vk::raii::PhysicalDevice &PhysicalDevice,
@@ -40,13 +40,13 @@ static auto MakePhysicalDeviceCandidate(const vk::raii::PhysicalDevice &Physical
 	{
 		auto It = std::ranges::find_if(QueueInfos, [&](const vk::QueueFamilyProperties &QueueInfo) -> bool
 		                               { return static_cast<bool>(QueueInfo.queueFlags & Flag); });
-		return It != QueueInfos.end() ? std::optional{static_cast<u32>(std::distance(QueueInfos.begin(), It))}
+		return It != QueueInfos.end() ? std::optional{static_cast<TU32>(std::distance(QueueInfos.begin(), It))}
 		                              : std::nullopt;
 	};
 
-	auto FindPresentQueue = [&](vk::SurfaceKHR Surface) -> std::optional<u32>
+	auto FindPresentQueue = [&](vk::SurfaceKHR Surface) -> std::optional<TU32>
 	{
-		for (u32 I = 0; I < QueueInfos.size(); I++)
+		for (TU32 I = 0; I < QueueInfos.size(); I++)
 		{
 			if (PhysicalDevice.getSurfaceSupportKHR(I, Surface).has_value())
 				return I;
@@ -72,7 +72,7 @@ static auto MakePhysicalDeviceCandidate(const vk::raii::PhysicalDevice &Physical
 	    .DeviceProps = Properties2,
 	    .GraphicsQueueIndex = GraphicsQueue,
 	    .PresentQueueIndex = PresentQueue,
-	    .TransferQueueIndex = TransferQueue ? std::optional<u32>{TransferQueue} : std::nullopt,
+	    .TransferQueueIndex = TransferQueue ? std::optional<TU32>{TransferQueue} : std::nullopt,
 	};
 
 	if (TransferQueue)
@@ -116,7 +116,7 @@ WIND_NODISCARD auto CheckHardRequirements(const FConfiguration &Cfg,
 
 	auto Features12 = Chain.get<vk::PhysicalDeviceVulkan12Features>();
 
-	// limitation can't use WindResult :(
+	// limitation can't use TWindResult :(
 	if (!AvailableExtensions || AvailableExtensions->empty())
 		return false;
 
@@ -147,7 +147,7 @@ WIND_NODISCARD auto CheckHardRequirements(const FConfiguration &Cfg,
 // responsible for selecting the preferred physical device
 WIND_NODISCARD static auto SelectPhysicalDevice(const FConfiguration &Cfg, const vk::raii::Instance &Instance,
                                                 const vk::raii::SurfaceKHR &Surface) WIND_NOEXCEPT
-    -> WindResult<FPhysicalDeviceCandidate>
+    -> TWindResult<FPhysicalDeviceCandidate>
 {
 	auto PhysicalDevices = WIND_TRY(Instance.enumeratePhysicalDevices(), ErrorCode::InternalError);
 
@@ -179,7 +179,7 @@ WIND_NODISCARD static auto SelectPhysicalDevice(const FConfiguration &Cfg, const
 };
 
 WIND_NODISCARD static auto CreateLogicalDevice(FPhysicalDeviceCandidate Candidate) WIND_NOEXCEPT
-    -> WindResult<FGpuDevice>
+    -> TWindResult<FGpuDevice>
 {
 	vk::PhysicalDeviceVulkan12Features Features12{};
 	Features12.runtimeDescriptorArray = vk::True;
@@ -253,8 +253,8 @@ WIND_NODISCARD static auto CreateLogicalDevice(FPhysicalDeviceCandidate Candidat
 	return GpuDevice;
 };
 
-WIND_NODISCARD static auto CreateCommandPool(const vk::raii::Device &Device, u32 QueueIndex) WIND_NOEXCEPT
-    -> WindResult<vk::raii::CommandPool>
+WIND_NODISCARD static auto CreateCommandPool(const vk::raii::Device &Device, TU32 QueueIndex) WIND_NOEXCEPT
+    -> TWindResult<vk::raii::CommandPool>
 {
 	vk::CommandPoolCreateInfo CmdPoolCreateInfo{};
 	CmdPoolCreateInfo.queueFamilyIndex = QueueIndex;
@@ -264,7 +264,7 @@ WIND_NODISCARD static auto CreateCommandPool(const vk::raii::Device &Device, u32
 }
 
 WIND_NODISCARD auto DeviceCreate(const FConfiguration &Cfg, const vk::raii::Instance &Instance,
-                                 const vk::raii::SurfaceKHR &Surface) WIND_NOEXCEPT -> WindResult<FGpuDevice>
+                                 const vk::raii::SurfaceKHR &Surface) WIND_NOEXCEPT -> TWindResult<FGpuDevice>
 {
 	auto Candidate = WIND_TRY(SelectPhysicalDevice(Cfg, Instance, Surface));
 	auto GpuDevice = WIND_TRY(CreateLogicalDevice(std::move(Candidate)));

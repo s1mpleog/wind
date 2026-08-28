@@ -16,25 +16,25 @@ class UDescriptorManager
 {
   public:
 	WIND_NODISCARD static auto Create(const vk::raii::Device &Device, vk::DescriptorType DescriptorType) WIND_NOEXCEPT
-	    -> WindResult<UDescriptorManager>;
-	WIND_NODISCARD auto CreateSet(const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<void>;
+	    -> TWindResult<UDescriptorManager>;
+	WIND_NODISCARD auto CreateSet(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>;
 	WIND_NODISCARD auto CreateLayout(const vk::raii::Device &Device,
 	                                 std::span<const vk::DescriptorSetLayoutBinding> Bindings) WIND_NOEXCEPT
-	    -> WindResult<void>;
+	    -> TWindResult<void>;
 
 	WIND_NODISCARD auto GetPool() const -> const vk::raii::DescriptorPool *;
 	WIND_NODISCARD auto GetSet() const -> const vk::raii::DescriptorSet *;
 	WIND_NODISCARD auto GetLayout() const -> const vk::raii::DescriptorSetLayout *;
 
 	WIND_NODISCARD auto RegisterTexture(const vk::raii::Device &Device, const FAllocatedTexture &Texture) WIND_NOEXCEPT
-	    -> u32
+	    -> TU32
 	{
 		vk::DescriptorImageInfo ImageInfo{};
 		ImageInfo.imageView = Texture.Image.ImageView;
 		ImageInfo.sampler = Texture.Sampler;
 		ImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 
-		const u32 Index = MIndex++;
+		const TU32 Index = MIndex++;
 
 		spdlog::info("current index for bindless descriptor set: {}", Index);
 
@@ -57,5 +57,5 @@ class UDescriptorManager
 	vk::raii::DescriptorPool MPool{nullptr};
 	vk::raii::DescriptorSet MSet{nullptr};
 	vk::raii::DescriptorSetLayout MLayout{nullptr};
-	u32 MIndex{};
+	TU32 MIndex{};
 };

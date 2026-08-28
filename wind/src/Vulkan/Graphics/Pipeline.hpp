@@ -13,4 +13,4 @@ struct FGraphicsPipeline
 };
 
 WIND_NODISCARD auto CreatePipeline(const vk::raii::Device &Device, FGraphicsConfig Cfg) WIND_NOEXCEPT
-    -> WindResult<FGraphicsPipeline>;
+    -> TWindResult<FGraphicsPipeline>;

@@ -7,10 +7,10 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-WIND_NODISCARD auto CreateFrame(u32 FrameCount, const vk::raii::Device &Device,
+WIND_NODISCARD auto CreateFrame(TU32 FrameCount, const vk::raii::Device &Device,
                                 const vk::raii::CommandPool &GraphicsPool,
                                 const vk::raii::CommandPool *TransferPool) WIND_NOEXCEPT
-    -> WindResult<std::vector<FRameContext>>
+    -> TWindResult<std::vector<FRameContext>>
 {
 	WIND_ASSERT(FrameCount != 0 && "Frame count is zero");
 

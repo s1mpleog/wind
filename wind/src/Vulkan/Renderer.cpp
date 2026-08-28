@@ -28,7 +28,7 @@
 
 WIND_NODISCARD auto URenderer::Create(FConfiguration Cfg, const UWindow &Window, const FVulkanContext *Context,
                                       UResourceManager *ResourceManager,
-                                      UPipelineManager *PipelineManager) WIND_NOEXCEPT -> WindResult<URenderer>
+                                      UPipelineManager *PipelineManager) WIND_NOEXCEPT -> TWindResult<URenderer>
 {
 	// auto context = std::make_unique<VulkanContext>(WIND_TRY(create_context(window, cfg)));
 	auto [width, heigth] = Window.DrawableSize();
@@ -48,7 +48,7 @@ WIND_NODISCARD auto URenderer::Create(FConfiguration Cfg, const UWindow &Window,
 	                 PipelineManager, TDynamicBufferHandle{.Index = 0});
 }
 
-WIND_NODISCARD auto URenderer::Begin(u32 Width, u32 Height) WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto URenderer::Begin(TU32 Width, TU32 Height) WIND_NOEXCEPT -> TWindResult<void>
 {
 	// get a frame
 	auto *Frame = &FrameContext[CurrentFrame];

@@ -22,17 +22,17 @@
 
 struct FWindTexture
 {
-	u32 Width{};
-	u32 Height{};
-	u32 Format{};
-	std::vector<u8> Data;
+	TU32 Width{};
+	TU32 Height{};
+	TU32 Format{};
+	std::vector<TU8> Data;
 };
 
 struct FWindMaterial
 {
-	std::optional<u32> AlbedoIndex;
-	std::optional<u32> NormalIndex;
-	std::optional<u32> MetallicRoughnessIndex;
+	std::optional<TU32> AlbedoIndex;
+	std::optional<TU32> NormalIndex;
+	std::optional<TU32> MetallicRoughnessIndex;
 	float Metallic{};
 	float Roughness{};
 	std::array<float, 4> BaseColor{};
@@ -40,15 +40,15 @@ struct FWindMaterial
 
 struct FWindSubMesh
 {
-	u32 IndexCount{};
-	u32 IndexOffset{};
-	u32 MaterialIndex{};
+	TU32 IndexCount{};
+	TU32 IndexOffset{};
+	TU32 MaterialIndex{};
 };
 
 struct FWindMesh
 {
 	std::vector<glm::vec3> Position;
-	std::vector<u32> Indices;
+	std::vector<TU32> Indices;
 	std::vector<glm::vec2> Uvs;
 	std::vector<glm::vec3> Normals;
 	std::vector<glm::vec4> Tangents;
@@ -62,12 +62,12 @@ struct FWindAsset
 	std::vector<FWindMaterial> Materials;
 };
 
-WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND_NOEXCEPT -> WindResult<FWindAsset>
+WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const TU8> Buffer) WIND_NOEXCEPT -> TWindResult<FWindAsset>
 {
 	size_t Cursor{0};
 
-	std::array<const u8, 8> WindMagic{
-	    u8{87}, u8{73}, u8{78}, u8{68}, 0, 0, 0, 0,
+	std::array<const TU8, 8> WindMagic{
+	    TU8{87}, TU8{73}, TU8{78}, TU8{68}, 0, 0, 0, 0,
 	};
 
 	auto Magic = Buffer.subspan(0, 8);
@@ -79,23 +79,23 @@ WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND
 
 	Cursor += Magic.size();
 
-	auto ReadU32 = [](std::span<const u8> Buf, size_t &Cursor) -> u32
+	auto ReadU32 = [](std::span<const TU8> Buf, size_t &Cursor) -> TU32
 	{
-		u32 Value{};
-		std::memcpy(&Value, Buf.data() + Cursor, sizeof(u32));
-		Cursor += sizeof(u32);
+		TU32 Value{};
+		std::memcpy(&Value, Buf.data() + Cursor, sizeof(TU32));
+		Cursor += sizeof(TU32);
 		return Value;
 	};
 
-	auto ReadU64 = [](std::span<const u8> Buf, size_t &Cursor) -> u64
+	auto ReadU64 = [](std::span<const TU8> Buf, size_t &Cursor) -> TU64
 	{
-		u64 Value{};
-		std::memcpy(&Value, Buf.data() + Cursor, sizeof(u64));
-		Cursor += sizeof(u64);
+		TU64 Value{};
+		std::memcpy(&Value, Buf.data() + Cursor, sizeof(TU64));
+		Cursor += sizeof(TU64);
 		return Value;
 	};
 
-	auto ReadF32 = [](std::span<const u8> Buf, size_t &Cursor) -> float
+	auto ReadF32 = [](std::span<const TU8> Buf, size_t &Cursor) -> float
 	{
 		float Value{};
 		std::memcpy(&Value, Buf.data() + Cursor, sizeof(float));
@@ -103,28 +103,28 @@ WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND
 		return Value;
 	};
 
-	// u32 version     = read_u32(buffer, cursor);
-	Cursor += sizeof(u32);
-	u32 ChunkCount = ReadU32(Buffer, Cursor);
+	// TU32 version     = read_u32(buffer, cursor);
+	Cursor += sizeof(TU32);
+	TU32 ChunkCount = ReadU32(Buffer, Cursor);
 
 	if (ChunkCount < 2)
 		WIND_ERR(WindError::internal());
 
-	constexpr u32 ChunkVert = 0x54524556; // "VERT"
-	constexpr u32 ChunkIndc = 0x43444E49; // "INDC"
-	constexpr u32 ChunkIuv = 0x5F565549;  // "IUV_"
-	constexpr u32 ChunkInor = 0x524F4E49; // "INOR"
-	constexpr u32 ChunkItan = 0x4E415449; // "ITAN"
-	constexpr u32 ChunkIsub = 0x42555349; // "ISUB"
-	constexpr u32 ChunkText = 0x54584554; // "TEXT"
-	constexpr u32 ChunkMate = 0x4554414D; // "MATE"
-	constexpr u32 ChunkEnd = 0x444E4549;  // "IEND"
+	constexpr TU32 ChunkVert = 0x54524556; // "VERT"
+	constexpr TU32 ChunkIndc = 0x43444E49; // "INDC"
+	constexpr TU32 ChunkIuv = 0x5F565549;  // "IUV_"
+	constexpr TU32 ChunkInor = 0x524F4E49; // "INOR"
+	constexpr TU32 ChunkItan = 0x4E415449; // "ITAN"
+	constexpr TU32 ChunkIsub = 0x42555349; // "ISUB"
+	constexpr TU32 ChunkText = 0x54584554; // "TEXT"
+	constexpr TU32 ChunkMate = 0x4554414D; // "MATE"
+	constexpr TU32 ChunkEnd = 0x444E4549;  // "IEND"
 
 	// at this point we have read the header now comes the data
 
 	FWindAsset Asset{};
 
-	for (u32 I = 0; I < ChunkCount; I++)
+	for (TU32 I = 0; I < ChunkCount; I++)
 	{
 		auto Type = ReadU32(Buffer, Cursor);
 
@@ -194,7 +194,7 @@ WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND
 
 		case ChunkItan:
 		{
-			u64 Size = ReadU64(Buffer, Cursor);
+			TU64 Size = ReadU64(Buffer, Cursor);
 			auto Tangent = Buffer.subspan(Cursor, Size);
 
 			Asset.Mesh.Tangents.resize(Tangent.size());
@@ -211,7 +211,7 @@ WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND
 		case ChunkIsub:
 		{
 			// auto size = read_u64(buffer, cursor);
-			Cursor += sizeof(u64);
+			Cursor += sizeof(TU64);
 			// spdlog::info("sub_mesh size: {}", size);
 			Asset.Mesh.SubMeshes.emplace_back(FWindSubMesh{.IndexCount = ReadU32(Buffer, Cursor),
 			                                               .IndexOffset = ReadU32(Buffer, Cursor),
@@ -248,7 +248,7 @@ WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND
 		case ChunkMate:
 		{
 			// auto size = read_u64(buffer, cursor);
-			Cursor += sizeof(u64);
+			Cursor += sizeof(TU64);
 			// skip if index == U32::MAX that means there is no index
 			auto AlbedoIndex = ReadU32(Buffer, Cursor);
 			auto NormalIndex = ReadU32(Buffer, Cursor);
@@ -267,10 +267,10 @@ WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND
 
 			Asset.Materials.emplace_back(FWindMaterial{
 			    .AlbedoIndex =
-			        AlbedoIndex == UINT32_MAX ? std::optional<u32>{std::nullopt} : std::optional{AlbedoIndex},
+			        AlbedoIndex == UINT32_MAX ? std::optional<TU32>{std::nullopt} : std::optional{AlbedoIndex},
 			    .NormalIndex =
-			        NormalIndex == UINT32_MAX ? std::optional<u32>{std::nullopt} : std::optional{NormalIndex},
-			    .MetallicRoughnessIndex = MetallicRoughnessIndex == UINT32_MAX ? std::optional<u32>{std::nullopt}
+			        NormalIndex == UINT32_MAX ? std::optional<TU32>{std::nullopt} : std::optional{NormalIndex},
+			    .MetallicRoughnessIndex = MetallicRoughnessIndex == UINT32_MAX ? std::optional<TU32>{std::nullopt}
 			                                                                   : std::optional{MetallicRoughnessIndex},
 			    .Metallic = Metallic,
 			    .Roughness = Roughness,
@@ -294,7 +294,7 @@ WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const u8> Buffer) WIND
 	return Asset;
 }
 
-WIND_NODISCARD WIND_INLINE auto ReadFile(std::string_view Name) WIND_NOEXCEPT -> WindResult<std::vector<u8>>
+WIND_NODISCARD WIND_INLINE auto ReadFile(std::string_view Name) WIND_NOEXCEPT -> TWindResult<std::vector<TU8>>
 {
 	auto Path = std::filesystem::path(Name);
 
@@ -311,7 +311,7 @@ WIND_NODISCARD WIND_INLINE auto ReadFile(std::string_view Name) WIND_NOEXCEPT ->
 	if (!FileStream.is_open())
 		WIND_ERR(WindError::internal());
 
-	std::vector<u8> Buffer(FileSize);
+	std::vector<TU8> Buffer(FileSize);
 
 	if (!FileStream.read(reinterpret_cast<char *>(Buffer.data()), static_cast<std::streamsize>(FileSize)))
 		WIND_ERR(WindError::internal());
@@ -319,7 +319,7 @@ WIND_NODISCARD WIND_INLINE auto ReadFile(std::string_view Name) WIND_NOEXCEPT ->
 	return Buffer;
 }
 
-WIND_NODISCARD WIND_INLINE auto Open(std::string_view Name) WIND_NOEXCEPT -> WindResult<FWindAsset>
+WIND_NODISCARD WIND_INLINE auto Open(std::string_view Name) WIND_NOEXCEPT -> TWindResult<FWindAsset>
 {
 	auto Buffer = WIND_TRY(ReadFile(Name));
 

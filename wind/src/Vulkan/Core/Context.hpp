@@ -20,4 +20,4 @@ struct FVulkanContext
 	FGpuDevice GpuDevice{};
 };
 
-auto CreateContext(const UWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> WindResult<FVulkanContext>;
+auto CreateContext(const UWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> TWindResult<FVulkanContext>;

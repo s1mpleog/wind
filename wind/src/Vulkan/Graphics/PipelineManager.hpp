@@ -8,7 +8,7 @@
 
 #include <vector>
 
-using TPipelineHandle = u32;
+using TPipelineHandle = TU32;
 
 class UPipelineManager
 {
@@ -23,14 +23,14 @@ class UPipelineManager
 	auto operator=(UPipelineManager &&) -> UPipelineManager & = default;
 
 	WIND_NODISCARD auto WIND_INLINE Create(FGraphicsConfig Config, const vk::raii::Device &Device) WIND_NOEXCEPT
-	    -> WindResult<TPipelineHandle>
+	    -> TWindResult<TPipelineHandle>
 	{
 		TPipelineHandle Handle = MPipelines.size();
 		MPipelines.emplace_back(WIND_TRY(CreatePipeline(Device, std::move(Config))));
 		return Handle;
 	}
 
-	auto Get(TPipelineHandle Handle) -> WindResult<FGraphicsPipeline *>
+	auto Get(TPipelineHandle Handle) -> TWindResult<FGraphicsPipeline *>
 	{
 		if (Handle > MPipelines.size())
 			WIND_ERR(WindError::internal());

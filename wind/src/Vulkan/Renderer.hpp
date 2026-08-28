@@ -25,15 +25,15 @@ class URenderer
 	// todo: later make resource and pipeline manager const
 	WIND_NODISCARD static auto Create(FConfiguration Cfg, const UWindow &Window, const FVulkanContext *Context,
 	                                  UResourceManager *ResourceManager,
-	                                  UPipelineManager *PipelineManager) WIND_NOEXCEPT -> WindResult<URenderer>;
+	                                  UPipelineManager *PipelineManager) WIND_NOEXCEPT -> TWindResult<URenderer>;
 
-	WIND_NODISCARD auto Shutdown() const WIND_NOEXCEPT -> WindResult<void>
+	WIND_NODISCARD auto Shutdown() const WIND_NOEXCEPT -> TWindResult<void>
 	{
 		WIND_TRY(Context->GpuDevice.Device.waitIdle());
 		return {};
 	}
 
-	WIND_NODISCARD auto Begin(u32 Width, u32 Height) WIND_NOEXCEPT -> WindResult<void>;
+	WIND_NODISCARD auto Begin(TU32 Width, TU32 Height) WIND_NOEXCEPT -> TWindResult<void>;
 	auto Draw(FRenderObject Object, FRenderView CameraView) WIND_NOEXCEPT -> void;
 	auto End() WIND_NOEXCEPT -> void;
 
@@ -62,6 +62,6 @@ class URenderer
 	UResourceManager *ResourceManager;
 	TDynamicBufferHandle FrameUbo{};
 
-	u32 CurrentFrame{0};
-	u32 CurrentImage{0};
+	TU32 CurrentFrame{0};
+	TU32 CurrentImage{0};
 };

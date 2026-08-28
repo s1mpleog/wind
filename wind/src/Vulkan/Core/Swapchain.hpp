@@ -16,7 +16,7 @@ struct FSwapchainContext
 	vk::Extent2D Extent{};
 };
 
-WIND_NODISCARD auto CreateSwapchain(const FConfiguration &Cfg, u32 WindowWidth, u32 WindowHeight,
+WIND_NODISCARD auto CreateSwapchain(const FConfiguration &Cfg, TU32 WindowWidth, TU32 WindowHeight,
                                     const vk::raii::SurfaceKHR &Surface, const FGpuDevice &DeviceContext,
                                     const vk::raii::SwapchainKHR *OldSwapchain = nullptr) WIND_NOEXCEPT
-    -> WindResult<FSwapchainContext>;
+    -> TWindResult<FSwapchainContext>;

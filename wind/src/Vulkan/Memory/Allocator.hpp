@@ -52,39 +52,39 @@ class UGpuAllocator
 		}
 	}
 
-	WIND_NODISCARD static auto Create(const FVulkanContext *Context) WIND_NOEXCEPT -> WindResult<UGpuAllocator>;
+	WIND_NODISCARD static auto Create(const FVulkanContext *Context) WIND_NOEXCEPT -> TWindResult<UGpuAllocator>;
 	WIND_NODISCARD auto UploadStagingBuffer(std::span<const std::byte> Data) WIND_NOEXCEPT
-	    -> WindResult<FAllocatedBuffer>;
+	    -> TWindResult<FAllocatedBuffer>;
 
 	// TODO: use my custom types for flags
 	WIND_NODISCARD auto CreateBuffers(const FVulkanContext *Context, std::span<const FBufferData> Buffers) WIND_NOEXCEPT
-	    -> WindResult<std::vector<FAllocatedBuffer>>;
+	    -> TWindResult<std::vector<FAllocatedBuffer>>;
 
 	WIND_NODISCARD auto CreateBuffer(const FVulkanContext *Context, const FBufferData &Buffer) WIND_NOEXCEPT
-	    -> WindResult<FAllocatedBuffer>;
+	    -> TWindResult<FAllocatedBuffer>;
 
 	// TODO: maybe take ownership of data instead of view ?
 	WIND_NODISCARD auto CreateTexture(const FVulkanContext *Context,
 	                                  std::span<const FTextureData> TextureData) WIND_NOEXCEPT
-	    -> WindResult<std::vector<FAllocatedTexture>>;
+	    -> TWindResult<std::vector<FAllocatedTexture>>;
 
-	WIND_NODISCARD auto CreateVkImage(u32 Width, u32 Height, EFormat Format,
+	WIND_NODISCARD auto CreateVkImage(TU32 Width, TU32 Height, EFormat Format,
 	                                  vk::ImageUsageFlags Usage = vk::ImageUsageFlagBits::eTransferDst |
 	                                                              vk::ImageUsageFlagBits::eSampled) WIND_NOEXCEPT
-	    -> WindResult<std::pair<VkImage, VmaAllocation>>;
+	    -> TWindResult<std::pair<VkImage, VmaAllocation>>;
 
-	WIND_NODISCARD auto CreateDepthBuffer(const FVulkanContext *Context, u32 Width, u32 Height) WIND_NOEXCEPT
-	    -> WindResult<FAllocatedImage>;
+	WIND_NODISCARD auto CreateDepthBuffer(const FVulkanContext *Context, TU32 Width, TU32 Height) WIND_NOEXCEPT
+	    -> TWindResult<FAllocatedImage>;
 
-	WIND_NODISCARD auto BeginCommandBuffer() WIND_NOEXCEPT -> WindResult<void>;
-	WIND_NODISCARD auto EndCommandBuffer() WIND_NOEXCEPT -> WindResult<void>;
-	WIND_NODISCARD auto WaitForFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<void>;
-	WIND_NODISCARD auto ResetFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<void>;
+	WIND_NODISCARD auto BeginCommandBuffer() WIND_NOEXCEPT -> TWindResult<void>;
+	WIND_NODISCARD auto EndCommandBuffer() WIND_NOEXCEPT -> TWindResult<void>;
+	WIND_NODISCARD auto WaitForFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>;
+	WIND_NODISCARD auto ResetFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>;
 	auto IsFenceSignaled(const vk::raii::Device &Device) WIND_NOEXCEPT -> bool;
 
 	WIND_NODISCARD auto
-	CreateDynamicBuffer(u32 Size, vk::BufferUsageFlagBits Usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
-	    -> WindResult<FAllocatedBuffer>;
+	CreateDynamicBuffer(TU32 Size, vk::BufferUsageFlagBits Usage = vk::BufferUsageFlagBits::eUniformBuffer) WIND_NOEXCEPT
+	    -> TWindResult<FAllocatedBuffer>;
 
   private:
 	UGpuAllocator(VmaAllocator Allocator, vk::raii::CommandBuffer CommandBuffer, vk::raii::Fence Fence)

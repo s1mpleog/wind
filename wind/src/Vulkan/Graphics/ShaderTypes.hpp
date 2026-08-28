@@ -6,9 +6,9 @@
 struct FPushConstants
 {
 	glm::mat4 Transform;
-	u32 AlbedoTexture;
-	u32 NormalIndex;
-	u32 MetallicRoughnessIndex;
+	TU32 AlbedoTexture;
+	TU32 NormalIndex;
+	TU32 MetallicRoughnessIndex;
 	glm::vec4 BaseColor;
 };
 

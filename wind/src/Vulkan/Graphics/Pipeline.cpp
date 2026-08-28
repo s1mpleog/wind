@@ -12,7 +12,7 @@
 #include <vulkan/vulkan_raii.hpp>
 
 WIND_NODISCARD auto CreatePipeline(const vk::raii::Device &Device, FGraphicsConfig Cfg) WIND_NOEXCEPT
-    -> WindResult<FGraphicsPipeline>
+    -> TWindResult<FGraphicsPipeline>
 {
 	vk::GraphicsPipelineCreateInfo GpCreateInfo{};
 
@@ -23,9 +23,9 @@ WIND_NODISCARD auto CreatePipeline(const vk::raii::Device &Device, FGraphicsConf
 
 	auto PipelineCreateInfo = ToVk(Cfg);
 	vk::PipelineVertexInputStateCreateInfo VertexInput{};
-	VertexInput.vertexAttributeDescriptionCount = static_cast<u32>(PipelineCreateInfo.Attributes.size());
+	VertexInput.vertexAttributeDescriptionCount = static_cast<TU32>(PipelineCreateInfo.Attributes.size());
 	VertexInput.pVertexAttributeDescriptions = PipelineCreateInfo.Attributes.data();
-	VertexInput.vertexBindingDescriptionCount = static_cast<u32>(PipelineCreateInfo.Bindings.size());
+	VertexInput.vertexBindingDescriptionCount = static_cast<TU32>(PipelineCreateInfo.Bindings.size());
 	VertexInput.pVertexBindingDescriptions = PipelineCreateInfo.Bindings.data();
 
 	vk::PipelineColorBlendStateCreateInfo ColorBlend{};
@@ -58,7 +58,7 @@ WIND_NODISCARD auto CreatePipeline(const vk::raii::Device &Device, FGraphicsConf
 	}
 
 	vk::PipelineLayoutCreateInfo LayoutInfo{};
-	LayoutInfo.pushConstantRangeCount = static_cast<u32>(PushConstantRanges.size());
+	LayoutInfo.pushConstantRangeCount = static_cast<TU32>(PushConstantRanges.size());
 	LayoutInfo.pPushConstantRanges = PushConstantRanges.data();
 
 	if (Cfg.DescriptorSetLayout)

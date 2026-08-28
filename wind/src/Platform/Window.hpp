@@ -16,11 +16,11 @@
 struct FWindowConfiguration
 {
 	std::string Name;
-	u16 Width{};
-	u16 Height{};
+	TU16 Width{};
+	TU16 Height{};
 };
 
-inline auto MakeWindowConfig(const u16 Width, const u16 Height, std::string Name) WIND_NOEXCEPT -> FWindowConfiguration
+inline auto MakeWindowConfig(const TU16 Width, const TU16 Height, std::string Name) WIND_NOEXCEPT -> FWindowConfiguration
 {
 	return FWindowConfiguration{.Name = std::move(Name), .Width = Width, .Height = Height};
 }
@@ -53,12 +53,12 @@ class UWindow
 		return *this;
 	};
 
-	WIND_NODISCARD auto Create() WIND_NOEXCEPT -> WindResult<void>;
-	WIND_NODISCARD auto Extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char *>>;
-	WIND_NODISCARD auto CreateSurface(const vk::Instance &Instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>;
+	WIND_NODISCARD auto Create() WIND_NOEXCEPT -> TWindResult<void>;
+	WIND_NODISCARD auto Extensions() const WIND_NOEXCEPT -> TWindResult<std::vector<const char *>>;
+	WIND_NODISCARD auto CreateSurface(const vk::Instance &Instance) const WIND_NOEXCEPT -> TWindResult<VkSurfaceKHR>;
 	[[nodiscard]] auto GetConfig() const WIND_NOEXCEPT -> const FWindowConfiguration &;
 
-	WIND_NODISCARD auto DrawableSize() const WIND_NOEXCEPT -> std::pair<u32, u32>
+	WIND_NODISCARD auto DrawableSize() const WIND_NOEXCEPT -> std::pair<TU32, TU32>
 	{
 		return {MConfig.Width, MConfig.Height};
 	}

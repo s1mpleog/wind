@@ -14,27 +14,27 @@ enum class EPrimitiveTopology : uint8_t
 	TriangleFan,
 };
 
-enum class ECullMode : u8
+enum class ECullMode : TU8
 {
 	Back,
 	FontAndBack,
 	None,
 };
 
-enum class EPolygonMode : u8
+enum class EPolygonMode : TU8
 {
 	Fill,
 	Line,
 	Point
 };
 
-enum class EFrontFace : u8
+enum class EFrontFace : TU8
 {
 	CounterClockwise,
 	ClockWise
 };
 
-enum class EFormat : u8
+enum class EFormat : TU8
 {
 	Undefined,
 
@@ -135,7 +135,7 @@ enum class EFormat : u8
 
 };
 
-enum class EVertexFormat : u8
+enum class EVertexFormat : TU8
 {
 	Float,
 	Float2,
@@ -153,7 +153,7 @@ enum class EVertexFormat : u8
 	UInt4,
 };
 
-enum class EVertexInputRate : u8
+enum class EVertexInputRate : TU8
 {
 	Vertex,
 	Instance,
@@ -161,10 +161,10 @@ enum class EVertexInputRate : u8
 
 struct FVertexAttribute
 {
-	u32 Location{};
-	u32 Binding{};
+	TU32 Location{};
+	TU32 Binding{};
 	EVertexFormat Format{};
-	u32 Offset{};
+	TU32 Offset{};
 };
 
 struct FVertexBinding
@@ -180,7 +180,7 @@ struct FVertexInputState
 	std::vector<FVertexBinding> Bindings;
 };
 
-enum class ECompareOp : u8
+enum class ECompareOp : TU8
 {
 	Less,
 	Always,
@@ -188,14 +188,14 @@ enum class ECompareOp : u8
 	Greater
 };
 
-// enum class ShaderStage : u8
+// enum class ShaderStage : TU8
 // {
 //   Vertex,
 //   Fragment,
 //   Compute
 // };
 
-enum class EShaderStage : u8
+enum class EShaderStage : TU8
 {
 	Vertex = 1 << 0,
 	Fragment = 1 << 1,
@@ -253,7 +253,7 @@ struct FDepthStencilState
 	bool StencilTest{false};
 };
 
-enum class EBlendFactor : u8
+enum class EBlendFactor : TU8
 {
 	Zero,
 	One,
@@ -281,7 +281,7 @@ enum class EBlendFactor : u8
 	OneMinusSrc1Alpha,
 };
 
-enum class EBlendOp : u8
+enum class EBlendOp : TU8
 {
 	Add,
 	Subtract,
@@ -290,7 +290,7 @@ enum class EBlendOp : u8
 	Max,
 };
 
-enum class EColorWrite : u8
+enum class EColorWrite : TU8
 {
 	None = 0,
 	R = 1 << 0,
@@ -338,8 +338,8 @@ struct FPushConstantRange
 {
 	// temporary introduce custom type
 	EShaderStage StageFlags{EShaderStage::Vertex};
-	u32 Offset{};
-	u32 Size{};
+	TU32 Offset{};
+	TU32 Size{};
 };
 
 struct FGraphicsConfig

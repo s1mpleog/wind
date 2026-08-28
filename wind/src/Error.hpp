@@ -11,7 +11,7 @@
 #include <string_view>
 #include <vulkan/vulkan.hpp>
 
-enum class ErrorCode : u8
+enum class ErrorCode : TU8
 {
 	// instance
 	FailedToCreateInstance,
@@ -88,7 +88,7 @@ enum class ErrorCode : u8
 	InternalError,
 };
 
-enum ErrorKind : u8
+enum ErrorKind : TU8
 {
 	Vulkan,
 	SDL,

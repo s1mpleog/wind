@@ -19,7 +19,7 @@
 #include <spdlog/spdlog.h>
 
 WIND_NODISCARD auto UEngine::Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
-    -> WindResult<UEngine>
+    -> TWindResult<UEngine>
 {
 #ifdef WIND_LOG_ENABLE
 	spdlog::info("initializing Engine...");
@@ -58,13 +58,13 @@ WIND_NODISCARD auto UEngine::Create(FWindowConfiguration WindowCfg, FConfigurati
 	               std::move(ResourceManager), std::move(PipelineManager), std::move(Scene));
 }
 
-auto UEngine::Run() WIND_NOEXCEPT -> WindResult<void>
+auto UEngine::Run() WIND_NOEXCEPT -> TWindResult<void>
 {
 	bool Running = true;
 
 	[[maybe_unused]] float Time = 0.0F;
 
-	u64 Last = SDL_GetPerformanceCounter();
+	TU64 Last = SDL_GetPerformanceCounter();
 
 	// TODO: abstract this
 	while (Running)
@@ -107,7 +107,7 @@ auto UEngine::Run() WIND_NOEXCEPT -> WindResult<void>
 		MScene.Camera.ProcessMouse();
 		MScene.Camera.ProcessKeyboard(Delta);
 
-		auto BeginResult = MRenderer.Begin(static_cast<u32>(Width), static_cast<u32>(Height));
+		auto BeginResult = MRenderer.Begin(static_cast<TU32>(Width), static_cast<TU32>(Height));
 
 		if (!BeginResult)
 		{

@@ -16,9 +16,9 @@ struct FGpuDevice
 	vk::raii::Queue GraphicsQueue{nullptr};
 	vk::raii::Queue PresentationQueue{nullptr};
 	std::optional<vk::raii::Queue> TransferQueue;
-	std::optional<u32> GraphicsQueueIdx;
-	std::optional<u32> PresentationQueueIdx;
-	std::optional<u32> TransferQueueIdx;
+	std::optional<TU32> GraphicsQueueIdx;
+	std::optional<TU32> PresentationQueueIdx;
+	std::optional<TU32> TransferQueueIdx;
 	vk::PhysicalDeviceProperties PhysicalDeviceProps{};
 	vk::raii::CommandPool GraphicsPool{nullptr};
 	std::optional<vk::raii::CommandPool> TransferPool;
@@ -30,4 +30,4 @@ struct FGpuDevice
 };
 
 WIND_NODISCARD auto DeviceCreate(const FConfiguration &Cfg, const vk::raii::Instance &Instance,
-                                 const vk::raii::SurfaceKHR &Surface) WIND_NOEXCEPT -> WindResult<FGpuDevice>;
+                                 const vk::raii::SurfaceKHR &Surface) WIND_NOEXCEPT -> TWindResult<FGpuDevice>;

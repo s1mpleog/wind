@@ -58,7 +58,7 @@ struct FCamera
 		return Projection() * View();
 	}
 
-	auto UpdateAspect(u32 Width, u32 Height) WIND_NOEXCEPT -> void
+	auto UpdateAspect(TU32 Width, TU32 Height) WIND_NOEXCEPT -> void
 	{
 		Aspect = static_cast<float>(Width) / static_cast<float>(Height);
 	}

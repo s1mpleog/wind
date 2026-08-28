@@ -5,7 +5,7 @@
 #include "Vulkan/Core/Instance.hpp"
 #include "Vulkan/Core/ValidationLayer.hpp"
 
-auto CreateContext(const UWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> WindResult<FVulkanContext>
+auto CreateContext(const UWindow &Window, const FConfiguration &Cfg) WIND_NOEXCEPT -> TWindResult<FVulkanContext>
 {
 	FVulkanContext Ctx{};
 

@@ -11,7 +11,7 @@
 
 WIND_NODISCARD auto UDescriptorManager::Create(const vk::raii::Device &Device,
                                                vk::DescriptorType DescriptorType) WIND_NOEXCEPT
-    -> WindResult<UDescriptorManager>
+    -> TWindResult<UDescriptorManager>
 {
 	// todo: don't use luck number
 	vk::DescriptorPoolSize PoolSize{};
@@ -35,7 +35,7 @@ WIND_NODISCARD auto UDescriptorManager::Create(const vk::raii::Device &Device,
 	return UDescriptorManager{std::move(Pool)};
 }
 
-WIND_NODISCARD auto UDescriptorManager::CreateSet(const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto UDescriptorManager::CreateSet(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>
 {
 	WIND_ASSERT(MPool != nullptr && "Descriptor pool is null while trying to allocate");
 	WIND_ASSERT(MLayout != VK_NULL_HANDLE && "layout is null oops created layout first");
@@ -59,10 +59,10 @@ WIND_NODISCARD auto UDescriptorManager::CreateSet(const vk::raii::Device &Device
 WIND_NODISCARD auto
 UDescriptorManager::CreateLayout(const vk::raii::Device &Device,
                                  std::span<const vk::DescriptorSetLayoutBinding> Bindings) WIND_NOEXCEPT
-    -> WindResult<void>
+    -> TWindResult<void>
 {
 	vk::DescriptorSetLayoutCreateInfo LayoutCreateInfo{};
-	LayoutCreateInfo.bindingCount = static_cast<u32>(Bindings.size());
+	LayoutCreateInfo.bindingCount = static_cast<TU32>(Bindings.size());
 	LayoutCreateInfo.pBindings = Bindings.data();
 
 	MLayout = WIND_TRY(Device.createDescriptorSetLayout(LayoutCreateInfo));

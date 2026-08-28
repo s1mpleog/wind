@@ -17,8 +17,8 @@ struct FBufferAssets
 	TBufferHandle VertexHandle{};
 	TBufferHandle IndexHandle{};
 
-	u32 IndexCount{};
-	u32 VertexCount{};
+	TU32 IndexCount{};
+	TU32 VertexCount{};
 };
 
 struct FBuiltAssets
@@ -31,4 +31,4 @@ struct FBuiltAssets
 };
 
 WIND_NODISCARD auto Build(UResourceManager *ResourceManager, UPipelineManager *PipelineManager,
-                          const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<std::vector<FBuiltAssets>>;
+                          const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<std::vector<FBuiltAssets>>;

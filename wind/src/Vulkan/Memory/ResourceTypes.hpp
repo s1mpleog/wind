@@ -69,9 +69,9 @@ struct FAllocatedBuffer
 
 struct FSubMesh
 {
-	u32 IndexCount{};
-	u32 IndexOffset{};
-	u32 MaterialIndex{};
+	TU32 IndexCount{};
+	TU32 IndexOffset{};
+	TU32 MaterialIndex{};
 };
 
 struct FMesh
@@ -82,20 +82,20 @@ struct FMesh
 	FAllocatedBuffer Uvs;
 	FAllocatedBuffer Tangents;
 
-	u32 IndexCount{};
-	u32 VertexCount{};
-	u32 NormalCount{};
-	u32 UvCount{};
-	u32 TangentCount{};
+	TU32 IndexCount{};
+	TU32 VertexCount{};
+	TU32 NormalCount{};
+	TU32 UvCount{};
+	TU32 TangentCount{};
 
 	std::vector<FSubMesh> SubMeshes;
 };
 
 struct FGpuMaterial
 {
-	std::optional<u32> AlbedoTexture;
-	std::optional<u32> NormalTexture;
-	std::optional<u32> MetallicRoughnessTexture;
+	std::optional<TU32> AlbedoTexture;
+	std::optional<TU32> NormalTexture;
+	std::optional<TU32> MetallicRoughnessTexture;
 
 	float Metallic{};
 	float Roughness{};

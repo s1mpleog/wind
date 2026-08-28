@@ -23,9 +23,9 @@ class UEngine
 	auto operator=(UEngine &&) noexcept -> UEngine & = default;
 
 	WIND_NODISCARD static auto Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
-	    -> WindResult<UEngine>;
+	    -> TWindResult<UEngine>;
 
-	auto Run() WIND_NOEXCEPT -> WindResult<void>;
+	auto Run() WIND_NOEXCEPT -> TWindResult<void>;
 
   private:
 	UEngine(UWindow Window, std::unique_ptr<FVulkanContext> Context, URenderer Renderer,

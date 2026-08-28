@@ -15,7 +15,7 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_raii.hpp>
 
-static auto QueryInstanceLayerSupport(std::string_view RequestedLayer) -> WindResult<void>
+static auto QueryInstanceLayerSupport(std::string_view RequestedLayer) -> TWindResult<void>
 {
 	auto Layers = WIND_TRY(vk::enumerateInstanceLayerProperties());
 
@@ -30,7 +30,7 @@ static auto QueryInstanceLayerSupport(std::string_view RequestedLayer) -> WindRe
 	return {};
 }
 
-static auto QueryInstanceExtensionSupport(std::string_view RequestedExtension) -> WindResult<void>
+static auto QueryInstanceExtensionSupport(std::string_view RequestedExtension) -> TWindResult<void>
 {
 	auto Extensions = WIND_TRY(vk::enumerateInstanceExtensionProperties());
 
@@ -45,7 +45,7 @@ static auto QueryInstanceExtensionSupport(std::string_view RequestedExtension) -
 
 // this function takes the ownership of extensions
 WIND_NODISCARD auto Create(const FConfiguration &Cfg, const vk::raii::Context &Ctx,
-                           std::vector<const char *> Extensions) WIND_NOEXCEPT -> WindResult<vk::raii::Instance>
+                           std::vector<const char *> Extensions) WIND_NOEXCEPT -> TWindResult<vk::raii::Instance>
 {
 	auto InstVersion = WIND_TRY(vk::enumerateInstanceVersion());
 

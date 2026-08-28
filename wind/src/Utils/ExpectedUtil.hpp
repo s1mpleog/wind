@@ -5,7 +5,7 @@
 #include <expected>
 
 template <typename T>
-using WindResult = std::expected<T, WindError>;
+using TWindResult = std::expected<T, WindError>;
 
 template <typename T>
 using WindVkResult = std::expected<T, vk::Result>;

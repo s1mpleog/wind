@@ -8,8 +8,8 @@
 
 auto main() -> TI32
 {
-	constexpr u16 WindowWidth = 1280;
-	constexpr u16 WindowHeight = 720;
+	constexpr TU16 WindowWidth = 1280;
+	constexpr TU16 WindowHeight = 720;
 
 	auto WindowCfg = FWindowConfiguration{.Name = "Wind", .Width = WindowWidth, .Height = WindowHeight};
 	auto VulkanCfg = Default;

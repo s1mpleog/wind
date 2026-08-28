@@ -16,7 +16,7 @@
 namespace
 {
 auto SetupDefaultCube(UResourceManager *ResourceManager, UPipelineManager *PipelineManager,
-                      const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<FBuiltAssets>
+                      const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<FBuiltAssets>
 {
 	auto CubeVert = WIND_TRY(ResourceManager->CreateVertexBuffer(std::as_bytes(std::span{CubeVertices})));
 
@@ -72,15 +72,15 @@ auto SetupDefaultCube(UResourceManager *ResourceManager, UPipelineManager *Pipel
 
 	                              .BufferAssets = FBufferAssets{.VertexHandle = CubeVert,
 	                                                            .IndexHandle = CubeIndc,
-	                                                            .IndexCount = static_cast<u32>(CubeIndices.size()),
-	                                                            .VertexCount = static_cast<u32>(CubeVertices.size())}};
+	                                                            .IndexCount = static_cast<TU32>(CubeIndices.size()),
+	                                                            .VertexCount = static_cast<TU32>(CubeVertices.size())}};
 	return AssetInfo;
 }
 
 } // namespace
 
 WIND_NODISCARD auto Build(UResourceManager *ResourceManager, UPipelineManager *PipelineManager,
-                          const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<std::vector<FBuiltAssets>>
+                          const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<std::vector<FBuiltAssets>>
 {
 
 	auto VertexShaderHandle = WIND_TRY(ResourceManager->LoadShader(Device, "assets/shaders/model.vert.spv"));

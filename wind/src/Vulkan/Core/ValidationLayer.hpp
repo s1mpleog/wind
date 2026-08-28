@@ -22,4 +22,4 @@ WIND_INLINE auto DebugCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT MessageS
 }
 
 auto CreateDebugUtils(const FConfiguration &Cfg, const vk::raii::Instance &Instance) WIND_NOEXCEPT
-    -> WindResult<vk::raii::DebugUtilsMessengerEXT>;
+    -> TWindResult<vk::raii::DebugUtilsMessengerEXT>;

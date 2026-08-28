@@ -19,7 +19,7 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-WIND_NODISCARD auto UGpuAllocator::Create(const FVulkanContext *Context) WIND_NOEXCEPT -> WindResult<UGpuAllocator>
+WIND_NODISCARD auto UGpuAllocator::Create(const FVulkanContext *Context) WIND_NOEXCEPT -> TWindResult<UGpuAllocator>
 {
 	VmaAllocatorCreateInfo AllocatorInfo{};
 
@@ -56,7 +56,7 @@ WIND_NODISCARD auto UGpuAllocator::Create(const FVulkanContext *Context) WIND_NO
 }
 
 WIND_NODISCARD auto UGpuAllocator::UploadStagingBuffer(std::span<const std::byte> Data) WIND_NOEXCEPT
-    -> WindResult<FAllocatedBuffer>
+    -> TWindResult<FAllocatedBuffer>
 {
 	const vk::DeviceSize Size = Data.size();
 
@@ -90,7 +90,7 @@ WIND_NODISCARD auto UGpuAllocator::UploadStagingBuffer(std::span<const std::byte
 	};
 }
 
-WIND_NODISCARD auto UGpuAllocator::BeginCommandBuffer() WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto UGpuAllocator::BeginCommandBuffer() WIND_NOEXCEPT -> TWindResult<void>
 {
 	WIND_ASSERT(MCommandBuffer != nullptr && "Command buffer is null");
 
@@ -101,7 +101,7 @@ WIND_NODISCARD auto UGpuAllocator::BeginCommandBuffer() WIND_NOEXCEPT -> WindRes
 	return {};
 }
 
-WIND_NODISCARD auto UGpuAllocator::EndCommandBuffer() WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto UGpuAllocator::EndCommandBuffer() WIND_NOEXCEPT -> TWindResult<void>
 {
 	WIND_ASSERT(MCommandBuffer != nullptr && "Command buffer is null");
 
@@ -109,7 +109,7 @@ WIND_NODISCARD auto UGpuAllocator::EndCommandBuffer() WIND_NOEXCEPT -> WindResul
 	return {};
 }
 
-WIND_NODISCARD auto UGpuAllocator::WaitForFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto UGpuAllocator::WaitForFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>
 {
 	WIND_ASSERT(MFence != nullptr && "fence is null");
 	auto Result = Device.waitForFences(*MFence, vk::True, UINT64_MAX);
@@ -120,7 +120,7 @@ WIND_NODISCARD auto UGpuAllocator::WaitForFence(const vk::raii::Device &Device) 
 	return {};
 }
 
-WIND_NODISCARD auto UGpuAllocator::ResetFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto UGpuAllocator::ResetFence(const vk::raii::Device &Device) WIND_NOEXCEPT -> TWindResult<void>
 {
 	WIND_TRY(Device.resetFences(*MFence));
 	return {};
@@ -128,7 +128,7 @@ WIND_NODISCARD auto UGpuAllocator::ResetFence(const vk::raii::Device &Device) WI
 
 WIND_NODISCARD auto UGpuAllocator::CreateBuffers(const FVulkanContext *Context,
                                                  std::span<const FBufferData> Buffers) WIND_NOEXCEPT
-    -> WindResult<std::vector<FAllocatedBuffer>>
+    -> TWindResult<std::vector<FAllocatedBuffer>>
 {
 	WIND_ASSERT(MAllocator != VK_NULL_HANDLE && "VMA allocator is null");
 	WIND_ASSERT(Context != VK_NULL_HANDLE && "context is null");
@@ -207,7 +207,7 @@ WIND_NODISCARD auto UGpuAllocator::CreateBuffers(const FVulkanContext *Context,
 }
 
 WIND_NODISCARD auto UGpuAllocator::CreateBuffer(const FVulkanContext *Context, const FBufferData &Buffer) WIND_NOEXCEPT
-    -> WindResult<FAllocatedBuffer>
+    -> TWindResult<FAllocatedBuffer>
 {
 	auto Result = WIND_TRY(CreateBuffers(Context, std::span{&Buffer, 1}));
 	WIND_ENSURE_NOT_EMPTY(Result, WindError::vulkan());
@@ -215,9 +215,9 @@ WIND_NODISCARD auto UGpuAllocator::CreateBuffer(const FVulkanContext *Context, c
 	return std::move(Result.front());
 }
 
-WIND_NODISCARD auto UGpuAllocator::CreateVkImage(u32 Width, u32 Height, EFormat Format,
+WIND_NODISCARD auto UGpuAllocator::CreateVkImage(TU32 Width, TU32 Height, EFormat Format,
                                                  vk::ImageUsageFlags Usage) WIND_NOEXCEPT
-    -> WindResult<std::pair<VkImage, VmaAllocation>>
+    -> TWindResult<std::pair<VkImage, VmaAllocation>>
 {
 	vk::ImageCreateInfo ImageCreateInfo{};
 	ImageCreateInfo.imageType = vk::ImageType::e2D;
@@ -254,7 +254,7 @@ WIND_NODISCARD auto UGpuAllocator::CreateVkImage(u32 Width, u32 Height, EFormat 
 
 WIND_NODISCARD auto UGpuAllocator::CreateTexture(const FVulkanContext *Context,
                                                  std::span<const FTextureData> TextureData) WIND_NOEXCEPT
-    -> WindResult<std::vector<FAllocatedTexture>>
+    -> TWindResult<std::vector<FAllocatedTexture>>
 {
 	WIND_ASSERT(MAllocator != VK_NULL_HANDLE && "VMA allocator is null");
 	WIND_ASSERT(Context != VK_NULL_HANDLE && "context is null");
@@ -346,8 +346,8 @@ WIND_NODISCARD auto UGpuAllocator::CreateTexture(const FVulkanContext *Context,
 	return Textures;
 }
 
-WIND_NODISCARD auto UGpuAllocator::CreateDepthBuffer(const FVulkanContext *Context, u32 Width, u32 Height) WIND_NOEXCEPT
-    -> WindResult<FAllocatedImage>
+WIND_NODISCARD auto UGpuAllocator::CreateDepthBuffer(const FVulkanContext *Context, TU32 Width, TU32 Height) WIND_NOEXCEPT
+    -> TWindResult<FAllocatedImage>
 {
 	auto [image, image_allocation] =
 	    WIND_TRY(CreateVkImage(Width, Height, EFormat::D32Float, vk::ImageUsageFlagBits::eDepthStencilAttachment));
@@ -398,8 +398,8 @@ WIND_NODISCARD auto UGpuAllocator::CreateDepthBuffer(const FVulkanContext *Conte
 	                       vk::Extent2D{Width, Height}};
 }
 
-WIND_NODISCARD auto UGpuAllocator::CreateDynamicBuffer(u32 Size, vk::BufferUsageFlagBits Usage) WIND_NOEXCEPT
-    -> WindResult<FAllocatedBuffer>
+WIND_NODISCARD auto UGpuAllocator::CreateDynamicBuffer(TU32 Size, vk::BufferUsageFlagBits Usage) WIND_NOEXCEPT
+    -> TWindResult<FAllocatedBuffer>
 {
 	vk::BufferCreateInfo BufferInfo{};
 	BufferInfo.usage = Usage;

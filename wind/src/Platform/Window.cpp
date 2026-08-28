@@ -11,7 +11,7 @@
 #include <spdlog/spdlog.h>
 #include <vector>
 
-WIND_NODISCARD auto UWindow::Create() WIND_NOEXCEPT -> WindResult<void>
+WIND_NODISCARD auto UWindow::Create() WIND_NOEXCEPT -> TWindResult<void>
 {
 	if (MConfig.Width == 0 || MConfig.Height == 0 || MConfig.Name.empty())
 	{
@@ -40,11 +40,11 @@ WIND_NODISCARD auto UWindow::Create() WIND_NOEXCEPT -> WindResult<void>
 	return {};
 }
 
-WIND_NODISCARD auto UWindow::Extensions() const WIND_NOEXCEPT -> WindResult<std::vector<const char *>>
+WIND_NODISCARD auto UWindow::Extensions() const WIND_NOEXCEPT -> TWindResult<std::vector<const char *>>
 {
 	WIND_ASSERT(MHandle != nullptr && "window handler is nullptr");
 
-	u32 ExtensionsCount{0};
+	TU32 ExtensionsCount{0};
 	// extensions is a pointer to a const pointer to const char
 	const auto *const ExtensionsRaw = SDL_Vulkan_GetInstanceExtensions(&ExtensionsCount);
 
@@ -69,7 +69,7 @@ WIND_NODISCARD auto UWindow::Extensions() const WIND_NOEXCEPT -> WindResult<std:
 	return Extensions;
 }
 
-WIND_NODISCARD auto UWindow::CreateSurface(const vk::Instance &Instance) const WIND_NOEXCEPT -> WindResult<VkSurfaceKHR>
+WIND_NODISCARD auto UWindow::CreateSurface(const vk::Instance &Instance) const WIND_NOEXCEPT -> TWindResult<VkSurfaceKHR>
 {
 	WIND_ASSERT(MHandle != nullptr && "trying to create vulkan surface but window handle is null");
 
