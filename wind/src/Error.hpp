@@ -8,9 +8,8 @@
 #include <string_view>
 #include <vulkan/vulkan.hpp>
 
-#include "./Types.hpp"
-#include "utils/Ansii.hpp"
-#include "vulkan/vulkan.hpp"
+#include "Types.hpp"
+#include "Utils/Ansii.hpp"
 
 enum class ErrorCode : u8
 {

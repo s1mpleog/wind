@@ -1,16 +1,16 @@
 #pragma once
 
 #include "Config.hpp"
-#include "input/InputManager.hpp"
-#include "platform/Window.hpp"
-#include "resources/ResourceManager.hpp"
-#include "utils/ExpectedUtil.hpp"
-#include "vulkan/core/Configuration.hpp"
-#include "vulkan/core/Context.hpp"
-#include "vulkan/graphics/PipelineManager.hpp"
-#include "vulkan/Renderer.hpp"
+#include "Input/InputManager.hpp"
+#include "Platform/Window.hpp"
+#include "Resources/ResourceManager.hpp"
+#include "Utils/ExpectedUtil.hpp"
+#include "Vulkan/Core/Configuration.hpp"
+#include "Vulkan/Core/Context.hpp"
+#include "Vulkan/Graphics/PipelineManager.hpp"
+#include "Vulkan/Renderer.hpp"
 #include <memory>
-#include "scene/Scene.hpp"
+#include "Scene/Scene.hpp"
 
 namespace wind {
 class Engine

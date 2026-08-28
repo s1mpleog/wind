@@ -47,28 +47,28 @@ target_sources(wind
         src/Main.cpp
         src/Engine.cpp
 
-        src/platform/Window.cpp
+        src/Platform/Window.cpp
 
-        src/vulkan/core/Context.cpp
-        src/vulkan/core/Instance.cpp
-        src/vulkan/core/ValidationLayer.cpp
-        src/vulkan/core/Device.cpp
-        src/vulkan/core/Swapchain.cpp
+        src/Vulkan/Core/Context.cpp
+        src/Vulkan/Core/Instance.cpp
+        src/Vulkan/Core/ValidationLayer.cpp
+        src/Vulkan/Core/Device.cpp
+        src/Vulkan/Core/Swapchain.cpp
 
-        src/vulkan/frame/FrameContext.cpp
+        src/Vulkan/Frame/FrameContext.cpp
 
-        src/vulkan/graphics/Pipeline.cpp
-        src/vulkan/Renderer.cpp
+        src/Vulkan/Graphics/Pipeline.cpp
+        src/Vulkan/Renderer.cpp
 
-        src/vulkan/memory/Allocator.cpp
+        src/Vulkan/Memory/Allocator.cpp
 
-        src/resources/ResourceManager.cpp
-        src/resources/DescriptorManager.cpp
-        src/resources/Builtin.cpp
+        src/Resources/ResourceManager.cpp
+        src/Resources/DescriptorManager.cpp
+        src/Resources/Builtin.cpp
 
-        src/input/InputManager.cpp
+        src/Input/InputManager.cpp
 
-        src/scene/Scene.cpp
+        src/Scene/Scene.cpp
 
         src/VmaImpl.cpp
 )
@@ -100,7 +100,7 @@ target_precompile_headers(wind
         <ranges>
 
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Config.hpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/ExpectedUtil.hpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Utils/ExpectedUtil.hpp"
 )
 
 target_compile_options(wind

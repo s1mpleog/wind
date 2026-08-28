@@ -1,7 +1,7 @@
-#include "./Engine.hpp"
-#include "platform/Window.hpp"
-#include "./Types.hpp"
-#include "vulkan/core/Configuration.hpp"
+#include "Engine.hpp"
+#include "Platform/Window.hpp"
+#include "Types.hpp"
+#include "Vulkan/Core/Configuration.hpp"
 #include <cstdlib>
 #include <spdlog/spdlog.h>
 

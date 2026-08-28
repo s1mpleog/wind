@@ -1,12 +1,12 @@
 #pragma once
 
 #include "SDL3/SDL_scancode.h"
-#include "core/ServiceLocator.hpp"
+#include "Core/ServiceLocator.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/trigonometric.hpp"
-#include "input/InputManager.hpp"
-#include "./RenderView.hpp"
+#include "Input/InputManager.hpp"
+#include "RenderView.hpp"
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
