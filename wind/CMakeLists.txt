@@ -37,12 +37,38 @@ add_subdirectory(
 
 find_package(Vulkan REQUIRED)
 
+# Core library
+add_library(WindCore STATIC)
+
+target_sources(WindCore
+    PRIVATE
+        Source/Core/Private/CrashHandler.cpp
+)
+
+target_include_directories(WindCore
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core/Public
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core/Private
+        ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core/Internal
+        ${CMAKE_CURRENT_SOURCE_DIR}/Source
+)
+
+target_link_libraries(WindCore
+    PUBLIC
+        spdlog::spdlog
+)
+
+target_compile_options(WindCore PRIVATE -fno-exceptions)
+target_compile_definitions(WindCore PRIVATE SPDLOG_NO_EXCEPTIONS)
+
 add_executable(wind)
 
 target_sources(wind
     PRIVATE
         Source/Main.cpp
         Source/Engine.cpp
+        Source/Vulkan/Core/Private/VulkanExtension.cpp
 
         Source/Platform/Window.cpp
 
@@ -78,6 +104,7 @@ target_include_directories(wind
 
 target_link_libraries(wind
     PRIVATE
+        WindCore
         SDL3::SDL3
         spdlog::spdlog
         cpptrace::cpptrace

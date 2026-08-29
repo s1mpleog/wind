@@ -11,8 +11,10 @@
 #include "Scene/Scene.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Context.hpp"
+#include "Vulkan/Core/VulkanDevice.hpp"
 #include "Vulkan/Graphics/PipelineManager.hpp"
 #include "Vulkan/Renderer.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <SDL3/SDL_timer.h>
 #include <memory>
@@ -24,6 +26,9 @@ WIND_NODISCARD auto FUEngine::Create(FWindowConfiguration WindowCfg, FConfigurat
 #ifdef WIND_LOG_ENABLE
 	spdlog::info("initializing Engine...");
 #endif
+
+	FVulkanPhysicalDeviceFeatures Features{};
+	Features.Query({}, vk::ApiVersion14);
 
 	auto Window = FUWindow{std::move(WindowCfg)};
 	WIND_TRY_VOID(Window.Create());

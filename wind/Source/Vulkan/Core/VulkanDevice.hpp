@@ -49,7 +49,7 @@ class FVulkanPhysicalDeviceFeatures
 class FVulkanDevice
 {
   public:
-	WIND_NODISCARD auto CreateDevice() WIND_NOEXCEPT -> TWindResult<void>;
+	WIND_NODISCARD TWindResult<void> CreateDevice() WIND_NOEXCEPT;
 
 	WIND_NODISCARD auto GetDevice() const -> const vk::raii::Device &
 	{

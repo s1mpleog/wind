@@ -1,8 +1,11 @@
 #include "Vulkan/Core/Instance.hpp"
 
+#include "Check.hpp"
 #include "Error.hpp"
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
+#include "Vulkan/Core/Private/VulkanExtension.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <Vulkan/Types.hpp>
 #include <algorithm>
@@ -47,6 +50,12 @@ static auto QueryInstanceExtensionSupport(std::string_view RequestedExtension) -
 WIND_NODISCARD auto Create(const FConfiguration &Cfg, const vk::raii::Context &Ctx,
                            std::vector<const char *> Extensions) WIND_NOEXCEPT -> TWindResult<vk::raii::Instance>
 {
+	std::vector<vk::ExtensionProperties> DriverInstanceExtensions =
+	    FVulkanInstanceExtension::GetDriverSupportedInstanceExtensions();
+
+	CHECK(FVulkanInstanceExtension::FindExtension(DriverInstanceExtensions, "VK_KHR_surface"),
+	      "Engine needs Surface extension to display current Vulkan Loader does not supports it");
+
 	auto InstVersion = WIND_TRY(vk::enumerateInstanceVersion());
 
 	if (InstVersion < ToVk(Cfg.ApiVersion))
