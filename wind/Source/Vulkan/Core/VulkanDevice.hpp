@@ -35,28 +35,12 @@ struct FGpuDevice
 WIND_NODISCARD auto DeviceCreate(const FConfiguration &Cfg, const vk::raii::Instance &Instance,
                                  const vk::raii::SurfaceKHR &Surface) WIND_NOEXCEPT -> TWindResult<FGpuDevice>;
 
-class FVulkanPhysicalDeviceFeatures
-{
-  public:
-	auto Query(vk::PhysicalDevice PhysicalDevice, uint32 APIVersion) WIND_NOEXCEPT -> void;
-
-  private:
-	vk::PhysicalDeviceVulkan12Features Core_1_2;
-	vk::PhysicalDeviceVulkan13Features Core_1_3;
-	vk::PhysicalDeviceVulkan14Features Core_1_4;
-};
-
 class FVulkanDevice
 {
   public:
-	WIND_NODISCARD TWindResult<void> CreateDevice() WIND_NOEXCEPT;
-
-	WIND_NODISCARD auto GetDevice() const -> const vk::raii::Device &
-	{
-		return Device;
-	}
+	FVulkanDevice(vk::PhysicalDevice Gpu);
 
   private:
-	vk::raii::Device Device;
-	FVulkanPhysicalDeviceFeatures PhysicalDeviceFeatures;
+	vk::raii::Device Device{nullptr};
+	vk::PhysicalDevice Gpu{};
 };

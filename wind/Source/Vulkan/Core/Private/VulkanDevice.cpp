@@ -1,0 +1,200 @@
+#include "VulkanDevice.h"
+
+#include "Check.hpp"
+#include "Vulkan/Core/Private/VulkanExtension.hpp"
+#include "Vulkan/Core/Private/VulkanGenericPlatform.h"
+#include "Vulkan/Core/Public/Definitions.hpp"
+#include "spdlog/spdlog.h"
+#include "vulkan/vulkan.hpp"
+#include "vulkan/vulkan_raii.hpp"
+
+#include <memory>
+#include <optional>
+#include <string_view>
+#include <vector>
+#include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_to_string.hpp>
+
+void FVulkanPhysicalDeviceFeatures::Query(vk::PhysicalDevice PhysicalDevice, uint32 APIVersion)
+{
+	if (APIVersion >= vk::ApiVersion13)
+	{
+		Core_1_2.pNext = &Core_1_3;
+	}
+
+	if (APIVersion >= vk::ApiVersion14)
+	{
+		Core_1_3.pNext = &Core_1_4;
+	}
+}
+
+// later FenceManager, MemoryManager
+FVulkanDevice::FVulkanDevice(vk::PhysicalDevice InGpu) : Device(VK_NULL_HANDLE), Gpu(InGpu)
+{
+	vk::PhysicalDeviceProperties2 PhysicalDeviceProperties2{};
+	PhysicalDeviceProperties2.pNext = &GpuIdProps;
+
+	Gpu.getProperties2(&PhysicalDeviceProperties2);
+
+	GpuProps = PhysicalDeviceProperties2.properties;
+
+	VendorId = ConvertToGpuVendorId(GpuProps.vendorID);
+
+	spdlog::info("- DeviceName: {}", std::string_view{GpuProps.deviceName});
+	spdlog::info("- API={}.{}.{} Driver = {}, VendorId = {}", vk::apiVersionMajor(GpuProps.apiVersion),
+	             vk::apiVersionMinor(GpuProps.apiVersion), vk::apiVersionPatch(GpuProps.apiVersion),
+	             GpuProps.driverVersion, GpuProps.vendorID);
+	spdlog::info("- Max Descriptor Sets Bound = {}", GpuProps.limits.maxBoundDescriptorSets);
+}
+
+static inline std::string GetQueueInfoString(const vk::QueueFamilyProperties &Props) WIND_NOEXCEPT
+{
+	std::string Info{};
+	if ((Props.queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
+	{
+		Info += "Graphics";
+	}
+
+	if ((Props.queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer)
+	{
+		Info += "Transfer";
+	};
+
+	return Info;
+}
+
+void FVulkanDevice::CreateDevice(FVulkanDeviceExtensionArray &WindExtensions, const vk::raii::Context &InContext)
+{
+	CHECK(Device == VK_NULL_HANDLE);
+
+	vk::DeviceCreateInfo DeviceInfo{};
+
+	for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
+	{
+		// TODO: check InUse() later
+		if (WindExtension->InUse())
+		{
+			DeviceExtensions.push_back(WindExtension->GetExtensionName());
+			WindExtension->PreCreateDevice(DeviceInfo);
+		}
+	}
+
+	DeviceInfo.enabledExtensionCount = DeviceExtensions.size();
+	DeviceInfo.ppEnabledExtensionNames = DeviceExtensions.data();
+
+	spdlog::info("Creating device with {} extensions", DeviceExtensions.size());
+
+	for (const auto &DeviceExtension : DeviceExtensions)
+	{
+		spdlog::info("Device Extension: {}", DeviceExtension);
+	}
+
+	std::vector<vk::DeviceQueueCreateInfo> QueueFamilyInfos;
+
+	std::optional<uint32> GraphicsFamilyIndex;
+	std::optional<uint32> TransferFamilyIndex;
+
+	float QueuePriorites = 1.0F;
+
+	WIND_LOG(info, "Found {} Queue Families", QueueFamilyProps.size());
+
+	for (uint32 FamilyIndex = 0; FamilyIndex < QueueFamilyProps.size(); ++FamilyIndex)
+	{
+		bool bIsValidQueue = false;
+
+		const vk::QueueFamilyProperties &CurrProps = QueueFamilyProps[FamilyIndex];
+
+		if (CurrProps.queueFlags & vk::QueueFlagBits::eGraphics)
+		{
+			if (!GraphicsFamilyIndex)
+			{
+				GraphicsFamilyIndex = FamilyIndex;
+				bIsValidQueue = true;
+			}
+		}
+
+		if (CurrProps.queueFlags & vk::QueueFlagBits::eTransfer)
+		{
+			if (!TransferFamilyIndex && !(CurrProps.queueFlags & vk::QueueFlagBits::eGraphics) &&
+			    !(CurrProps.queueFlags & vk::QueueFlagBits::eCompute))
+			{
+				TransferFamilyIndex = FamilyIndex;
+				bIsValidQueue = true;
+			}
+		}
+
+		if (!bIsValidQueue)
+		{
+			continue;
+		}
+
+		QueueFamilyInfos.emplace_back(vk::DeviceQueueCreateFlags{}, FamilyIndex, CurrProps.queueCount, &QueuePriorites,
+		                              nullptr);
+	}
+
+	CHECK(!GraphicsFamilyIndex.value(), "Failed to find graphics queue for engine we need graphics queue for rendering "
+	                                    "can't continue without it... ");
+
+	DeviceInfo.queueCreateInfoCount = QueueFamilyInfos.size();
+	DeviceInfo.pQueueCreateInfos = QueueFamilyInfos.data();
+
+	vk::ResultValueType<vk::Device>::type DeviceResult = Gpu.createDevice(DeviceInfo);
+
+	if (!DeviceResult && DeviceResult.error() == vk::Result::eErrorInitializationFailed)
+	{
+		FATAL("Cannot create a Vulkan device. Try updating your driver to latest version Error code: {}",
+		      vk::to_string(DeviceResult.error()));
+	}
+
+	CHECK(DeviceResult.has_value());
+
+	Device = DeviceResult.value();
+
+	WIND_LOG(info, "Logical Device Created Successfully");
+}
+
+void FVulkanDevice::InitGpu(const vk::raii::Context &InContext) WIND_NOEXCEPT
+{
+	QueueFamilyProps = Gpu.getQueueFamilyProperties();
+	CHECK(QueueFamilyProps.size() >= 1, "Vulkan return zero queues this should not happen on normal GPU");
+
+	// TODO: later take version from somewhere else
+	PhysicalDeviceFeatures.Query(Gpu, vk::ApiVersion13);
+
+	FVulkanDeviceExtensionArray WindExtensions =
+	    FVulkanDeviceExtension::GetWindSupportedDeviceExtensions(this, vk::ApiVersion13);
+
+	// TODO: setup device layers
+
+	vk::PhysicalDeviceFeatures2 PhysicalDeviceFeatures2 = Gpu.getFeatures2();
+
+	for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
+	{
+		if (WindExtension->InUse())
+		{
+			WindExtension->PrePhysicalDeviceFeatures(PhysicalDeviceFeatures2);
+		}
+	}
+
+	Gpu.getFeatures2(&PhysicalDeviceFeatures2);
+
+	for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
+	{
+		if (WindExtension->InUse())
+		{
+			WindExtension->PostPhysicalDeviceFeatures(OptionalDeviceExtensions);
+		}
+	}
+
+	// we don't need any device properties for now
+
+	CreateDevice(WindExtensions, InContext);
+}
+
+FVulkanDevice::~FVulkanDevice()
+{
+	if (Device != VK_NULL_HANDLE)
+	{
+		Device.destroy();
+	}
+}

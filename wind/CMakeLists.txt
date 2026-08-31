@@ -69,6 +69,7 @@ target_sources(wind
         Source/Main.cpp
         Source/Engine.cpp
         Source/Vulkan/Core/Private/VulkanExtension.cpp
+        Source/Vulkan/Core/Private/VulkanDevice.cpp
 
         Source/Platform/Window.cpp
 
@@ -77,6 +78,8 @@ target_sources(wind
         Source/Vulkan/Core/ValidationLayer.cpp
         Source/Vulkan/Core/VulkanDevice.cpp
         Source/Vulkan/Core/Swapchain.cpp
+        Source/Vulkan/Core/Private/VulkanCore.cpp
+        Source/Vulkan/Core/Private/VulkanDebug.cpp
 
         Source/Vulkan/Frame/FrameContext.cpp
 

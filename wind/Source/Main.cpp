@@ -15,19 +15,15 @@ auto main() -> int32
 	auto VulkanCfg = Default;
 	VulkanCfg.AppName = "Wind";
 
-	auto Engine = FUEngine::Create(std::move(WindowCfg), VulkanCfg);
+	FEngine WindEngine = {std::move(VulkanCfg)};
 
-	if (!Engine)
-	{
-		spdlog::error("{}", Engine.error().to_string());
-		return EXIT_FAILURE;
-	}
+	// if (!Engine)
+	// {
+	// 	spdlog::error("{}", Engine.error().to_string());
+	// 	return EXIT_FAILURE;
+	// }
 
-	if (!Engine->Run())
-	{
-		spdlog::error("{}", Engine.error().to_string());
-		return EXIT_FAILURE;
-	}
+	WindEngine.Run();
 
 	return EXIT_SUCCESS;
 }
