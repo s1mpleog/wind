@@ -3,10 +3,10 @@
 #include "Check.hpp"
 #include "Vulkan/Core/Private/VulkanExtension.hpp"
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
+#include "Vulkan/Core/Private/VulkanQueue.hpp"
 #include "Vulkan/Core/Public/Definitions.hpp"
 #include "spdlog/spdlog.h"
 #include "vulkan/vulkan.hpp"
-#include "vulkan/vulkan_raii.hpp"
 
 #include <memory>
 #include <optional>
@@ -47,23 +47,7 @@ FVulkanDevice::FVulkanDevice(vk::PhysicalDevice InGpu) : Device(VK_NULL_HANDLE),
 	spdlog::info("- Max Descriptor Sets Bound = {}", GpuProps.limits.maxBoundDescriptorSets);
 }
 
-static inline std::string GetQueueInfoString(const vk::QueueFamilyProperties &Props) WIND_NOEXCEPT
-{
-	std::string Info{};
-	if ((Props.queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
-	{
-		Info += "Graphics";
-	}
-
-	if ((Props.queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer)
-	{
-		Info += "Transfer";
-	};
-
-	return Info;
-}
-
-void FVulkanDevice::CreateDevice(FVulkanDeviceExtensionArray &WindExtensions, const vk::raii::Context &InContext)
+void FVulkanDevice::CreateDevice(FVulkanDeviceExtensionArray &WindExtensions)
 {
 	CHECK(Device == VK_NULL_HANDLE);
 
@@ -71,7 +55,6 @@ void FVulkanDevice::CreateDevice(FVulkanDeviceExtensionArray &WindExtensions, co
 
 	for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
 	{
-		// TODO: check InUse() later
 		if (WindExtension->InUse())
 		{
 			DeviceExtensions.push_back(WindExtension->GetExtensionName());
@@ -82,12 +65,12 @@ void FVulkanDevice::CreateDevice(FVulkanDeviceExtensionArray &WindExtensions, co
 	DeviceInfo.enabledExtensionCount = DeviceExtensions.size();
 	DeviceInfo.ppEnabledExtensionNames = DeviceExtensions.data();
 
-	spdlog::info("Creating device with {} extensions", DeviceExtensions.size());
+	// spdlog::info("Creating device with {} extensions", DeviceExtensions.size());
 
-	for (const auto &DeviceExtension : DeviceExtensions)
-	{
-		spdlog::info("Device Extension: {}", DeviceExtension);
-	}
+	// for (const char *&DeviceExtension : DeviceExtensions)
+	// {
+	// 	spdlog::info("Device Extension: {}", DeviceExtension);
+	// }
 
 	std::vector<vk::DeviceQueueCreateInfo> QueueFamilyInfos;
 
@@ -151,9 +134,22 @@ void FVulkanDevice::CreateDevice(FVulkanDeviceExtensionArray &WindExtensions, co
 	Device = DeviceResult.value();
 
 	WIND_LOG(info, "Logical Device Created Successfully");
+
+	Queues.resize((uint32)EVulkanQueueType::Count);
+
+	// we are sure that graphics queue will exist
+	Queues[(uint32)EVulkanQueueType::Graphics] =
+	    std::make_unique<FVulkanQueue>(*this, GraphicsFamilyIndex.value(), EVulkanQueueType::Graphics);
+
+	// transfer queue can be null if not found
+	if (TransferFamilyIndex)
+	{
+		Queues[(uint32)EVulkanQueueType::Transfer] =
+		    std::make_unique<FVulkanQueue>(*this, TransferFamilyIndex.value(), EVulkanQueueType::Transfer);
+	}
 }
 
-void FVulkanDevice::InitGpu(const vk::raii::Context &InContext) WIND_NOEXCEPT
+void FVulkanDevice::InitGpu() WIND_NOEXCEPT
 {
 	QueueFamilyProps = Gpu.getQueueFamilyProperties();
 	CHECK(QueueFamilyProps.size() >= 1, "Vulkan return zero queues this should not happen on normal GPU");
@@ -188,7 +184,7 @@ void FVulkanDevice::InitGpu(const vk::raii::Context &InContext) WIND_NOEXCEPT
 
 	// we don't need any device properties for now
 
-	CreateDevice(WindExtensions, InContext);
+	CreateDevice(WindExtensions);
 }
 
 FVulkanDevice::~FVulkanDevice()

@@ -80,6 +80,7 @@ target_sources(wind
         Source/Vulkan/Core/Swapchain.cpp
         Source/Vulkan/Core/Private/VulkanCore.cpp
         Source/Vulkan/Core/Private/VulkanDebug.cpp
+        Source/Vulkan/Core/Private/VulkanQueue.cpp
 
         Source/Vulkan/Frame/FrameContext.cpp
 
@@ -98,6 +99,12 @@ target_sources(wind
 
         Source/VmaImpl.cpp
 )
+
+if(WIN32)
+  target_sources(wind PRIVATE Source/Vulkan/Core/Private/Windows/VulkanWindows.cpp)
+elseif(UNIX)
+  target_sources(wind PRIVATE Source/Vulkan/Core/Private/Linux/VulkanLinux.cpp)
+endif()
 
 target_include_directories(wind
     PRIVATE

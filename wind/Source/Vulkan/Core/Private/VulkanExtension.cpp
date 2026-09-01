@@ -1,6 +1,7 @@
 #include "VulkanExtension.hpp"
 
 #include "Core/Public/Check.hpp"
+#include "Vulkan/Core/Private/Linux/VulkanLinux.hpp"
 #include "Vulkan/Core/Private/VulkanDevice.h"
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "vulkan/vulkan.hpp"
@@ -199,6 +200,9 @@ FVulkanInstanceExtensionArray FVulkanInstanceExtension::GetWindSupportedInstance
 
 	OutInstanceExtensions.push_back(std::make_unique<FVulkanInstanceExtension>(VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 	                                                                           WIND_VULKAN_VALIDATION ? true : false));
+
+	// platform specific extensions
+	FVulkanPlatform::GetInstanceExtensions(OutInstanceExtensions);
 
 	OutInstanceExtensions.push_back(std::make_unique<FVulkanKHRSurfaceCapabilities2ExtensionName>());
 

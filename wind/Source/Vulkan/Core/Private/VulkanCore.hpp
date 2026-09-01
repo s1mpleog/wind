@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Vulkan/Core/Configuration.hpp"
-#include "vulkan/vulkan_raii.hpp"
 
 #include <memory>
 #include <vector>
@@ -32,7 +31,7 @@ class FVulkanCore
 		return Instance;
 	}
 
-	FVulkanDevice *GetDevice() const WIND_NOEXCEPT
+	FVulkanDevice *GetDevice() WIND_NOEXCEPT
 	{
 		return Device.get();
 	}

@@ -18,7 +18,7 @@
 #include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_to_string.hpp>
 
-static vk::raii::PhysicalDevice SelectPhysicalDevice(const vk::raii::Instance &Instance)
+static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance)
 {
 	VERIFYVULKANRESULT_UNWRAP(PhysicalDevices, Instance.enumeratePhysicalDevices());
 
@@ -34,7 +34,7 @@ static vk::raii::PhysicalDevice SelectPhysicalDevice(const vk::raii::Instance &I
 	{
 		FPhysicalDeviceInfo() = delete;
 
-		FPhysicalDeviceInfo(uint32 OriginalIndex, vk::raii::PhysicalDevice InPhysicalDevice)
+		FPhysicalDeviceInfo(uint32 OriginalIndex, vk::PhysicalDevice InPhysicalDevice)
 		    : OriginalIndex(OriginalIndex), PhysicalDevice(std::move(InPhysicalDevice))
 		{
 			PhysicalDeviceProperties2.pNext = &PhysicalDeviceIdProperties;
@@ -42,7 +42,7 @@ static vk::raii::PhysicalDevice SelectPhysicalDevice(const vk::raii::Instance &I
 		};
 
 		uint32 OriginalIndex{};
-		vk::raii::PhysicalDevice PhysicalDevice{VK_NULL_HANDLE};
+		vk::PhysicalDevice PhysicalDevice{VK_NULL_HANDLE};
 		vk::PhysicalDeviceProperties2 PhysicalDeviceProperties2{};
 		vk::PhysicalDeviceIDProperties PhysicalDeviceIdProperties{};
 	};
@@ -97,13 +97,12 @@ void FVulkanCore::CreateInstance()
 	CHECK(VulkanApiVersion >= vk::ApiVersion13,
 	      "Engine needs at least vulkan version 1.3 or later to run try updating the GPU driver");
 
-	// FIXME: i have to handle WSI extensions somehow
-
 	FVulkanInstanceExtensionArray WindInstanceExtensions =
 	    FVulkanInstanceExtension::GetWindSupportedInstanceExtensions(ToVk(Config.ApiVersion));
 
 	for (std::unique_ptr<FVulkanInstanceExtension> &Extension : WindInstanceExtensions)
 	{
+		WIND_LOG(info, "Instance extensions: -> {}", Extension->GetExtensionName());
 		if (Extension->InUse())
 		{
 			InstanceExtensions.emplace_back(Extension->GetExtensionName());
@@ -179,11 +178,11 @@ void FVulkanCore::CreateInstance()
 
 void FVulkanCore::SelectDevice()
 {
-	vk::raii::PhysicalDevice PhysicalDevice = SelectPhysicalDevice(Instance);
+	vk::PhysicalDevice PhysicalDevice = SelectPhysicalDevice(Instance);
 	Device = std::make_unique<FVulkanDevice>(PhysicalDevice);
 }
 
 void FVulkanCore::Initialize() WIND_NOEXCEPT
 {
-	Device->InitGpu(Context);
+	Device->InitGpu();
 }

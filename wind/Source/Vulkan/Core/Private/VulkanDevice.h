@@ -1,10 +1,11 @@
 #pragma once
 
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
+#include "Vulkan/Core/Private/VulkanQueue.hpp"
 #include "Vulkan/Core/Public/Definitions.hpp"
-#include "vulkan/vulkan.hpp"
-#include "vulkan/vulkan_raii.hpp"
 
+#include <inplace_vector>
+#include <memory>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -61,9 +62,55 @@ class FVulkanDevice
 {
   public:
 	FVulkanDevice(vk::PhysicalDevice Gpu);
+
+	FVulkanDevice(const FVulkanDevice &) = delete;
+	FVulkanDevice &operator=(const FVulkanDevice &) = delete;
+
+	FVulkanDevice(FVulkanDevice &&) = default;
+	FVulkanDevice &operator=(FVulkanDevice &&) = default;
+
 	~FVulkanDevice();
 
-	void InitGpu(const vk::raii::Context &InContext) WIND_NOEXCEPT;
+	void InitGpu() WIND_NOEXCEPT;
+
+	vk::Device GetHandle() const
+	{
+		return Device;
+	}
+
+	bool HasTransferQueue() const
+	{
+		return Queues[(uint32)EVulkanQueueType::Transfer] != nullptr;
+	}
+
+	const std::vector<vk::QueueFamilyProperties> GetQueueFamilyProps() const
+	{
+		return QueueFamilyProps;
+	}
+
+	vk::PhysicalDevice GetPhysicalHandle() const
+	{
+		return Gpu;
+	}
+
+	FVulkanQueue *GetQueue(EVulkanQueueType QueueType)
+	{
+		if (QueueType == EVulkanQueueType::Graphics)
+		{
+			return Queues[(uint32)EVulkanQueueType::Graphics].get();
+		}
+		else if (QueueType == EVulkanQueueType::Transfer)
+		{
+			return Queues[(uint32)EVulkanQueueType::Transfer].get();
+		}
+
+		return nullptr;
+	}
+
+	EGpuVendorId GetVendorId() const
+	{
+		return VendorId;
+	}
 
 	const FOptionalVulkanDeviceExtensionProperties &GetOptionalExtensionProperties() const
 	{
@@ -71,7 +118,7 @@ class FVulkanDevice
 	}
 
   private:
-	void CreateDevice(FVulkanDeviceExtensionArray &WindExtensions, const vk::raii::Context &InContext);
+	void CreateDevice(FVulkanDeviceExtensionArray &WindExtensions);
 
 	FVulkanPhysicalDeviceFeatures PhysicalDeviceFeatures;
 	EGpuVendorId VendorId = EGpuVendorId::NotQueried;
@@ -86,6 +133,8 @@ class FVulkanDevice
 
 	vk::Device Device{VK_NULL_HANDLE};
 	vk::PhysicalDevice Gpu{VK_NULL_HANDLE};
+
+	std::inplace_vector<std::unique_ptr<FVulkanQueue>, (uint32)EVulkanQueueType::Count> Queues;
 
 	std::vector<const char *> DeviceExtensions;
 };
