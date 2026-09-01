@@ -7,6 +7,21 @@
 using FVulkanDeviceExtensionArray = std::vector<std::unique_ptr<class FVulkanDeviceExtension>>;
 using FVulkanInstanceExtensionArray = std::vector<std::unique_ptr<class FVulkanInstanceExtension>>;
 
+// TODO: can we avoid void here and handle it in better way?
+class FVulkanGenericPlatformWindowContext
+{
+  public:
+	FVulkanGenericPlatformWindowContext(void *InWindowHandle) : WindowHandle(InWindowHandle) {};
+
+	void *GetWindowHandle() const
+	{
+		return WindowHandle;
+	}
+
+  private:
+	void *WindowHandle = nullptr;
+};
+
 class FVulkanGenericPlatform
 {
   public:

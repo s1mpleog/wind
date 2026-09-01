@@ -1,5 +1,6 @@
 #include "Engine.hpp"
 
+#include "Check.hpp"
 #include "Core/ServiceLocator.hpp"
 #include "Error.hpp"
 #include "Input/InputManager.hpp"
@@ -12,14 +13,19 @@
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Context.hpp"
 #include "Vulkan/Core/Private/VulkanCore.hpp"
+#include "Vulkan/Core/Private/VulkanGenericPlatform.h"
+#include "Vulkan/Core/Private/VulkanSwapchain.hpp"
+#include "Vulkan/Core/Swapchain.hpp"
 #include "Vulkan/Core/VulkanDevice.hpp"
 #include "Vulkan/Graphics/PipelineManager.hpp"
 #include "Vulkan/Renderer.hpp"
 #include "vulkan/vulkan.hpp"
 
 #include <SDL3/SDL_timer.h>
+#include <X11/X.h>
 #include <memory>
 #include <spdlog/spdlog.h>
+#include <vector>
 
 // WIND_NODISCARD auto FUEngine::Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
 //     -> TWindResult<FUEngine>
@@ -64,7 +70,24 @@
 
 FEngine::FEngine(FConfiguration VulkanConfig) : Core(VulkanConfig)
 {
+	auto cfg = FWindowConfiguration{.Name = "test", .Width = 400, .Height = 200};
+
+	auto Window = FUWindow{cfg};
+	if (!Window.Create())
+	{
+		WIND_LOG(info, "Failed to create window");
+		return;
+	}
+
 	Core.Initialize();
+
+	FVulkanGenericPlatformWindowContext Context(Window.Handle());
+
+	uint32 MinImageCount = 3;
+	std::vector<vk::Image> Images;
+
+	auto swapchain = FVulkanSwapChain::Create(Core.GetInstance(), *Core.GetDevice(), 200, 400, &MinImageCount, Images,
+	                                          Context, nullptr);
 }
 
 auto FEngine::Run() WIND_NOEXCEPT -> void

@@ -3,6 +3,7 @@
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "Vulkan/Core/Private/VulkanQueue.hpp"
 #include "Vulkan/Core/Public/Definitions.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <inplace_vector>
 #include <memory>
@@ -93,6 +94,16 @@ class FVulkanDevice
 		return Gpu;
 	}
 
+	FVulkanQueue *GetGraphicsQueue() const
+	{
+		return Queues[(uint32)EVulkanQueueType::Graphics].get();
+	}
+
+	FVulkanQueue *GetPresentQueue() const
+	{
+		return PresentQueue;
+	}
+
 	FVulkanQueue *GetQueue(EVulkanQueueType QueueType)
 	{
 		if (QueueType == EVulkanQueueType::Graphics)
@@ -117,6 +128,8 @@ class FVulkanDevice
 		return OptionalDeviceExtensionsProperties;
 	}
 
+	void SetupPresentQueue(vk::SurfaceKHR Surface);
+
   private:
 	void CreateDevice(FVulkanDeviceExtensionArray &WindExtensions);
 
@@ -135,6 +148,7 @@ class FVulkanDevice
 	vk::PhysicalDevice Gpu{VK_NULL_HANDLE};
 
 	std::inplace_vector<std::unique_ptr<FVulkanQueue>, (uint32)EVulkanQueueType::Count> Queues;
+	FVulkanQueue *PresentQueue = nullptr;
 
 	std::vector<const char *> DeviceExtensions;
 };

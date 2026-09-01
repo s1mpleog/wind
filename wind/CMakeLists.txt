@@ -81,6 +81,7 @@ target_sources(wind
         Source/Vulkan/Core/Private/VulkanCore.cpp
         Source/Vulkan/Core/Private/VulkanDebug.cpp
         Source/Vulkan/Core/Private/VulkanQueue.cpp
+        Source/Vulkan/Core/Private/VulkanSwapchain.cpp
 
         Source/Vulkan/Frame/FrameContext.cpp
 
