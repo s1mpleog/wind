@@ -8,6 +8,7 @@
 #include "Resources/Builtin.hpp"
 #include "Resources/ResourceManager.hpp"
 #include "SDL3/SDL_events.h"
+#include "SDL3/SDL_video.h"
 #include "Scene/RenderObject.hpp"
 #include "Scene/Scene.hpp"
 #include "Utils/ExpectedUtil.hpp"
@@ -68,26 +69,18 @@
 // 	                std::move(ResourceManager), std::move(PipelineManager), std::move(Scene));
 // }
 
-FEngine::FEngine(FConfiguration VulkanConfig) : Core(VulkanConfig)
+FEngine::FEngine(FConfiguration VulkanConfig, void *handle) : Core(VulkanConfig)
 {
-	auto cfg = FWindowConfiguration{.Name = "test", .Width = 400, .Height = 200};
-
-	auto Window = FUWindow{cfg};
-	if (!Window.Create())
-	{
-		WIND_LOG(info, "Failed to create window");
-		return;
-	}
-
 	Core.Initialize();
 
-	FVulkanGenericPlatformWindowContext Context(Window.Handle());
+	// FVulkanGenericPlatformWindowContext Context(static_cast<SDL_Window *>(handle));
 
-	uint32 MinImageCount = 3;
-	std::vector<vk::Image> Images;
+	// uint32 MinImageCount = 3;
+	// std::vector<vk::Image> Images;
 
-	auto swapchain = FVulkanSwapChain::Create(Core.GetInstance(), *Core.GetDevice(), 200, 400, &MinImageCount, Images,
-	                                          Context, nullptr);
+	// auto swapchain =
+	//     FVulkanSwapChain::Create(Core.GetInstance(), *Core.GetDevice(), 200, 400, &MinImageCount, Images, Context,
+	//     {});
 }
 
 auto FEngine::Run() WIND_NOEXCEPT -> void

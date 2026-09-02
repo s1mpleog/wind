@@ -15,7 +15,9 @@ auto main() -> int32
 	auto VulkanCfg = Default;
 	VulkanCfg.AppName = "Wind";
 
-	FEngine WindEngine = {std::move(VulkanCfg)};
+	auto window = FEngine::test();
+
+	FEngine WindEngine = {std::move(VulkanCfg), window.Handle()};
 
 	// if (!Engine)
 	// {

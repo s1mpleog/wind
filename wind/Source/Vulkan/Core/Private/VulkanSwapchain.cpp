@@ -32,11 +32,10 @@ void FVulkanDevice::SetupPresentQueue(vk::SurfaceKHR Surface)
 	}
 };
 
-FVulkanSwapChain *FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice,
-                                           uint32 InWidth, uint32 InHeight, uint32 *DesiredImageCount,
-                                           std::vector<vk::Image> &OutImages,
-                                           FVulkanGenericPlatformWindowContext &WindowContext,
-                                           FVulkanSwapchainRecreateInfo *RecreateInfo)
+WIND_NODISCARD std::unique_ptr<FVulkanSwapChain>
+FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice, uint32 InWidth, uint32 InHeight,
+                         uint32 *DesiredImageCount, std::vector<vk::Image> &OutImages,
+                         FVulkanGenericPlatformWindowContext &WindowContext, FVulkanSwapchainRecreateInfo *RecreateInfo)
 {
 
 	// If Recreate Info is null it means this is first call to create so we create new surface
@@ -60,7 +59,7 @@ FVulkanSwapChain *FVulkanSwapChain::Create(const vk::raii::Instance &InInstance,
 		FVulkanPlatform::CreateSurface(WindowContext, InInstance, &Surface);
 	}
 
-	VERIFYVULKANRESULT_UNWRAP(Formats, InDevice.GetPhysicalHandle().getSurfaceFormatsKHR());
+	VERIFYVULKANRESULT_UNWRAP(Formats, InDevice.GetPhysicalHandle().getSurfaceFormatsKHR(Surface));
 	// TODO: for now do this later handle as surface lost
 	CHECK(Formats.size() >= 1, "`VkGetSurfaceFormatsKHR` returned 0 formats");
 
@@ -87,7 +86,7 @@ FVulkanSwapChain *FVulkanSwapChain::Create(const vk::raii::Instance &InInstance,
 
 	VERIFYVULKANRESULT_UNWRAP(SurfaceCapabilities, InDevice.GetPhysicalHandle().getSurfaceCapabilitiesKHR(Surface));
 
-	WIND_LOG(info, "Selected Present Mode: %s", vk::to_string(*FifoPresentMode));
+	WIND_LOG(info, "Selected Present Mode: {}", vk::to_string(*FifoPresentMode));
 
 	if (SurfaceCapabilities.maxImageCount > 0 && *DesiredImageCount > SurfaceCapabilities.maxImageCount)
 	{
@@ -107,7 +106,13 @@ FVulkanSwapChain *FVulkanSwapChain::Create(const vk::raii::Instance &InInstance,
 	}
 
 	vk::SwapchainCreateInfoKHR SwapChainInfo{};
-	SwapChainInfo.oldSwapchain = RecreateInfo->SwapChain != VK_NULL_HANDLE ? RecreateInfo->SwapChain : nullptr;
+	SwapChainInfo.oldSwapchain = nullptr;
+
+	if (RecreateInfo && RecreateInfo->SwapChain != VK_NULL_HANDLE)
+	{
+		SwapChainInfo.oldSwapchain = RecreateInfo->SwapChain;
+	}
+
 	SwapChainInfo.clipped = vk::True;
 	SwapChainInfo.imageFormat = SelectedFormat.format;
 	SwapChainInfo.imageColorSpace = SelectedFormat.colorSpace;
@@ -128,10 +133,10 @@ FVulkanSwapChain *FVulkanSwapChain::Create(const vk::raii::Instance &InInstance,
 
 	if (!SwapChainResult && SwapChainResult.error() != vk::Result::eSuccess)
 	{
-		FATAL("Create swapchain failed Error: %s", vk::to_string(SwapChainResult.error()));
+		FATAL("Create swapchain failed Error: {}", vk::to_string(SwapChainResult.error()));
 	}
 
-	WIND_LOG(info, "Creating swapchain with %s, %s, %s, images %d", vk::to_string(SwapChainInfo.presentMode),
+	WIND_LOG(info, "Creating swapchain with {}, {}, {}, images {}", vk::to_string(SwapChainInfo.presentMode),
 	         vk::to_string(SwapChainInfo.imageFormat), vk::to_string(SwapChainInfo.imageColorSpace),
 	         SwapChainInfo.minImageCount);
 
@@ -140,8 +145,19 @@ FVulkanSwapChain *FVulkanSwapChain::Create(const vk::raii::Instance &InInstance,
 	VERIFYVULKANRESULT_UNWRAP(SwapChainImages, InDevice.GetHandle().getSwapchainImagesKHR(SwapChain));
 	OutImages = std::move(SwapChainImages);
 
-	auto x = std::make_unique<FVulkanSwapChain>(
-	    FVulkanSwapChain(InInstance, InDevice, Surface, SwapChain, InWidth, InWidth));
+	return std::unique_ptr<FVulkanSwapChain>(
+	    new FVulkanSwapChain(InInstance, InDevice, Surface, SwapChain, InWidth, InWidth));
+}
 
-	return nullptr;
+FVulkanSwapChain::FVulkanSwapChain(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice,
+                                   vk::SurfaceKHR &InSurface, vk::SwapchainKHR InSwapChain, uint32 InWidth,
+                                   uint32 InHeight)
+    : Instance(InInstance), Device(InDevice), SwapChain(InSwapChain), Surface(InSurface), Width(InWidth),
+      Height(InHeight) {};
+
+void FVulkanSwapChain::Destroy(FVulkanSwapchainRecreateInfo *RecreateInfo)
+{
+	// wait for device to be idle before doing
+	// if we have recreated info then assign this->SwapChain and this->Surface to RecreateInfo
+	// otherwise destroy swapchain and surface
 }

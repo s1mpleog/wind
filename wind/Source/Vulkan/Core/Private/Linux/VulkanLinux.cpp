@@ -3,7 +3,6 @@
 #include "Check.hpp"
 #include "Config.hpp"
 #include "SDL3/SDL_error.h"
-#include "SDL3/SDL_init.h"
 #include "SDL3/SDL_video.h"
 #include "SDL3/SDL_vulkan.h"
 #include "Vulkan/Core/Private/VulkanExtension.hpp"
@@ -24,7 +23,7 @@ void FVulkanPlatformLinux::GetInstanceExtensions(FVulkanInstanceExtensionArray &
 	// 	FATAL("Failed to initialized SDL3 Error code: {}", SDL_GetError());
 	// }
 
-	// i could use sdl_vulkan_getinstanceextensions but then i need sdl window handle so if i have to
+	// i could use sdl_vulkan_get_instance_extensions but then i need sdl window handle so if i have to
 	// pass it inside vulkan system and all i don't like it and since for now i am using gnu macros which is
 	// not compatiable with msvc its very hard to run this project on non unix systems so hardcode linux only support
 	// for now later if i want to port to win32 later i can add fvulkanwindows class or use
@@ -59,7 +58,7 @@ void FVulkanPlatformLinux::CreateSurface(FVulkanGenericPlatformWindowContext &Wi
 {
 	// TODO: ensure sdl is init
 
-	WIND_ASSERT(WindowContext.GetWindowHandle() == nullptr &&
+	WIND_ASSERT(WindowContext.GetWindowHandle() != nullptr &&
 	            "Trying to create surface but WindowContext handle is nullptr");
 
 	VkSurfaceKHR RawSurface = VK_NULL_HANDLE;
@@ -67,7 +66,7 @@ void FVulkanPlatformLinux::CreateSurface(FVulkanGenericPlatformWindowContext &Wi
 	                             &RawSurface) == false)
 	{
 		FATAL("SDL3 failed to create Vulkan Surface make sure graphic stack is setup correctly here is the sdl error "
-		      "code for more information: %s",
+		      "code for more information: {}",
 		      SDL_GetError());
 	}
 
@@ -78,7 +77,7 @@ void FVulkanPlatformLinux::CreateSurface(FVulkanGenericPlatformWindowContext &Wi
 
 void FVulkanPlatformLinux::DestroySurface(vk::raii::Instance &Instance, vk::SurfaceKHR Surface)
 {
-	WIND_ASSERT(Surface == nullptr && "Cannot destroy surface because it's null");
+	WIND_ASSERT(Surface != nullptr && "Cannot destroy surface because it's null");
 
 	PFN_vkDestroySurfaceKHR DestroySurface = (PFN_vkDestroySurfaceKHR)*Instance.getProcAddr("vkDestroySurfaceKHR");
 

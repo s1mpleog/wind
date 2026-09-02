@@ -9,6 +9,7 @@
 // ownership would be that  FVulkanSwapChain needs FVulkanDevice for swapchain creation and all
 // it also needs FWindowContext and vk::Instance so it can create surface if needed
 
+#include "Config.hpp"
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "vulkan/vulkan.hpp"
 #include "vulkan/vulkan_core.h"
@@ -27,15 +28,15 @@ struct FVulkanSwapchainRecreateInfo
 class FVulkanSwapChain
 {
 	FVulkanSwapChain(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice, vk::SurfaceKHR &InSurface,
-	                 vk::SwapchainKHR InSwapChain, uint32 InWidth, uint32 InHeight)
-	    : Instance(InInstance), Device(InDevice), SwapChain(InSwapChain), Surface(InSurface), Width(InWidth),
-	      Height(InHeight) {};
+	                 vk::SwapchainKHR InSwapChain, uint32 InWidth, uint32 InHeight);
 
   public:
-	static FVulkanSwapChain *Create(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice, uint32 InWidth,
-	                                uint32 InHeight, uint32 *DesiredImageCount, std::vector<vk::Image> &OutImages,
-	                                FVulkanGenericPlatformWindowContext &WindowContext,
-	                                FVulkanSwapchainRecreateInfo *RecreateInfo);
+	WIND_NODISCARD static std::unique_ptr<FVulkanSwapChain>
+	Create(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice, uint32 InWidth, uint32 InHeight,
+	       uint32 *DesiredImageCount, std::vector<vk::Image> &OutImages,
+	       FVulkanGenericPlatformWindowContext &WindowContext, FVulkanSwapchainRecreateInfo *RecreateInfo);
+
+	void Destroy(FVulkanSwapchainRecreateInfo *RecreateInfo);
 
   private:
 	// TODO: later add current image index, present, window ID and all

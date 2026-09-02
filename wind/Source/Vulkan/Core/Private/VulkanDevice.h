@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Check.hpp"
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "Vulkan/Core/Private/VulkanQueue.hpp"
 #include "Vulkan/Core/Public/Definitions.hpp"
@@ -102,6 +103,10 @@ class FVulkanDevice
 	FVulkanQueue *GetPresentQueue() const
 	{
 		return PresentQueue;
+	}
+
+	void WaitUntilIdle()
+	{
 	}
 
 	FVulkanQueue *GetQueue(EVulkanQueueType QueueType)

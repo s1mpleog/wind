@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Check.hpp"
 #include "Config.hpp"
 #include "Input/InputManager.hpp"
 #include "Platform/Window.hpp"
@@ -23,7 +24,20 @@ class FEngine
 	FEngine(FEngine &&) noexcept = default;
 	auto operator=(FEngine &&) noexcept -> FEngine & = default;
 
-	FEngine(FConfiguration VulkanConfig);
+	static FUWindow test()
+	{
+		auto cfg = FWindowConfiguration{.Name = "test", .Width = 400, .Height = 200};
+
+		auto Window = FUWindow{cfg};
+		if (!Window.Create())
+		{
+			WIND_LOG(info, "Failed to create window");
+		}
+
+		return Window;
+	}
+
+	FEngine(FConfiguration VulkanConfig, void *handle);
 
 	WIND_NODISCARD static auto Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
 	    -> TWindResult<FEngine>;
