@@ -6,7 +6,9 @@
 class FVulkanPlatformLinux : public FVulkanGenericPlatform
 {
   public:
-	static void GetInstanceExtensions(FVulkanInstanceExtensionArray &OutExtensions);
+	static void GetInstanceExtensions(std::vector<const char *> &OutExtensions);
+	static void GetDeviceExtensions(std::vector<const char *> &OutExtensions);
+
 	static void CreateSurface(FVulkanGenericPlatformWindowContext &WindowContext, const vk::raii::Instance &Instance,
 	                          vk::SurfaceKHR *OutSurface);
 

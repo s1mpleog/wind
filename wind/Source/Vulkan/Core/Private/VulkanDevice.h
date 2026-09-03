@@ -136,7 +136,8 @@ class FVulkanDevice
 	void SetupPresentQueue(vk::SurfaceKHR Surface);
 
   private:
-	void CreateDevice(FVulkanDeviceExtensionArray &WindExtensions);
+	// void CreateDevice(FVulkanDeviceExtensionArray &WindExtensions);
+	 void CreateDevice();
 
 	FVulkanPhysicalDeviceFeatures PhysicalDeviceFeatures;
 	EGpuVendorId VendorId = EGpuVendorId::NotQueried;

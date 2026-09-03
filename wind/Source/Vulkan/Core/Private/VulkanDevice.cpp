@@ -47,30 +47,11 @@ FVulkanDevice::FVulkanDevice(vk::PhysicalDevice InGpu) : Device(VK_NULL_HANDLE),
 	spdlog::info("- Max Descriptor Sets Bound = {}", GpuProps.limits.maxBoundDescriptorSets);
 }
 
-void FVulkanDevice::CreateDevice(FVulkanDeviceExtensionArray &WindExtensions)
+void FVulkanDevice::CreateDevice()
 {
 	CHECK(Device == VK_NULL_HANDLE);
 
 	vk::DeviceCreateInfo DeviceInfo{};
-
-	for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
-	{
-		if (WindExtension->InUse())
-		{
-			DeviceExtensions.push_back(WindExtension->GetExtensionName());
-			WindExtension->PreCreateDevice(DeviceInfo);
-		}
-	}
-
-	DeviceInfo.enabledExtensionCount = DeviceExtensions.size();
-	DeviceInfo.ppEnabledExtensionNames = DeviceExtensions.data();
-
-	// spdlog::info("Creating device with {} extensions", DeviceExtensions.size());
-
-	// for (const char *&DeviceExtension : DeviceExtensions)
-	// {
-	// 	spdlog::info("Device Extension: {}", DeviceExtension);
-	// }
 
 	std::vector<vk::DeviceQueueCreateInfo> QueueFamilyInfos;
 
@@ -133,6 +114,8 @@ void FVulkanDevice::CreateDevice(FVulkanDeviceExtensionArray &WindExtensions)
 
 	Device = DeviceResult.value();
 
+	volkLoadDevice(Device);
+
 	WIND_LOG(info, "Logical Device Created Successfully");
 
 	Queues.resize((uint32)EVulkanQueueType::Count);
@@ -157,34 +140,34 @@ void FVulkanDevice::InitGpu() WIND_NOEXCEPT
 	// TODO: later take version from somewhere else
 	PhysicalDeviceFeatures.Query(Gpu, vk::ApiVersion13);
 
-	FVulkanDeviceExtensionArray WindExtensions =
-	    FVulkanDeviceExtension::GetWindSupportedDeviceExtensions(this, vk::ApiVersion13);
+	// FVulkanDeviceExtensionArray WindExtensions =
+	//     FVulkanDeviceExtension::GetWindSupportedDeviceExtensions(this, vk::ApiVersion13);
 
 	// TODO: setup device layers
 
-	vk::PhysicalDeviceFeatures2 PhysicalDeviceFeatures2 = Gpu.getFeatures2();
+	// vk::PhysicalDeviceFeatures2 PhysicalDeviceFeatures2 = Gpu.getFeatures2();
 
-	for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
-	{
-		if (WindExtension->InUse())
-		{
-			WindExtension->PrePhysicalDeviceFeatures(PhysicalDeviceFeatures2);
-		}
-	}
+	// for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
+	// {
+	// 	if (WindExtension->InUse())
+	// 	{
+	// 		WindExtension->PrePhysicalDeviceFeatures(PhysicalDeviceFeatures2);
+	// 	}
+	// }
 
-	Gpu.getFeatures2(&PhysicalDeviceFeatures2);
+	// Gpu.getFeatures2(&PhysicalDeviceFeatures2);
 
-	for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
-	{
-		if (WindExtension->InUse())
-		{
-			WindExtension->PostPhysicalDeviceFeatures(OptionalDeviceExtensions);
-		}
-	}
+	// for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
+	// {
+	// 	if (WindExtension->InUse())
+	// 	{
+	// 		WindExtension->PostPhysicalDeviceFeatures(OptionalDeviceExtensions);
+	// 	}
+	// }
 
 	// we don't need any device properties for now
 
-	CreateDevice(WindExtensions);
+	CreateDevice();
 }
 
 FVulkanDevice::~FVulkanDevice()

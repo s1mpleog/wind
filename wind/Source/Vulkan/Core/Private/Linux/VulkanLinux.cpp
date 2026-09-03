@@ -13,7 +13,7 @@
 #include <cstring>
 #include <memory>
 
-void FVulkanPlatformLinux::GetInstanceExtensions(FVulkanInstanceExtensionArray &OutExtensions)
+void FVulkanPlatformLinux::GetInstanceExtensions(std::vector<const char *> &OutExtensions)
 {
 	// TODO: make sure SDL is init
 
@@ -39,13 +39,13 @@ void FVulkanPlatformLinux::GetInstanceExtensions(FVulkanInstanceExtensionArray &
 
 	if (strcmp(SDLDriver, "x11") == 0)
 	{
-		OutExtensions.emplace_back(std::make_unique<FVulkanInstanceExtension>("VK_KHR_xlib_surface", true));
+		OutExtensions.emplace_back("VK_KHR_xlib_surface");
 		return;
 	}
 
 	if (strcmp(SDLDriver, "wayland") == 0)
 	{
-		OutExtensions.emplace_back(std::make_unique<FVulkanInstanceExtension>("VK_KHR_wayland_surface", true));
+		OutExtensions.emplace_back("VK_KHR_wayland_surface");
 		return;
 	}
 

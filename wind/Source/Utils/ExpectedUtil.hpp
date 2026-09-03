@@ -21,10 +21,11 @@ inline auto to_wind_error(WindError error) -> WindError
 }
 
 #define WIND_ENSURE_NOT_EMPTY(range, error)                                                                            \
+	do                                                                                                                 \
 	{                                                                                                                  \
 		if (std::ranges::empty(range))                                                                                 \
 			WIND_ERR(error);                                                                                           \
-	}
+	} while (false)
 
 #define WIND_TRY(expr, ...)                                                                                            \
 	({                                                                                                                 \

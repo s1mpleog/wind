@@ -32,7 +32,7 @@ class FVulkanSwapChain
 
   public:
 	WIND_NODISCARD static std::unique_ptr<FVulkanSwapChain>
-	Create(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice, uint32 InWidth, uint32 InHeight,
+	Create(const vk::raii::Instance &InInstance, FVulkanDevice &Device, uint32 InWidth, uint32 InHeight,
 	       uint32 *DesiredImageCount, std::vector<vk::Image> &OutImages,
 	       FVulkanGenericPlatformWindowContext &WindowContext, FVulkanSwapchainRecreateInfo *RecreateInfo);
 

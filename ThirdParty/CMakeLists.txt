@@ -7,7 +7,6 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
-
 set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
 set(SPDLOG_BUILD_BENCH OFF CACHE BOOL "" FORCE)
@@ -19,6 +18,18 @@ add_subdirectory(
     EXCLUDE_FROM_ALL
 )
 
+# VOLK
+add_library(volk STATIC
+    volk/volk.c
+)
+
+target_include_directories(volk PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/volk
+)
+
+# target_compile_definitions(volk PUBLIC
+#     VK_NO_PROTOTYPES
+# )
 
 set(CPPTRACE_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 set(CPPTRACE_BUILD_BENCHMARKING OFF CACHE BOOL "" FORCE)
@@ -29,7 +40,6 @@ add_subdirectory(
     ${CMAKE_BINARY_DIR}/ThirdParty/cpptrace
     EXCLUDE_FROM_ALL
 )
-
 
 set(GLM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLM_BUILD_INSTALL OFF CACHE BOOL "" FORCE)

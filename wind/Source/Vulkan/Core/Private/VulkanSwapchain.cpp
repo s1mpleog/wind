@@ -33,7 +33,7 @@ void FVulkanDevice::SetupPresentQueue(vk::SurfaceKHR Surface)
 };
 
 WIND_NODISCARD std::unique_ptr<FVulkanSwapChain>
-FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice, uint32 InWidth, uint32 InHeight,
+FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &Device, uint32 InWidth, uint32 InHeight,
                          uint32 *DesiredImageCount, std::vector<vk::Image> &OutImages,
                          FVulkanGenericPlatformWindowContext &WindowContext, FVulkanSwapchainRecreateInfo *RecreateInfo)
 {
@@ -59,7 +59,7 @@ FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &In
 		FVulkanPlatform::CreateSurface(WindowContext, InInstance, &Surface);
 	}
 
-	VERIFYVULKANRESULT_UNWRAP(Formats, InDevice.GetPhysicalHandle().getSurfaceFormatsKHR(Surface));
+	VERIFYVULKANRESULT_UNWRAP(Formats, Device.GetPhysicalHandle().getSurfaceFormatsKHR(Surface));
 	// TODO: for now do this later handle as surface lost
 	CHECK(Formats.size() >= 1, "`VkGetSurfaceFormatsKHR` returned 0 formats");
 
@@ -72,9 +72,9 @@ FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &In
 	    IsPrefferedFormatFound != Formats.end() ? *IsPrefferedFormatFound : Formats[0];
 
 	// setup the presentation queue
-	InDevice.SetupPresentQueue(Surface);
+	Device.SetupPresentQueue(Surface);
 
-	VERIFYVULKANRESULT_UNWRAP(FoundPresentMode, InDevice.GetPhysicalHandle().getSurfacePresentModesKHR(Surface));
+	VERIFYVULKANRESULT_UNWRAP(FoundPresentMode, Device.GetPhysicalHandle().getSurfacePresentModesKHR(Surface));
 
 	// specs says VK_PRESENT_MODE_FIFO_KHR is always supported on any compliant implementation
 	// but still for worst case we should have this check better than engine crashing without log
@@ -84,7 +84,7 @@ FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &In
 	// also as spec said FIFO is guarnteed to be available
 	auto FifoPresentMode = std::ranges::find(FoundPresentMode, vk::PresentModeKHR::eFifo);
 
-	VERIFYVULKANRESULT_UNWRAP(SurfaceCapabilities, InDevice.GetPhysicalHandle().getSurfaceCapabilitiesKHR(Surface));
+	VERIFYVULKANRESULT_UNWRAP(SurfaceCapabilities, Device.GetPhysicalHandle().getSurfaceCapabilitiesKHR(Surface));
 
 	WIND_LOG(info, "Selected Present Mode: {}", vk::to_string(*FifoPresentMode));
 
@@ -128,8 +128,7 @@ FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &In
 	// since we are using eExclusive mode we don't have to pass queue index into pQueueFamilyIndices
 	SwapChainInfo.imageSharingMode = vk::SharingMode::eExclusive;
 
-	vk::ResultValueType<vk::SwapchainKHR>::type SwapChainResult =
-	    InDevice.GetHandle().createSwapchainKHR(SwapChainInfo);
+	vk::ResultValueType<vk::SwapchainKHR>::type SwapChainResult = Device.GetHandle().createSwapchainKHR(SwapChainInfo);
 
 	if (!SwapChainResult && SwapChainResult.error() != vk::Result::eSuccess)
 	{
@@ -142,17 +141,17 @@ FVulkanSwapChain::Create(const vk::raii::Instance &InInstance, FVulkanDevice &In
 
 	vk::SwapchainKHR SwapChain = SwapChainResult.value();
 
-	VERIFYVULKANRESULT_UNWRAP(SwapChainImages, InDevice.GetHandle().getSwapchainImagesKHR(SwapChain));
+	VERIFYVULKANRESULT_UNWRAP(SwapChainImages, Device.GetHandle().getSwapchainImagesKHR(SwapChain));
 	OutImages = std::move(SwapChainImages);
 
 	return std::unique_ptr<FVulkanSwapChain>(
-	    new FVulkanSwapChain(InInstance, InDevice, Surface, SwapChain, InWidth, InWidth));
+	    new FVulkanSwapChain(InInstance, Device, Surface, SwapChain, InWidth, InWidth));
 }
 
-FVulkanSwapChain::FVulkanSwapChain(const vk::raii::Instance &InInstance, FVulkanDevice &InDevice,
+FVulkanSwapChain::FVulkanSwapChain(const vk::raii::Instance &InInstance, FVulkanDevice &Device,
                                    vk::SurfaceKHR &InSurface, vk::SwapchainKHR InSwapChain, uint32 InWidth,
                                    uint32 InHeight)
-    : Instance(InInstance), Device(InDevice), SwapChain(InSwapChain), Surface(InSurface), Width(InWidth),
+    : Instance(InInstance), Device(Device), SwapChain(InSwapChain), Surface(InSurface), Width(InWidth),
       Height(InHeight) {};
 
 void FVulkanSwapChain::Destroy(FVulkanSwapchainRecreateInfo *RecreateInfo)

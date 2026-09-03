@@ -25,8 +25,8 @@ class FVulkanGenericPlatformWindowContext
 class FVulkanGenericPlatform
 {
   public:
-	static void GetInstanceExtensions(FVulkanInstanceExtensionArray &OutExtensions);
-	static void GetDeviceExtensions(FVulkanDeviceExtensionArray &OutExtensions);
+	static void GetInstanceExtensions(std::vector<const char *> &OutExtensions);
+	static void GetDeviceExtensions(std::vector<const char *> &OutExtensions);
 
 	static void CreateSurface(vk::SurfaceKHR *OutSurface);
 	static void DestroySurface(vk::raii::Instance &Instance, vk::SurfaceKHR Surface);

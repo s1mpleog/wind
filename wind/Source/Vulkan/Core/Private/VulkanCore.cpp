@@ -3,12 +3,10 @@
 #include "Core/Public/Check.hpp"
 #include "Vulkan/Core/Private/VulkanDevice.h"
 #include "Vulkan/Core/Private/VulkanExtension.hpp"
-#include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "Vulkan/Types.hpp"
 #include "spdlog/spdlog.h"
 #include "vulkan/vulkan.hpp"
 #include "vulkan/vulkan_core.h"
-#include "vulkan/vulkan_raii.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -16,9 +14,11 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
+#include <vulkan/vulkan_profiles.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
-static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance)
+static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance,
+                                               const VpProfileProperties &InProfileProperties)
 {
 	VERIFYVULKANRESULT_UNWRAP(PhysicalDevices, Instance.enumeratePhysicalDevices());
 
@@ -52,11 +52,14 @@ static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance)
 
 	for (auto &&[Index, PhysicalDevice] : std::views::enumerate(PhysicalDevices))
 	{
-		// only push if device api version is >= 1.3
-		vk::PhysicalDeviceProperties PhysicalDeviceProperties = PhysicalDevice.getProperties();
+		vk::Bool32 bProfileSupported = vk::False;
 
-		if (PhysicalDeviceProperties.apiVersion < vk::ApiVersion13)
+		vpGetPhysicalDeviceProfileSupport(Instance, PhysicalDevice, &InProfileProperties, &bProfileSupported);
+
+		// skip the device that does not supports profile
+		if (!bProfileSupported)
 		{
+			WIND_LOG(info, "GPU does not supports profile skipping...");
 			continue;
 		}
 
@@ -85,7 +88,15 @@ static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance)
 
 FVulkanCore::FVulkanCore(FConfiguration &InConfig) : Instance(VK_NULL_HANDLE), Device(VK_NULL_HANDLE), Config(InConfig)
 {
-	// TODO: do other vulkan related stuffs
+	VERIFYVULKANRESULT(volkInitialize());
+
+	VkBool32 bProfileSupported = vk::False;
+
+	vpGetInstanceProfileSupport(nullptr, &ProfileProperties, &bProfileSupported);
+	if (!bProfileSupported)
+	{
+		FATAL("System does not supports required vulkan profile either your GPU is too old or Driver is not updated");
+	}
 
 	CreateInstance();
 	SelectDevice();
@@ -93,21 +104,6 @@ FVulkanCore::FVulkanCore(FConfiguration &InConfig) : Instance(VK_NULL_HANDLE), D
 
 void FVulkanCore::CreateInstance()
 {
-	VERIFYVULKANRESULT_UNWRAP(VulkanApiVersion, vk::enumerateInstanceVersion());
-	CHECK(VulkanApiVersion >= vk::ApiVersion13,
-	      "Engine needs at least vulkan version 1.3 or later to run try updating the GPU driver");
-
-	FVulkanInstanceExtensionArray WindInstanceExtensions =
-	    FVulkanInstanceExtension::GetWindSupportedInstanceExtensions(ToVk(Config.ApiVersion));
-
-	for (std::unique_ptr<FVulkanInstanceExtension> &Extension : WindInstanceExtensions)
-	{
-		WIND_LOG(info, "Instance extensions: -> {}", Extension->GetExtensionName());
-		if (Extension->InUse())
-		{
-			InstanceExtensions.emplace_back(Extension->GetExtensionName());
-		}
-	}
 
 	vk::ApplicationInfo AppInfo{};
 	AppInfo.applicationVersion = vk::makeVersion(0, 1, 0);
@@ -115,11 +111,13 @@ void FVulkanCore::CreateInstance()
 	AppInfo.pEngineName = "Wind Engine";
 	AppInfo.apiVersion = ToVk(Config.ApiVersion);
 
+	std::vector<const char *> WindInstanceExtensions = GetWindInstanceExtensions();
+
 	vk::InstanceCreateInfo InstInfo{};
 
 	InstInfo.pApplicationInfo = &AppInfo;
-	InstInfo.enabledExtensionCount = InstanceExtensions.size();
-	InstInfo.ppEnabledExtensionNames = InstanceExtensions.data();
+	InstInfo.enabledExtensionCount = WindInstanceExtensions.size();
+	InstInfo.ppEnabledExtensionNames = WindInstanceExtensions.data();
 
 	// TODO: move this into Extension system later
 	const char *LayerName = "VK_LAYER_KHRONOS_validation";
@@ -132,15 +130,21 @@ void FVulkanCore::CreateInstance()
 	InstInfo.ppEnabledLayerNames = nullptr;
 #endif
 
-	vk::ResultValueType<vk::raii::Instance>::type InstanceResult = Context.createInstance(InstInfo);
+	VpInstanceCreateInfo ProfileInstInfo{};
+	ProfileInstInfo.enabledFullProfileCount = 1;
+	ProfileInstInfo.pEnabledFullProfiles = &ProfileProperties;
+	ProfileInstInfo.pCreateInfo = InstInfo;
 
-	if (!InstanceResult && InstanceResult.error() == vk::Result::eErrorIncompatibleDriver)
+	VkInstance RawInstance{};
+	auto InstanceResult = static_cast<vk::Result>(vpCreateInstance(&ProfileInstInfo, nullptr, &RawInstance));
+
+	if (InstanceResult == vk::Result::eErrorIncompatibleDriver)
 	{
 		FATAL("Cannot find a compatible Vulkan driver (ICD).\n\nPlease look at the Getting Started guide for "
 		      "additional information.");
 	}
 
-	if (!InstanceResult && InstanceResult.error() == vk::Result::eErrorExtensionNotPresent)
+	if (InstanceResult == vk::Result::eErrorExtensionNotPresent)
 	{
 		const char *MissingExtensionName = nullptr;
 		for (const char *Extension : InstanceExtensions)
@@ -155,18 +159,20 @@ void FVulkanCore::CreateInstance()
 		    MissingExtensionName);
 	}
 
-	if (!InstanceResult && InstanceResult.error() == vk::Result::eErrorLayerNotPresent)
+	if (InstanceResult == vk::Result::eErrorLayerNotPresent)
 	{
 		FATAL("Note the `VK_LAYER_KHRONOS_validation` was requested during Instance creation but vulkan did not found "
 		      "it try disabling `WIND_VULKAN_VALIDATION` if you don't want validation layer debugging");
 	}
 
-	CHECK(InstanceResult.has_value(),
+	CHECK(InstanceResult == vk::Result::eSuccess,
 	      "Failed to create the vulkan instance this could only happen if something has really gone wrong try updating "
 	      "the graphics driver or reboot we don't know what happen really you should see vulkan error code in crash "
 	      "file try searching for more information");
 
-	Instance = std::move(InstanceResult.value());
+	volkLoadInstance(RawInstance);
+
+	Instance = vk::Instance{RawInstance};
 
 	WIND_LOG(info, "Instance created successfully");
 
@@ -178,11 +184,19 @@ void FVulkanCore::CreateInstance()
 
 void FVulkanCore::SelectDevice()
 {
-	vk::PhysicalDevice PhysicalDevice = SelectPhysicalDevice(Instance);
+	vk::PhysicalDevice PhysicalDevice = SelectPhysicalDevice(Instance, ProfileProperties);
 	Device = std::make_unique<FVulkanDevice>(PhysicalDevice);
 }
 
 void FVulkanCore::Initialize() WIND_NOEXCEPT
 {
 	Device->InitGpu();
+}
+
+FVulkanCore::~FVulkanCore()
+{
+	if (Instance != VK_NULL_HANDLE)
+	{
+		Instance.destroy();
+	}
 }

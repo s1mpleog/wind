@@ -32,7 +32,7 @@ void FVulkanCore::SetupDebugCallbacks()
 		CreateInfo.messageSeverity = ToVk(Config.DebugMessageSeverity);
 		CreateInfo.pfnUserCallback = DebugUtilsCallback;
 
-		vk::ResultValueType<vk::raii::DebugUtilsMessengerEXT>::type MessengerResult =
+		vk::ResultValueType<vk::DebugUtilsMessengerEXT>::type MessengerResult =
 		    Instance.createDebugUtilsMessengerEXT(CreateInfo);
 
 		CHECK(MessengerResult.has_value(), "NOTE: `WIND_VULKAN_VALIDATION` was enabled so engine tried to created "

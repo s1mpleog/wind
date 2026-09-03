@@ -62,7 +62,7 @@ WIND_NODISCARD auto FRenderer::Begin(uint32 Width, uint32 Height) WIND_NOEXCEPT 
 	uint32_t ImageIndex{0};
 
 	// we are using c-api here because c++ library is acting weird here its returning error
-	// ask presentation engine for next swapchain image handle once this function success then image_available semaphore
+	// ask presentation engine for next swapchain image handle once this function return then image_available semaphore
 	// will be SIGNALED
 	VkResult RawResult = Context->GpuDevice.Device.getDispatcher()->vkAcquireNextImageKHR(
 	    *Context->GpuDevice.Device, *SwapchainContext.Handle, UINT64_MAX, *Frame->ImageAvailable, VK_NULL_HANDLE,
@@ -358,8 +358,10 @@ auto FRenderer::End() WIND_NOEXCEPT -> void
 	PresentInfo.pImageIndices = &CurrentImage;
 
 	VkPresentInfoKHR PresentInfoC = static_cast<VkPresentInfoKHR>(PresentInfo);
+
 	VkResult PresentResult = Context->GpuDevice.Device.getDispatcher()->vkQueuePresentKHR(
 	    *Context->GpuDevice.PresentationQueue, &PresentInfoC);
+
 	auto Result = static_cast<vk::Result>(PresentResult);
 
 	if (Result != vk::Result::eSuccess && Result != vk::Result::eSuboptimalKHR &&

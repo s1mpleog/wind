@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Vulkan/Core/Configuration.hpp"
+#include "vulkan/vulkan_profiles.hpp"
 
 #include <memory>
 #include <vector>
@@ -14,6 +15,7 @@ class FVulkanCore
 	void Initialize() WIND_NOEXCEPT;
 
 	FVulkanCore(FConfiguration &InConfig);
+	~FVulkanCore();
 
 	// TODO: maybe prefer span
 	const std::vector<const char *> &GetInstanceExtensions() const WIND_NOEXCEPT
@@ -26,7 +28,7 @@ class FVulkanCore
 		return InstanceLayers;
 	};
 
-	const vk::raii::Instance &GetInstance() const WIND_NOEXCEPT
+	const vk::Instance &GetInstance() const WIND_NOEXCEPT
 	{
 		return Instance;
 	}
@@ -43,10 +45,11 @@ class FVulkanCore
 
 	// later set image layout, get viewports
 
+	static constexpr VpProfileProperties ProfileProperties = {VP_KHR_ROADMAP_2022_NAME,
+	                                                          VP_KHR_ROADMAP_2022_SPEC_VERSION};
+
   private:
-	vk::raii::Context Context;
-	vk::raii::Instance Instance{VK_NULL_HANDLE};
-	// version 13 is minimum supported version
+	vk::Instance Instance{VK_NULL_HANDLE};
 	uint32 ApiVersion = vk::ApiVersion13;
 
 	std::vector<const char *> InstanceExtensions;
@@ -60,7 +63,7 @@ class FVulkanCore
 	void SelectDevice();
 
 #if WIND_VULKAN_VALIDATION
-	vk::raii::DebugUtilsMessengerEXT Messenger{VK_NULL_HANDLE};
+	vk::DebugUtilsMessengerEXT Messenger{VK_NULL_HANDLE};
 
 	void SetupDebugCallbacks();
 #endif

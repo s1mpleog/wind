@@ -1,11 +1,6 @@
 #include "VulkanWindows.hpp"
 
-#include "Vulkan/Core/Private/VulkanExtension.hpp"
-#include "Vulkan/Core/Private/VulkanGenericPlatform.h"
-
-#include <memory>
-
-void FVulkanPlatformWindows::GetInstanceExtensions(FVulkanInstanceExtensionArray &OutExtensions)
+void FVulkanPlatformWindows::GetInstanceExtensions(std::vector<const char *> &OutExtensions)
 {
-	OutExtensions.emplace_back(std::make_unique<FVulkanInstanceExtension>("VK_KHR_win32_surface", true));
+	OutExtensions.emplace_back("VK_KHR_win32_surface");
 }

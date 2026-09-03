@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.28)
 
 project(Wind
     VERSION 0.1.0
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
 set(CMAKE_CXX_STANDARD 26)
@@ -68,7 +68,7 @@ target_sources(wind
     PRIVATE
         Source/Main.cpp
         Source/Engine.cpp
-        Source/Vulkan/Core/Private/VulkanExtension.cpp
+        # Source/Vulkan/Core/Private/VulkanExtension.cpp
         Source/Vulkan/Core/Private/VulkanDevice.cpp
 
         Source/Platform/Window.cpp
@@ -120,11 +120,16 @@ target_link_libraries(wind
         spdlog::spdlog
         cpptrace::cpptrace
         glm::glm
+        volk
 
         Vulkan::Headers
         Vulkan::Vulkan
 
         GPUOpen::VulkanMemoryAllocator
+)
+
+target_compile_options(wind PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-include${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h>
 )
 
 target_precompile_headers(wind
@@ -151,6 +156,8 @@ target_compile_definitions(wind
     PRIVATE
         VULKAN_HPP_NO_EXCEPTIONS
         VULKAN_HPP_USE_STD_EXPECTED
+        VK_NO_PROTOTYPES
+        VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=0
         GLM_FORCE_DEPTH_ZERO_TO_ONE
         FMT_EXCEPTIONS=0
         SPDLOG_NO_EXCEPTIONS
