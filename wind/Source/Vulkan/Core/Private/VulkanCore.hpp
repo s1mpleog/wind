@@ -3,7 +3,6 @@
 #include "Vulkan/Core/Configuration.hpp"
 #include "vulkan/vulkan_profiles.hpp"
 
-#include <memory>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -35,7 +34,7 @@ class FVulkanCore
 
 	FVulkanDevice *GetDevice() WIND_NOEXCEPT
 	{
-		return Device.get();
+		return Device;
 	}
 
 	uint32 GetApiVersion() const
@@ -50,12 +49,13 @@ class FVulkanCore
 
   private:
 	vk::Instance Instance{VK_NULL_HANDLE};
+
 	uint32 ApiVersion = vk::ApiVersion13;
 
 	std::vector<const char *> InstanceExtensions;
 	std::vector<const char *> InstanceLayers;
 
-	std::unique_ptr<FVulkanDevice> Device;
+	FVulkanDevice *Device = nullptr;
 
 	FConfiguration Config = Default;
 
@@ -64,7 +64,7 @@ class FVulkanCore
 
 #if WIND_VULKAN_VALIDATION
 	vk::DebugUtilsMessengerEXT Messenger{VK_NULL_HANDLE};
-
 	void SetupDebugCallbacks();
+	void RemoveDebugCallbacks();
 #endif
 };

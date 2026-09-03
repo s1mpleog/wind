@@ -29,7 +29,7 @@ class FVulkanGenericPlatform
 	static void GetDeviceExtensions(std::vector<const char *> &OutExtensions);
 
 	static void CreateSurface(vk::SurfaceKHR *OutSurface);
-	static void DestroySurface(vk::raii::Instance &Instance, vk::SurfaceKHR Surface);
+	static void DestroySurface(const vk::Instance Instance, vk::SurfaceKHR Surface);
 
 	static void Present(vk::Queue Queue, vk::PresentInfoKHR &PresentInfo);
 

@@ -73,20 +73,22 @@ target_sources(wind
 
         Source/Platform/Window.cpp
 
-        Source/Vulkan/Core/Context.cpp
-        Source/Vulkan/Core/Instance.cpp
-        Source/Vulkan/Core/ValidationLayer.cpp
-        Source/Vulkan/Core/VulkanDevice.cpp
-        Source/Vulkan/Core/Swapchain.cpp
+        # Source/Vulkan/Core/Context.cpp
+        # Source/Vulkan/Core/Instance.cpp
+        # Source/Vulkan/Core/ValidationLayer.cpp
+        # Source/Vulkan/Core/VulkanDevice.cpp
+        # Source/Vulkan/Core/Swapchain.cpp
+
         Source/Vulkan/Core/Private/VulkanCore.cpp
         Source/Vulkan/Core/Private/VulkanDebug.cpp
         Source/Vulkan/Core/Private/VulkanQueue.cpp
         Source/Vulkan/Core/Private/VulkanSwapchain.cpp
+        Source/Vulkan/Core/Private/VulkanViewport.cpp
 
         Source/Vulkan/Frame/FrameContext.cpp
 
         Source/Vulkan/Graphics/Pipeline.cpp
-        Source/Vulkan/Renderer.cpp
+        # Source/Vulkan/Renderer.cpp
 
         Source/Vulkan/Memory/Allocator.cpp
 

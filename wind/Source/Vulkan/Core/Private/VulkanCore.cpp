@@ -9,7 +9,6 @@
 #include "vulkan/vulkan_core.h"
 
 #include <algorithm>
-#include <memory>
 #include <ranges>
 #include <vector>
 #include <vulkan/vulkan.hpp>
@@ -185,7 +184,7 @@ void FVulkanCore::CreateInstance()
 void FVulkanCore::SelectDevice()
 {
 	vk::PhysicalDevice PhysicalDevice = SelectPhysicalDevice(Instance, ProfileProperties);
-	Device = std::make_unique<FVulkanDevice>(PhysicalDevice);
+	Device = new FVulkanDevice(PhysicalDevice);
 }
 
 void FVulkanCore::Initialize() WIND_NOEXCEPT
@@ -195,6 +194,14 @@ void FVulkanCore::Initialize() WIND_NOEXCEPT
 
 FVulkanCore::~FVulkanCore()
 {
+	if (Device != nullptr)
+	{
+		Device->Destroy();
+		Device = nullptr;
+	}
+
+	RemoveDebugCallbacks();
+
 	if (Instance != VK_NULL_HANDLE)
 	{
 		Instance.destroy();

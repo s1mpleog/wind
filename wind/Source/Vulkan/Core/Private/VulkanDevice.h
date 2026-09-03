@@ -71,7 +71,9 @@ class FVulkanDevice
 	FVulkanDevice(FVulkanDevice &&) = default;
 	FVulkanDevice &operator=(FVulkanDevice &&) = default;
 
-	~FVulkanDevice();
+	// ~FVulkanDevice();
+
+	void Destroy();
 
 	void InitGpu() WIND_NOEXCEPT;
 
@@ -85,7 +87,7 @@ class FVulkanDevice
 		return Queues[(uint32)EVulkanQueueType::Transfer] != nullptr;
 	}
 
-	const std::vector<vk::QueueFamilyProperties> GetQueueFamilyProps() const
+	const std::vector<vk::QueueFamilyProperties2> GetQueueFamilyProps() const
 	{
 		return QueueFamilyProps;
 	}
@@ -137,7 +139,7 @@ class FVulkanDevice
 
   private:
 	// void CreateDevice(FVulkanDeviceExtensionArray &WindExtensions);
-	 void CreateDevice();
+	void CreateDevice();
 
 	FVulkanPhysicalDeviceFeatures PhysicalDeviceFeatures;
 	EGpuVendorId VendorId = EGpuVendorId::NotQueried;
@@ -148,7 +150,7 @@ class FVulkanDevice
 	vk::PhysicalDeviceIDProperties GpuIdProps;
 	VkPhysicalDeviceProperties GpuProps;
 
-	std::vector<vk::QueueFamilyProperties> QueueFamilyProps;
+	std::vector<vk::QueueFamilyProperties2> QueueFamilyProps;
 
 	vk::Device Device{VK_NULL_HANDLE};
 	vk::PhysicalDevice Gpu{VK_NULL_HANDLE};

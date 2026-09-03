@@ -9,10 +9,10 @@ class FVulkanPlatformLinux : public FVulkanGenericPlatform
 	static void GetInstanceExtensions(std::vector<const char *> &OutExtensions);
 	static void GetDeviceExtensions(std::vector<const char *> &OutExtensions);
 
-	static void CreateSurface(FVulkanGenericPlatformWindowContext &WindowContext, const vk::raii::Instance &Instance,
+	static void CreateSurface(FVulkanGenericPlatformWindowContext &WindowContext, vk::Instance Instance,
 	                          vk::SurfaceKHR *OutSurface);
 
-	static void DestroySurface(vk::raii::Instance &Instance, vk::SurfaceKHR Surface);
+	static void DestroySurface(const vk::Instance Instance, vk::SurfaceKHR Surface);
 };
 
 typedef FVulkanPlatformLinux FVulkanPlatform;

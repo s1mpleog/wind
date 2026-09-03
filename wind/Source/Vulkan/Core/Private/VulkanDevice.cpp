@@ -1,8 +1,6 @@
 #include "VulkanDevice.h"
 
 #include "Check.hpp"
-#include "Vulkan/Core/Private/VulkanExtension.hpp"
-#include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "Vulkan/Core/Private/VulkanQueue.hpp"
 #include "Vulkan/Core/Public/Definitions.hpp"
 #include "spdlog/spdlog.h"
@@ -58,7 +56,7 @@ void FVulkanDevice::CreateDevice()
 	std::optional<uint32> GraphicsFamilyIndex;
 	std::optional<uint32> TransferFamilyIndex;
 
-	float QueuePriorites = 1.0F;
+	const float QueuePriorites = 1.0F;
 
 	WIND_LOG(info, "Found {} Queue Families", QueueFamilyProps.size());
 
@@ -66,9 +64,9 @@ void FVulkanDevice::CreateDevice()
 	{
 		bool bIsValidQueue = false;
 
-		const vk::QueueFamilyProperties &CurrProps = QueueFamilyProps[FamilyIndex];
+		const vk::QueueFamilyProperties2 &CurrProps = QueueFamilyProps[FamilyIndex];
 
-		if (CurrProps.queueFlags & vk::QueueFlagBits::eGraphics)
+		if (CurrProps.queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics)
 		{
 			if (!GraphicsFamilyIndex)
 			{
@@ -77,10 +75,10 @@ void FVulkanDevice::CreateDevice()
 			}
 		}
 
-		if (CurrProps.queueFlags & vk::QueueFlagBits::eTransfer)
+		if (CurrProps.queueFamilyProperties.queueFlags & vk::QueueFlagBits::eTransfer)
 		{
-			if (!TransferFamilyIndex && !(CurrProps.queueFlags & vk::QueueFlagBits::eGraphics) &&
-			    !(CurrProps.queueFlags & vk::QueueFlagBits::eCompute))
+			if (!TransferFamilyIndex && !(CurrProps.queueFamilyProperties.queueFlags & vk::QueueFlagBits::eGraphics) &&
+			    !(CurrProps.queueFamilyProperties.queueFlags & vk::QueueFlagBits::eCompute))
 			{
 				TransferFamilyIndex = FamilyIndex;
 				bIsValidQueue = true;
@@ -92,8 +90,9 @@ void FVulkanDevice::CreateDevice()
 			continue;
 		}
 
-		QueueFamilyInfos.emplace_back(vk::DeviceQueueCreateFlags{}, FamilyIndex, CurrProps.queueCount, &QueuePriorites,
-		                              nullptr);
+		// TODO: for now just use one queue from queue families later if need multiple queues then update
+		// queueCount to CurrProps.queueCount
+		QueueFamilyInfos.emplace_back(vk::DeviceQueueCreateFlags{}, FamilyIndex, 1, &QueuePriorites, nullptr);
 	}
 
 	CHECK(!GraphicsFamilyIndex.value(), "Failed to find graphics queue for engine we need graphics queue for rendering "
@@ -134,43 +133,16 @@ void FVulkanDevice::CreateDevice()
 
 void FVulkanDevice::InitGpu() WIND_NOEXCEPT
 {
-	QueueFamilyProps = Gpu.getQueueFamilyProperties();
+	QueueFamilyProps = Gpu.getQueueFamilyProperties2();
 	CHECK(QueueFamilyProps.size() >= 1, "Vulkan return zero queues this should not happen on normal GPU");
 
 	// TODO: later take version from somewhere else
 	PhysicalDeviceFeatures.Query(Gpu, vk::ApiVersion13);
 
-	// FVulkanDeviceExtensionArray WindExtensions =
-	//     FVulkanDeviceExtension::GetWindSupportedDeviceExtensions(this, vk::ApiVersion13);
-
-	// TODO: setup device layers
-
-	// vk::PhysicalDeviceFeatures2 PhysicalDeviceFeatures2 = Gpu.getFeatures2();
-
-	// for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
-	// {
-	// 	if (WindExtension->InUse())
-	// 	{
-	// 		WindExtension->PrePhysicalDeviceFeatures(PhysicalDeviceFeatures2);
-	// 	}
-	// }
-
-	// Gpu.getFeatures2(&PhysicalDeviceFeatures2);
-
-	// for (std::unique_ptr<FVulkanDeviceExtension> &WindExtension : WindExtensions)
-	// {
-	// 	if (WindExtension->InUse())
-	// 	{
-	// 		WindExtension->PostPhysicalDeviceFeatures(OptionalDeviceExtensions);
-	// 	}
-	// }
-
-	// we don't need any device properties for now
-
 	CreateDevice();
 }
 
-FVulkanDevice::~FVulkanDevice()
+void FVulkanDevice::Destroy()
 {
 	if (Device != VK_NULL_HANDLE)
 	{

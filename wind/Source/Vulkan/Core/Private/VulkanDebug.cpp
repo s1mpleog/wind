@@ -1,7 +1,6 @@
 #include "Core/Public/Check.hpp"
 #include "Vulkan/Types.hpp"
 #include "VulkanCore.hpp"
-#include "vulkan/vulkan_raii.hpp"
 
 #include <algorithm>
 #include <vulkan/vulkan.hpp>
@@ -40,4 +39,15 @@ void FVulkanCore::SetupDebugCallbacks()
 
 		Messenger = std::move(MessengerResult.value());
 	}
+}
+
+void FVulkanCore::RemoveDebugCallbacks()
+{
+#ifdef WIND_VULKAN_VALIDATION
+	if (Messenger != VK_NULL_HANDLE)
+	{
+		Instance.destroyDebugUtilsMessengerEXT();
+		Messenger = VK_NULL_HANDLE;
+	}
+#endif
 }
