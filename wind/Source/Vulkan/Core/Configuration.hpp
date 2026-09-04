@@ -52,7 +52,7 @@ struct FConfiguration
 	EVulkanVersion ApiVersion{EVulkanVersion::VERSION14};
 	bool Vsync{true};
 	EBuffering Buffering{EBuffering::DoubleBuffering};
-	std::string_view AppName;
+	std::string_view AppName{"Wind"};
 	std::string_view EngineName{"NoEngine"};
 	EDebugMessageSeverity DebugMessageSeverity{EDebugMessageSeverity::Error};
 	EDebugMessageType DebugMessageType{EDebugMessageType::General};

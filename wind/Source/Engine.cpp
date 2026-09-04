@@ -1,5 +1,6 @@
 #include "Engine.hpp"
 
+#include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "Vulkan/Core/Private/VulkanSwapchain.hpp"
 
@@ -27,76 +28,37 @@
 
 #include <SDL3/SDL_timer.h>
 #include <X11/X.h>
-#include <memory>
 #include <spdlog/spdlog.h>
-#include <vector>
 
-// WIND_NODISCARD auto FUEngine::Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
-//     -> TWindResult<FUEngine>
-// {
-// #ifdef WIND_LOG_ENABLE
-// 	spdlog::info("initializing Engine...");
-// #endif
-
-// 	auto Window = FUWindow{std::move(WindowCfg)};
-// 	WIND_TRY_VOID(Window.Create());
-
-// 	auto InputManager = std::make_unique<FUInputManger>(FUInputManger{});
-// 	FUServiceLocator::Provide(InputManager.get());
-
-// 	auto VulkanContext = std::make_unique<FVulkanContext>(WIND_TRY(CreateContext(Window, VulkanCfg)));
-
-// 	auto ResourceManager =
-// 	    std::make_unique<FUResourceManager>(WIND_TRY(FUResourceManager::Create(VulkanContext.get())));
-
-// 	auto PipelineManager = std::make_unique<FUPipelineManager>(FUPipelineManager{});
-
-// 	// load all the models and pipelines
-// 	auto Assets = WIND_TRY(Build(ResourceManager.get(), PipelineManager.get(), VulkanContext->GpuDevice.Device));
-
-// 	FUScene Scene{};
-
-// 	for (const auto &Asset : Assets)
-// 	{
-// 		Scene.AddRenderObjects(Asset, Asset.IsModel);
-// 	}
-
-// 	auto Renderer = WIND_TRY(
-// 	    FRenderer::Create(VulkanCfg, Window, VulkanContext.get(), ResourceManager.get(), PipelineManager.get()));
-
-// #ifdef WIND_LOG_ENABLE
-// 	spdlog::info("Engine created successfully");
-// #endif
-
-// 	return FUEngine(std::move(Window), std::move(VulkanContext), std::move(Renderer), std::move(InputManager),
-// 	                std::move(ResourceManager), std::move(PipelineManager), std::move(Scene));
-// }
-
-FEngine::FEngine(FConfiguration VulkanConfig, void *handle) : Core(VulkanConfig)
+FEngine::FEngine(FConfiguration VulkanConfig, FGenericWindowParams InWindowParams)
+    : Window(InWindowParams), Core(VulkanConfig)
 {
+}
+
+void FEngine::Initialize()
+{
+	Window.Initialize();
 	Core.Initialize();
 
 	FVulkanSwapChain Swapchain{Core};
 
 	uint32 DesiredImageCount = 3;
 
-	FVulkanGenericPlatformWindowContext Context(static_cast<SDL_Window *>(handle));
+	FVulkanGenericPlatformWindowContext Context(Window.GetOSWindowHandle());
 
 	Swapchain.Create(Context, 400, 600, &DesiredImageCount, nullptr);
 
 	Swapchain.Destroy(nullptr);
-
-	// uint32 MinImageCount = 3;
-	// std::vector<vk::Image> Images;
-
-	// auto swapchain =
-	//     FVulkanSwapChain::Create(Core.GetInstance(), *Core.GetDevice(), 200, 400, &MinImageCount, Images, Context,
-	//     {});
 }
 
-auto FEngine::Run() WIND_NOEXCEPT -> void
+void FEngine::Run() WIND_NOEXCEPT
 {
 	return;
+}
+
+void FEngine::Destroy()
+{
+	Window.Destroy();
 }
 
 // auto FUEngine::Run() WIND_NOEXCEPT -> TWindResult<void>

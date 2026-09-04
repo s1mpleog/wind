@@ -1,19 +1,16 @@
 #pragma once
 
-#include "Check.hpp"
+#include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
+#include "ApplicationCore/Public/LinuxWindow.hpp"
 #include "Config.hpp"
 // #include "Input/InputManager.hpp"
-#include "Platform/Window.hpp"
 // #include "Resources/ResourceManager.hpp"
 // #include "Scene/Scene.hpp"
-#include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
 // #include "Vulkan/Core/Context.hpp"
 #include "Vulkan/Core/Private/VulkanCore.hpp"
 // #include "Vulkan/Graphics/PipelineManager.hpp"
 // #include "Vulkan/Renderer.hpp"
-
-#include <memory>
 
 class FEngine
 {
@@ -24,35 +21,17 @@ class FEngine
 	FEngine(FEngine &&) noexcept = default;
 	auto operator=(FEngine &&) noexcept -> FEngine & = default;
 
-	static FUWindow test()
-	{
-		auto cfg = FWindowConfiguration{.Name = "test", .Width = 400, .Height = 200};
+	FEngine(FConfiguration VulkanConfig, FGenericWindowParams InWindowParams);
 
-		auto Window = FUWindow{cfg};
-		if (!Window.Create())
-		{
-			WIND_LOG(info, "Failed to create window");
-		}
+	void Initialize();
 
-		return Window;
-	}
+	void Run() WIND_NOEXCEPT;
 
-	FEngine(FConfiguration VulkanConfig, void *handle);
-
-	WIND_NODISCARD static auto Create(FWindowConfiguration WindowCfg, FConfiguration VulkanCfg) WIND_NOEXCEPT
-	    -> TWindResult<FEngine>;
-
-	auto Run() WIND_NOEXCEPT -> void;
+	void Destroy();
 
   private:
-	//  FEngine(FUWindow Window, std::unique_ptr<FVulkanContext> Context, FRenderer Renderer,
-	//          std::unique_ptr<FUInputManger> InputManager, std::unique_ptr<FUResourceManager> ResourceManager,
-	//          std::unique_ptr<FUPipelineManager> PipelineManager, FUScene Scene)
-	//     : MWindow{std::move(Window)}, MVulkanContext{std::move(Context)}, MRenderer{std::move(Renderer)},
-	//       MPipelineManager{std::move(PipelineManager)}, MResourceManager{std::move(ResourceManager)},
-	//       MInputManager{std::move(InputManager)}, MScene{std::move(Scene)} {};
-
-	// FUWindow MWindow;
+	// TODO: for now just use core type later add unique ptr and use generic platform instead
+	FLinuxWindow Window;
 	FVulkanCore Core;
 	// std::unique_ptr<FVulkanContext> MVulkanContext;
 	// FRenderer MRenderer;

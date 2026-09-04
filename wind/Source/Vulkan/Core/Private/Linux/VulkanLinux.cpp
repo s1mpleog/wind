@@ -5,13 +5,11 @@
 #include "SDL3/SDL_error.h"
 #include "SDL3/SDL_video.h"
 #include "SDL3/SDL_vulkan.h"
-#include "Vulkan/Core/Private/VulkanExtension.hpp"
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "vulkan/vulkan.hpp"
 #include "vulkan/vulkan_core.h"
 
 #include <cstring>
-#include <memory>
 
 void FVulkanPlatformLinux::GetInstanceExtensions(std::vector<const char *> &OutExtensions)
 {

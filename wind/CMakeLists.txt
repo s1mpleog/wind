@@ -72,6 +72,8 @@ target_sources(wind
         Source/Vulkan/Core/Private/VulkanDevice.cpp
 
         Source/Platform/Window.cpp
+        Source/ApplicationCore/Private/GenericPlatform/GenericWindow.cpp
+        Source/ApplicationCore/Public/LinuxWindow.cpp
 
         # Source/Vulkan/Core/Context.cpp
         # Source/Vulkan/Core/Instance.cpp

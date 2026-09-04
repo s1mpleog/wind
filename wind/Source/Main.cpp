@@ -1,5 +1,5 @@
+#include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "Engine.hpp"
-#include "Platform/Window.hpp"
 #include "Types.hpp"
 #include "Vulkan/Core/Configuration.hpp"
 
@@ -8,24 +8,17 @@
 
 auto main() -> int32
 {
-	constexpr uint16 WindowWidth = 1280;
-	constexpr uint16 WindowHeight = 720;
-
-	auto WindowCfg = FWindowConfiguration{.Name = "Wind", .Width = WindowWidth, .Height = WindowHeight};
 	auto VulkanCfg = Default;
-	VulkanCfg.AppName = "Wind";
 
-	auto window = FEngine::test();
+	FGenericWindowParams WindowParams{.Width = 1280, .Height = 720, .Title = "Wind"};
 
-	FEngine WindEngine = {std::move(VulkanCfg), window.Handle()};
+	FEngine WindEngine = {std::move(VulkanCfg), WindowParams};
 
-	// if (!Engine)
-	// {
-	// 	spdlog::error("{}", Engine.error().to_string());
-	// 	return EXIT_FAILURE;
-	// }
+	WindEngine.Initialize();
 
 	WindEngine.Run();
+
+	WindEngine.Destroy();
 
 	return EXIT_SUCCESS;
 }

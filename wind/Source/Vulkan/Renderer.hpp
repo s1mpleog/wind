@@ -7,6 +7,7 @@
 #include "Utils/ExpectedUtil.hpp"
 #include "Vulkan/Core/Configuration.hpp"
 #include "Vulkan/Core/Context.hpp"
+#include "Vulkan/Core/Private/VulkanSwapchain.hpp"
 #include "Vulkan/Core/Swapchain.hpp"
 #include "Vulkan/Frame/FrameContext.hpp"
 #include "Vulkan/Graphics/PipelineManager.hpp"
@@ -46,6 +47,9 @@ class FRenderer
 	// can cmd buffer be const ?
 	auto SetupViewport(vk::raii::CommandBuffer &CmdBuffer) const WIND_NOEXCEPT -> void;
 
+  public:
+	FRenderer();
+
   private:
 	FRenderer(FConfiguration Cfg, const FVulkanContext *Context, FSwapchainContext SwapchainContext,
 	          std::vector<FFRameContext> FrameContext, FUResourceManager *ResourceManager,
@@ -56,6 +60,9 @@ class FRenderer
 
 	FConfiguration Config;
 	const FVulkanContext *Context;
+
+	// FVulkanSwapChain SwapChain;
+
 	FSwapchainContext SwapchainContext;
 	std::vector<FFRameContext> FrameContext;
 	FUPipelineManager *PipelineManager;

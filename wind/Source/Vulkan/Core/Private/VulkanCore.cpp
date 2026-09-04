@@ -103,7 +103,6 @@ FVulkanCore::FVulkanCore(FConfiguration &InConfig) : Instance(VK_NULL_HANDLE), D
 
 void FVulkanCore::CreateInstance()
 {
-
 	vk::ApplicationInfo AppInfo{};
 	AppInfo.applicationVersion = vk::makeVersion(0, 1, 0);
 	AppInfo.pApplicationName = "Wind";
@@ -192,6 +191,7 @@ void FVulkanCore::Initialize() WIND_NOEXCEPT
 	Device->InitGpu();
 }
 
+// TODO: use Destroy() instead
 FVulkanCore::~FVulkanCore()
 {
 	if (Device != nullptr)
@@ -206,4 +206,6 @@ FVulkanCore::~FVulkanCore()
 	{
 		Instance.destroy();
 	}
+
+	volkFinalize();
 }
