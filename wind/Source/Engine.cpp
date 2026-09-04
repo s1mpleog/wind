@@ -76,7 +76,15 @@ FEngine::FEngine(FConfiguration VulkanConfig, void *handle) : Core(VulkanConfig)
 {
 	Core.Initialize();
 
-	// FVulkanGenericPlatformWindowContext Context(static_cast<SDL_Window *>(handle));
+	FVulkanSwapChain Swapchain{Core};
+
+	uint32 DesiredImageCount = 3;
+
+	FVulkanGenericPlatformWindowContext Context(static_cast<SDL_Window *>(handle));
+
+	Swapchain.Create(Context, 400, 600, &DesiredImageCount, nullptr);
+
+	Swapchain.Destroy(nullptr);
 
 	// uint32 MinImageCount = 3;
 	// std::vector<vk::Image> Images;

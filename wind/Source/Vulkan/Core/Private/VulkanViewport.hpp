@@ -7,6 +7,7 @@
 class FVulkanSwapChain;
 class FVulkanDevice;
 struct FVulkanSwapchainRecreateInfo;
+class FVulkanCore;
 
 class FVulkanViewport
 {
@@ -40,4 +41,6 @@ class FVulkanViewport
 	uint32 SizeY{};
 	FVulkanSwapChain *SwapChain;
 	std::inplace_vector<vk::Image, NumRequestedSwapChainImages> Images;
+
+	friend class FVulkanCore;
 };

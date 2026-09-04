@@ -53,10 +53,16 @@ void FVulkanPlatformLinux::GetInstanceExtensions(std::vector<const char *> &OutE
 	      "wayland only and having issues then try setting `export SDL_VIDEODRIVER=wayland` and run again");
 }
 
+void FVulkanPlatformLinux::GetDeviceExtensions(std::vector<const char *> &OutExtensions)
+{
+}
+
 void FVulkanPlatformLinux::CreateSurface(FVulkanGenericPlatformWindowContext &WindowContext, vk::Instance Instance,
                                          vk::SurfaceKHR *OutSurface)
 {
 	// TODO: ensure sdl is init
+
+	WIND_LOG(info, "{}", WindowContext.GetWindowHandle());
 
 	WIND_ASSERT(WindowContext.GetWindowHandle() != nullptr &&
 	            "Trying to create surface but WindowContext handle is nullptr");
@@ -79,10 +85,5 @@ void FVulkanPlatformLinux::DestroySurface(const vk::Instance Instance, vk::Surfa
 {
 	WIND_ASSERT(Surface != nullptr && "Cannot destroy surface because it's null");
 
-	PFN_vkDestroySurfaceKHR DestroySurface = (PFN_vkDestroySurfaceKHR)*Instance.getProcAddr("vkDestroySurfaceKHR");
-
-	if (DestroySurface)
-	{
-		Instance.destroySurfaceKHR(Surface);
-	}
+	Instance.destroySurfaceKHR(Surface);
 }

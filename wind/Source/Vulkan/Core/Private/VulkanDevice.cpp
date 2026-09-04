@@ -1,6 +1,7 @@
 #include "VulkanDevice.h"
 
 #include "Check.hpp"
+#include "Vulkan/Core/Private/VulkanExtension.hpp"
 #include "Vulkan/Core/Private/VulkanQueue.hpp"
 #include "Vulkan/Core/Public/Definitions.hpp"
 #include "spdlog/spdlog.h"
@@ -100,6 +101,11 @@ void FVulkanDevice::CreateDevice()
 
 	DeviceInfo.queueCreateInfoCount = QueueFamilyInfos.size();
 	DeviceInfo.pQueueCreateInfos = QueueFamilyInfos.data();
+
+	std::vector<const char *> WindDeviceExtensions = GetWindDeviceExtensions();
+
+	DeviceInfo.enabledExtensionCount = WindDeviceExtensions.size();
+	DeviceInfo.ppEnabledExtensionNames = WindDeviceExtensions.data();
 
 	vk::ResultValueType<vk::Device>::type DeviceResult = Gpu.createDevice(DeviceInfo);
 

@@ -16,6 +16,11 @@ class FVulkanCore
 	FVulkanCore(FConfiguration &InConfig);
 	~FVulkanCore();
 
+	FVulkanCore Get()
+	{
+		return *this;
+	}
+
 	// TODO: maybe prefer span
 	const std::vector<const char *> &GetInstanceExtensions() const WIND_NOEXCEPT
 	{

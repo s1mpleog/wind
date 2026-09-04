@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
-#include "vulkan/vulkan_raii.hpp"
 
 class FVulkanPlatformLinux : public FVulkanGenericPlatform
 {
