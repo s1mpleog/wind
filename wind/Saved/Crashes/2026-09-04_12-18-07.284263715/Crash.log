@@ -1,3 +1,0 @@
-[2026-09-04 17:48:07] [critical] FATAL @ /home/simple_xyz/dev/cpp/vulkan/wind-engine/wind-src/wind/Source/Vulkan/Core/Private/VulkanCore.cpp:163
-  expr : 
-  error: Note the `VK_LAYER_KHRONOS_validation` was requested during Instance creation but vulkan did not found it try disabling `WIND_VULKAN_VALIDATION` if you don't want validation layer debugging

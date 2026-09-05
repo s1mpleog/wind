@@ -155,7 +155,8 @@ class FVulkanDevice
 	vk::Device Device{VK_NULL_HANDLE};
 	vk::PhysicalDevice Gpu{VK_NULL_HANDLE};
 
-	std::inplace_vector<std::unique_ptr<FVulkanQueue>, (uint32)EVulkanQueueType::Count> Queues;
+	// std::inplace_vector<std::unique_ptr<FVulkanQueue>, (uint32)EVulkanQueueType::Count> Queues;
+	std::array<std::unique_ptr<FVulkanQueue>, (uint32)EVulkanQueueType::Count> Queues;
 	FVulkanQueue *PresentQueue = nullptr;
 
 	std::vector<const char *> DeviceExtensions;

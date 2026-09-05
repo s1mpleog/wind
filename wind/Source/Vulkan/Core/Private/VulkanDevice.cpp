@@ -123,8 +123,6 @@ void FVulkanDevice::CreateDevice()
 
 	WIND_LOG(info, "Logical Device Created Successfully");
 
-	Queues.resize((uint32)EVulkanQueueType::Count);
-
 	// we are sure that graphics queue will exist
 	Queues[(uint32)EVulkanQueueType::Graphics] =
 	    std::make_unique<FVulkanQueue>(*this, GraphicsFamilyIndex.value(), EVulkanQueueType::Graphics);

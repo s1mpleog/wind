@@ -5,7 +5,17 @@ project(Wind
     LANGUAGES C CXX
 )
 
-set(CMAKE_CXX_STANDARD 26)
+if (MSVC)
+  set(CMAKE_CXX_STANDARD 23)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+
+  add_compile_options(/std:c++latest)
+else()
+  set(CMAKE_CXX_STANDARD 26)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -59,8 +69,23 @@ target_link_libraries(WindCore
         spdlog::spdlog
 )
 
-target_compile_options(WindCore PRIVATE -fno-exceptions)
-target_compile_definitions(WindCore PRIVATE SPDLOG_NO_EXCEPTIONS)
+if(MSVC)
+  target_compile_options(WindCore
+        PRIVATE
+            /W4
+            /permissive-
+            /EHs-c-
+)
+
+else()
+  target_compile_options(WindCore
+        PRIVATE
+           -fno-exceptions
+           # SPDLOG_NO_EXCEPTIONS
+           -DSPDLOG_NO_EXCEPTIONS=ON
+)
+
+endif()
 
 add_executable(wind)
 
@@ -71,7 +96,7 @@ target_sources(wind
         # Source/Vulkan/Core/Private/VulkanExtension.cpp
         Source/Vulkan/Core/Private/VulkanDevice.cpp
 
-        Source/Platform/Window.cpp
+        #Source/Platform/Window.cpp
         Source/ApplicationCore/Private/GenericPlatform/GenericWindow.cpp
         Source/ApplicationCore/Public/LinuxWindow.cpp
 
@@ -85,23 +110,23 @@ target_sources(wind
         Source/Vulkan/Core/Private/VulkanDebug.cpp
         Source/Vulkan/Core/Private/VulkanQueue.cpp
         Source/Vulkan/Core/Private/VulkanSwapchain.cpp
-        Source/Vulkan/Core/Private/VulkanViewport.cpp
+        #Source/Vulkan/Core/Private/VulkanViewport.cpp
         Source/Vulkan/Core/Private/VulkanSynchronization.cpp
 
-        Source/Vulkan/Frame/FrameContext.cpp
+       # Source/Vulkan/Frame/FrameContext.cpp
 
-        Source/Vulkan/Graphics/Pipeline.cpp
+      #  Source/Vulkan/Graphics/Pipeline.cpp
         # Source/Vulkan/Renderer.cpp
 
-        Source/Vulkan/Memory/Allocator.cpp
+        #Source/Vulkan/Memory/Allocator.cpp
 
-        Source/Resources/ResourceManager.cpp
-        Source/Resources/DescriptorManager.cpp
-        Source/Resources/Builtin.cpp
+       # Source/Resources/ResourceManager.cpp
+       # Source/Resources/DescriptorManager.cpp
+       # Source/Resources/Builtin.cpp
 
-        Source/Input/InputManager.cpp
+       # Source/Input/InputManager.cpp
 
-        Source/Scene/Scene.cpp
+       # Source/Scene/Scene.cpp
 
         Source/VmaImpl.cpp
 )
@@ -133,9 +158,20 @@ target_link_libraries(wind
         GPUOpen::VulkanMemoryAllocator
 )
 
-target_compile_options(wind PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:-include${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h>
-)
+if(MSVC)
+  target_compile_options(wind PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            /FI${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+else()
+  target_compile_options(wind PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            -include${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+endif()
+
 
 target_precompile_headers(wind
     PRIVATE
@@ -148,14 +184,22 @@ target_precompile_headers(wind
         "${CMAKE_CURRENT_SOURCE_DIR}/Source/Utils/ExpectedUtil.hpp"
 )
 
-target_compile_options(wind
-    PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        -fno-exceptions
-        -Wno-gnu-statement-expression-from-macro-expansion
-)
+if(MSVC)
+  target_compile_options(wind
+        PRIVATE
+            /W4
+            /permissive-
+            /EHs-c-
+    )
+else()
+  target_compile_options(wind
+        PRIVATE
+            -Wall
+            -Wextra
+            -Wpedantic
+            -fno-exceptions
+    )
+endif()
 
 target_compile_definitions(wind
     PRIVATE
@@ -165,7 +209,7 @@ target_compile_definitions(wind
         VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=0
         GLM_FORCE_DEPTH_ZERO_TO_ONE
         FMT_EXCEPTIONS=0
-        SPDLOG_NO_EXCEPTIONS
+        -DSPDLOG_NO_EXCEPTIONS=ON
 )
 
 if(WIN32)

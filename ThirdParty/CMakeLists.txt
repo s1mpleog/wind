@@ -25,7 +25,9 @@ add_library(volk STATIC
 
 target_include_directories(volk PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/volk
+    ${CMAKE_CURRENT_SOURCE_DIR}/Vulkan/include
 )
+
 
 # target_compile_definitions(volk PUBLIC
 #     VK_NO_PROTOTYPES
