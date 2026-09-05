@@ -1,8 +1,10 @@
 #include "Engine.hpp"
 
 #include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
+#include "Check.hpp"
 #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
 #include "Vulkan/Core/Private/VulkanSwapchain.hpp"
+#include "Vulkan/Core/Private/VulkanSynchronization.hpp"
 
 // #include "Check.hpp"
 // #include "Core/ServiceLocator.hpp"
@@ -47,6 +49,18 @@ void FEngine::Initialize()
 	FVulkanGenericPlatformWindowContext Context(Window.GetOSWindowHandle());
 
 	Swapchain.Create(Context, 400, 600, &DesiredImageCount, nullptr);
+
+	FVulkanFence Fence{*Core.GetDevice()};
+
+	Fence.Create(true);
+
+	FVulkanSemaphore Semaphore{*Core.GetDevice()};
+
+	WIND_LOG(info, "Created semaphore {}", (void *)Semaphore.GetHandle());
+
+	Fence.Destroy();
+
+	Semaphore.Destroy();
 
 	Swapchain.Destroy(nullptr);
 }

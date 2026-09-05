@@ -142,7 +142,7 @@ void FVulkanCore::CreateInstance()
 		      "additional information.");
 	}
 
-	if (InstanceResult == vk::Result::eErrorExtensionNotPresent)
+	if (InstanceResult == vk::Result::eErrorExtensionNotPresent) [[unlikely]]
 	{
 		const char *MissingExtensionName = nullptr;
 		for (const char *Extension : InstanceExtensions)
