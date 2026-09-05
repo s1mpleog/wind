@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_core.h>
 
+#ifdef WIND_VULKAN_VALIDATION
 static VKAPI_ATTR vk::Bool32 VKAPI_CALL
 DebugUtilsCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT MsgSeverity,
                    [[maybe_unused]] vk::DebugUtilsMessageTypeFlagsEXT MessageType,
@@ -43,11 +44,10 @@ void FVulkanCore::SetupDebugCallbacks()
 
 void FVulkanCore::RemoveDebugCallbacks()
 {
-#ifdef WIND_VULKAN_VALIDATION
 	if (Messenger != VK_NULL_HANDLE)
 	{
 		Instance.destroyDebugUtilsMessengerEXT();
 		Messenger = VK_NULL_HANDLE;
 	}
-#endif
 }
+#endif

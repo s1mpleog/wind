@@ -123,7 +123,7 @@ void FVulkanCore::CreateInstance()
 #ifdef WIND_VULKAN_VALIDATION
 	InstInfo.enabledLayerCount = 1;
 	InstInfo.ppEnabledLayerNames = &LayerName;
-#elif
+#else
 	InstInfo.enabledLayerCount = 0;
 	InstInfo.ppEnabledLayerNames = nullptr;
 #endif
@@ -200,7 +200,9 @@ FVulkanCore::~FVulkanCore()
 		Device = nullptr;
 	}
 
+#ifdef WIND_VULKAN_VALIDATION
 	RemoveDebugCallbacks();
+#endif
 
 	if (Instance != VK_NULL_HANDLE)
 	{

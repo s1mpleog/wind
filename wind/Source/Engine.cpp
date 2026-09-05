@@ -29,7 +29,6 @@
 // #include "vulkan/vulkan.hpp"
 
 #include <SDL3/SDL_timer.h>
-#include <X11/X.h>
 #include <spdlog/spdlog.h>
 
 FEngine::FEngine(FConfiguration VulkanConfig, FGenericWindowParams InWindowParams)
