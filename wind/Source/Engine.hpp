@@ -6,9 +6,9 @@
 // #include "Input/InputManager.hpp"
 // #include "Resources/ResourceManager.hpp"
 // #include "Scene/Scene.hpp"
-#include "Vulkan/Core/Configuration.hpp"
+#include "Vulkan/Public/Configuration.hpp"
 // #include "Vulkan/Core/Context.hpp"
-#include "Vulkan/Core/Private/VulkanCore.hpp"
+#include "Vulkan/Public/VulkanContext.hpp"
 // #include "Vulkan/Graphics/PipelineManager.hpp"
 // #include "Vulkan/Renderer.hpp"
 
@@ -32,7 +32,8 @@ class FEngine
   private:
 	// TODO: for now just use core type later add unique ptr and use generic platform instead
 	FLinuxWindow Window;
-	FVulkanCore Core;
+	// FVulkanCore Core;
+	FVulkanContextTest Context;
 	// std::unique_ptr<FVulkanContext> MVulkanContext;
 	// FRenderer MRenderer;
 	// std::unique_ptr<FUPipelineManager> MPipelineManager;

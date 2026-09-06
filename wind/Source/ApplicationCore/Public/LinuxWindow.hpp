@@ -1,8 +1,10 @@
 #pragma once
 
-#include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
+// #include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
+#include "GenericPlatform/GenericWindow.hpp"
 
 #include <SDL3/SDL.h>
+#include <utility>
 
 class FLinuxWindow : public FGenericWindow
 {
@@ -13,11 +15,11 @@ class FLinuxWindow : public FGenericWindow
 	FLinuxWindow(const FLinuxWindow &) = delete;
 	FLinuxWindow &operator=(const FLinuxWindow &) = delete;
 
-	FLinuxWindow(FLinuxWindow &&Other) WIND_NOEXCEPT : HWnd{std::exchange(Other.HWnd, nullptr)},
-	                                                   bIsSdlInit(std::exchange(Other.bIsSdlInit, false)),
-	                                                   WindowParams{std::move(Other.WindowParams)} {};
+	FLinuxWindow(FLinuxWindow &&Other) noexcept
+	    : HWnd{std::exchange(Other.HWnd, nullptr)}, bIsSdlInit(std::exchange(Other.bIsSdlInit, false)),
+	      WindowParams{std::move(Other.WindowParams)} {};
 
-	FLinuxWindow &operator=(FLinuxWindow &&Other) WIND_NOEXCEPT
+	FLinuxWindow &operator=(FLinuxWindow &&Other) noexcept
 	{
 		if (this != &Other)
 		{

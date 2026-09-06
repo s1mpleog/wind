@@ -1,7 +1,4 @@
-#include "CrashHandler.hpp"
-
-#include "Config.hpp"
-#include "Types.hpp"
+#include "Error.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -10,7 +7,7 @@
 #include <spdlog/spdlog.h>
 #include <string>
 
-WIND_INLINE std::filesystem::path MakeCrashDirctory() WIND_NOEXCEPT
+inline std::filesystem::path MakeCrashDirctory() noexcept
 {
 	auto Now = std::chrono::system_clock::now();
 	auto Ts = std::format("{:%Y-%m-%d_%H-%M-%S}", Now);
@@ -20,7 +17,7 @@ WIND_INLINE std::filesystem::path MakeCrashDirctory() WIND_NOEXCEPT
 	return Dir;
 }
 
-WIND_INLINE void WriteCrashLog(const std::filesystem::path &Directory, std::string_view Message) WIND_NOEXCEPT
+inline void WriteCrashLog(const std::filesystem::path &Directory, std::string_view Message) noexcept
 {
 	std::filesystem::path LogPath = Directory / "Crash.log";
 
@@ -34,7 +31,7 @@ WIND_INLINE void WriteCrashLog(const std::filesystem::path &Directory, std::stri
 	spdlog::critical("{}", Message);
 }
 
-void Fatal(std::string_view Expression, std::string_view Error, const char *File, uint32 Line) WIND_NOEXCEPT
+void Fatal(std::string_view Expression, std::string_view Error, const char *File, uint32_t Line) noexcept
 {
 	std::filesystem::path Directory = MakeCrashDirctory();
 	std::string Message = std::format("FATAL @ {}:{}\n  expr : {}\n  error: {}", File, Line, Expression, Error);

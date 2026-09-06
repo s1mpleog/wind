@@ -47,45 +47,16 @@ add_subdirectory(
 
 find_package(Vulkan REQUIRED)
 
-# Core library
-add_library(WindCore STATIC)
 
-target_sources(WindCore
-    PRIVATE
-        Source/Core/Private/CrashHandler.cpp
+list(APPEND CMAKE_MODULE_PATH
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake
 )
 
-target_include_directories(WindCore
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core/Public
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core/Private
-        ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core/Internal
-        ${CMAKE_CURRENT_SOURCE_DIR}/Source
-)
+include(WindTargetDefaults)
 
-target_link_libraries(WindCore
-    PUBLIC
-        spdlog::spdlog
-)
-
-if(MSVC)
-  target_compile_options(WindCore
-        PRIVATE
-            /W4
-            /permissive-
-            /EHs-c-
-)
-
-else()
-  target_compile_options(WindCore
-        PRIVATE
-           -fno-exceptions
-           # SPDLOG_NO_EXCEPTIONS
-           -DSPDLOG_NO_EXCEPTIONS=ON
-)
-
-endif()
+add_subdirectory(Source/Core)
+add_subdirectory(Source/ApplicationCore)
+add_subdirectory(Source/Vulkan)
 
 add_executable(wind)
 
@@ -93,67 +64,28 @@ target_sources(wind
     PRIVATE
         Source/Main.cpp
         Source/Engine.cpp
-        # Source/Vulkan/Core/Private/VulkanExtension.cpp
-        Source/Vulkan/Core/Private/VulkanDevice.cpp
-
-        #Source/Platform/Window.cpp
-        Source/ApplicationCore/Private/GenericPlatform/GenericWindow.cpp
-        Source/ApplicationCore/Public/LinuxWindow.cpp
-
-        # Source/Vulkan/Core/Context.cpp
-        # Source/Vulkan/Core/Instance.cpp
-        # Source/Vulkan/Core/ValidationLayer.cpp
-        # Source/Vulkan/Core/VulkanDevice.cpp
-        # Source/Vulkan/Core/Swapchain.cpp
-
-        Source/Vulkan/Core/Private/VulkanCore.cpp
-        Source/Vulkan/Core/Private/VulkanDebug.cpp
-        Source/Vulkan/Core/Private/VulkanQueue.cpp
-        Source/Vulkan/Core/Private/VulkanSwapchain.cpp
-        #Source/Vulkan/Core/Private/VulkanViewport.cpp
-        Source/Vulkan/Core/Private/VulkanSynchronization.cpp
-
-       # Source/Vulkan/Frame/FrameContext.cpp
-
-      #  Source/Vulkan/Graphics/Pipeline.cpp
-        # Source/Vulkan/Renderer.cpp
-
-        #Source/Vulkan/Memory/Allocator.cpp
-
-       # Source/Resources/ResourceManager.cpp
-       # Source/Resources/DescriptorManager.cpp
-       # Source/Resources/Builtin.cpp
-
-       # Source/Input/InputManager.cpp
-
-       # Source/Scene/Scene.cpp
 
         Source/VmaImpl.cpp
 )
 
-if(WIN32)
-  target_sources(wind PRIVATE Source/Vulkan/Core/Private/Windows/VulkanWindows.cpp)
-elseif(UNIX)
-  target_sources(wind PRIVATE Source/Vulkan/Core/Private/Linux/VulkanLinux.cpp)
-endif()
 
 target_include_directories(wind
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/Source
+        ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core
+        # ${CMAKE_CURRENT_SOURCE_DIR}/Source/Error.hpp
+        # ${CMAKE_CURRENT_SOURCE_DIR}/Source/Utils
+        # ${CMAKE_CURRENT_SOURCE_DIR}/Source/ApplicationCore
         ${CMAKE_BINARY_DIR}/generated
 )
 
 target_link_libraries(wind
     PRIVATE
         WindCore
-        SDL3::SDL3
+        WindVulkan
+        WindApplicationCore
         spdlog::spdlog
         cpptrace::cpptrace
         glm::glm
-        volk
-
-        Vulkan::Headers
-        Vulkan::Vulkan
 
         GPUOpen::VulkanMemoryAllocator
 )
@@ -172,7 +104,6 @@ else()
     )
 endif()
 
-
 target_precompile_headers(wind
     PRIVATE
         <vulkan/vulkan.hpp>
@@ -180,8 +111,8 @@ target_precompile_headers(wind
         <spdlog/spdlog.h>
         <ranges>
 
-        "${CMAKE_CURRENT_SOURCE_DIR}/Source/Config.hpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/Source/Utils/ExpectedUtil.hpp"
+        # "${CMAKE_CURRENT_SOURCE_DIR}/Source/Config.hpp"
+        # "${CMAKE_CURRENT_SOURCE_DIR}/Source/Utils/ExpectedUtil.hpp"
 )
 
 if(MSVC)
@@ -209,7 +140,7 @@ target_compile_definitions(wind
         VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=0
         GLM_FORCE_DEPTH_ZERO_TO_ONE
         FMT_EXCEPTIONS=0
-        -DSPDLOG_NO_EXCEPTIONS=ON
+        DSPDLOG_NO_EXCEPTIONS
 )
 
 if(WIN32)
@@ -220,19 +151,6 @@ if(WIN32)
     )
 endif()
 
-if(WIND_LOG_ENABLE)
-  target_compile_definitions(wind
-        PRIVATE
-            WIND_LOG_ENABLE
-    )
-endif()
-
-if(WIND_VALIDATION)
-  target_compile_definitions(wind
-        PRIVATE
-            WIND_VULKAN_VALIDATION
-    )
-endif()
 
 if(WIND_RENDERER_WARNINGS_AS_ERRORS)
   target_compile_options(wind

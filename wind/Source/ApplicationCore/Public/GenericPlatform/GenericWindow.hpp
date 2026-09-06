@@ -4,12 +4,12 @@
 // Generic window class that multiple platforms can inherit
 // =======================================================
 
-#include "Types.hpp"
+#include <cstdint>
 
 struct FGenericWindowParams
 {
-	uint32 Width;
-	uint32 Height;
+	uint32_t Width;
+	uint32_t Height;
 	const char *Title;
 };
 

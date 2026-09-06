@@ -1,0 +1,62 @@
+add_library(WindVulkan STATIC)
+
+wind_target_defaults(WindVulkan)
+
+if(MSVC)
+  target_compile_options(WindVulkan PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            /FI${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+else()
+  target_compile_options(WindVulkan PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            -include${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+endif()
+
+target_compile_definitions(WindVulkan
+    PRIVATE
+        VULKAN_HPP_NO_EXCEPTIONS
+        VULKAN_HPP_USE_STD_EXPECTED
+        VK_NO_PROTOTYPES
+        VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=0
+)
+
+target_sources(WindVulkan
+    PRIVATE
+        Private/VulkanCore.cpp
+        Private/VulkanDevice.cpp
+        Private/VulkanDebug.cpp
+        Private/VulkanQueue.cpp
+        Private/VulkanSwapchain.cpp
+        Private/VulkanSynchronization.cpp
+        Private/VulkanCommandBuffer.cpp
+        Private/VulkanContext.cpp
+)
+
+target_include_directories(WindVulkan
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/Public
+
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/Private
+)
+
+if(WIN32)
+  target_sources(WindVulkan PRIVATE Private/Windows/VulkanWindows.cpp)
+elseif(UNIX)
+  target_sources(WindVulkan PRIVATE Private/Linux/VulkanLinux.cpp)
+endif()
+
+target_link_libraries(WindVulkan
+    PUBLIC
+        Vulkan::Headers
+
+    PRIVATE
+        WindCore
+        Vulkan::Vulkan
+        volk
+        spdlog::spdlog
+)

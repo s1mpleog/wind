@@ -1,5 +1,5 @@
 
-#include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
+#include "GenericPlatform/GenericWindow.hpp"
 
 FGenericWindow::FGenericWindow()
 {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cassert>
+
 #define WIND_NOEXCEPT noexcept
 #define WIND_NODISCARD [[nodiscard]]
 #define WIND_ASSERT assert

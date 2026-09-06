@@ -1,7 +1,7 @@
 #include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "Engine.hpp"
 #include "Types.hpp"
-#include "Vulkan/Core/Configuration.hpp"
+#include "Vulkan/Public/Configuration.hpp"
 
 #include <cstdlib>
 #include <spdlog/spdlog.h>

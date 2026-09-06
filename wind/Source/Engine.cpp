@@ -2,9 +2,11 @@
 
 #include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "Check.hpp"
-#include "Vulkan/Core/Private/VulkanGenericPlatform.h"
-#include "Vulkan/Core/Private/VulkanSwapchain.hpp"
-#include "Vulkan/Core/Private/VulkanSynchronization.hpp"
+#include "Vulkan/Private/VulkanCommandBuffer.hpp"
+#include "Vulkan/Private/VulkanGenericPlatform.h"
+#include "Vulkan/Private/VulkanSwapchain.hpp"
+#include "Vulkan/Private/VulkanSynchronization.hpp"
+#include "Vulkan/Public/VulkanContext.hpp"
 
 // #include "Check.hpp"
 // #include "Core/ServiceLocator.hpp"
@@ -32,36 +34,44 @@
 #include <spdlog/spdlog.h>
 
 FEngine::FEngine(FConfiguration VulkanConfig, FGenericWindowParams InWindowParams)
-    : Window(InWindowParams), Core(VulkanConfig)
+    : Window(InWindowParams), Context(VulkanConfig)
 {
 }
 
 void FEngine::Initialize()
 {
 	Window.Initialize();
-	Core.Initialize();
+	// Core.Initialize();
 
-	FVulkanSwapChain Swapchain{Core};
+	Context.Initialize();
 
-	uint32 DesiredImageCount = 3;
+	// FVulkanSwapChain Swapchain{Core};
 
-	FVulkanGenericPlatformWindowContext Context(Window.GetOSWindowHandle());
+	// uint32 DesiredImageCount = 3;
 
-	Swapchain.Create(Context, 400, 600, &DesiredImageCount, nullptr);
+	// FVulkanGenericPlatformWindowContext Context(Window.GetOSWindowHandle());
 
-	FVulkanFence Fence{*Core.GetDevice()};
+	// {
+	// 	FVulkanCommandBufferPool *Pool = Core.GetDevice()->GetGraphicsQueue()->AcquireCommandBufferPool();
 
-	Fence.Create(true);
+	// 	Pool->GetHandle();
+	// }
 
-	FVulkanSemaphore Semaphore{*Core.GetDevice()};
+	// Swapchain.Create(Context, 400, 600, &DesiredImageCount, nullptr);
 
-	WIND_LOG(info, "Created semaphore {}", (void *)Semaphore.GetHandle());
+	// FVulkanFence Fence{*Core.GetDevice()};
 
-	Fence.Destroy();
+	// Fence.Create(true);
 
-	Semaphore.Destroy();
+	// FVulkanSemaphore Semaphore{*Core.GetDevice()};
 
-	Swapchain.Destroy(nullptr);
+	// WIND_LOG(info, "Created semaphore {}", (void *)Semaphore.GetHandle());
+
+	// Fence.Destroy();
+
+	// Semaphore.Destroy();
+
+	// Swapchain.Destroy(nullptr);
 }
 
 void FEngine::Run() WIND_NOEXCEPT
