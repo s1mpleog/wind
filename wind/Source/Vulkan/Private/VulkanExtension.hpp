@@ -1,8 +1,11 @@
 #pragma once
 
-// #include "Config.hpp"
+// TODO: better fix for this
+#if defined(_WIN32)
+#include "Windows/VulkanWindows.hpp"
+#elif defined(__linux__)
 #include "Linux/VulkanLinux.hpp"
-#include "vulkan/vulkan_core.h"
+#endif
 
 #include <vector>
 #include <vulkan/vulkan_core.h>

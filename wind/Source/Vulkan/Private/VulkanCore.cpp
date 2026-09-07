@@ -4,8 +4,6 @@
 #include "VulkanDevice.h"
 #include "VulkanExtension.hpp"
 #include "spdlog/spdlog.h"
-#include "vulkan/vulkan.hpp"
-#include "vulkan/vulkan_core.h"
 
 #include <algorithm>
 #include <ranges>

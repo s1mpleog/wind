@@ -1,7 +1,7 @@
 function(wind_target_defaults TARGET)
   target_compile_features(${TARGET}
         PRIVATE
-            cxx_std_26
+            #cxx_std_26
     )
 
   if(MSVC)

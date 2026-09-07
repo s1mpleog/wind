@@ -47,7 +47,6 @@ add_subdirectory(
 
 find_package(Vulkan REQUIRED)
 
-
 list(APPEND CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake
 )
@@ -60,6 +59,12 @@ add_subdirectory(Source/Vulkan)
 
 add_executable(wind)
 
+add_custom_command(TARGET wind POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:SDL3::SDL3>
+        $<TARGET_FILE_DIR:wind>
+)
+
 target_sources(wind
     PRIVATE
         Source/Main.cpp
@@ -68,13 +73,9 @@ target_sources(wind
         Source/VmaImpl.cpp
 )
 
-
 target_include_directories(wind
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core
-        # ${CMAKE_CURRENT_SOURCE_DIR}/Source/Error.hpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/Source/Utils
-        # ${CMAKE_CURRENT_SOURCE_DIR}/Source/ApplicationCore
         ${CMAKE_BINARY_DIR}/generated
 )
 
@@ -156,6 +157,13 @@ if(WIND_RENDERER_WARNINGS_AS_ERRORS)
   target_compile_options(wind
         PRIVATE
             -Werror
+    )
+endif()
+
+if(WIND_VALIDATION)
+    target_compile_definitions(wind
+        PRIVATE
+            WIND_VULKAN_VALIDATION
     )
 endif()
 

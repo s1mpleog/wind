@@ -19,6 +19,7 @@ target_include_directories(WindApplicationCore
 target_link_libraries(WindApplicationCore
     PRIVATE
         WindCore
-        SDL3::SDL3
         spdlog::spdlog
+     PUBLIC
+        SDL3::SDL3
 )

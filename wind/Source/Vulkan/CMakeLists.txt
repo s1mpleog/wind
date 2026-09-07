@@ -53,10 +53,11 @@ endif()
 target_link_libraries(WindVulkan
     PUBLIC
         Vulkan::Headers
+        SDL3::SDL3
 
     PRIVATE
         WindCore
-        Vulkan::Vulkan
+        #Vulkan::Vulkan
         volk
         spdlog::spdlog
 )

@@ -6,7 +6,6 @@
 #include "Definitions.hpp"
 #include "vulkan/vulkan.hpp"
 
-#include <inplace_vector>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan_core.h>
