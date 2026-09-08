@@ -2,7 +2,12 @@
 #include "VulkanSwapchain.hpp"
 
 #include "Check.hpp"
+// TODO: better fix for this
+#if defined(_WIN32)
+#include "Windows/VulkanWindows.hpp"
+#elif defined(__linux__)
 #include "Linux/VulkanLinux.hpp"
+#endif
 #include "VulkanCheck.hpp"
 #include "VulkanCore.hpp"
 #include "VulkanDevice.h"

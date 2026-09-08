@@ -1,7 +1,5 @@
 #pragma once
 
-// allocates cmd buffer
-// provides api for end, begin, reset, handle, destroy
 #include "vulkan/vulkan.hpp"
 #include "vulkan/vulkan_core.h"
 
@@ -11,6 +9,7 @@
 class FVulkanDevice;
 class FVulkanQueue;
 class FVulkanCommandBufferPool;
+class FVulkanContext;
 
 enum class EVulkanCommandBufferType : uint8_t
 {
@@ -42,6 +41,8 @@ class FVulkanCommandBuffer
 	FVulkanDevice &Device;
 	FVulkanCommandBufferPool &CommandBufferPool;
 	vk::CommandBuffer Handle = VK_NULL_HANDLE;
+
+	friend class FVulkanCommandBufferPool;
 };
 
 class FVulkanCommandBufferPool
@@ -64,4 +65,10 @@ class FVulkanCommandBufferPool
 	FVulkanDevice &Device;
 	FVulkanQueue &Queue;
 	vk::CommandPool Handle = VK_NULL_HANDLE;
+	std::vector<FVulkanCommandBuffer *> CmdBuffers;
+
+	FVulkanCommandBuffer *Create();
+
+	// todo: better way to do it ?
+	friend class FVulkanContext;
 };

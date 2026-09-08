@@ -33,7 +33,7 @@ class FEngine
 	// TODO: for now just use core type later add unique ptr and use generic platform instead
 	FLinuxWindow Window;
 	// FVulkanCore Core;
-	FVulkanContextTest Context;
+	FVulkanContext Context;
 	// std::unique_ptr<FVulkanContext> MVulkanContext;
 	// FRenderer MRenderer;
 	// std::unique_ptr<FUPipelineManager> MPipelineManager;

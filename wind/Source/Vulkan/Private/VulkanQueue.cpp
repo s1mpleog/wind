@@ -14,6 +14,8 @@ FVulkanQueue::FVulkanQueue(FVulkanDevice &InDevice, uint32_t InFamilyIndex, EVul
 	WIND_LOG(info, "Created queue type: {} index: {}", GetVulkanQueueTypeName(QueueType), FamilyIndex);
 };
 
+// FVulkanQueue owns FVulkanCommandBufferPool and FVulkanCommandBufferPool owns N FVulkanCommandBuffer
+// so each FVulkanQueue in FVulkanDevice have there own seperate cmd pool and cmd buffer
 FVulkanCommandBufferPool *FVulkanQueue::AcquireCommandBufferPool()
 {
 	if (CommandBufferPool != nullptr)

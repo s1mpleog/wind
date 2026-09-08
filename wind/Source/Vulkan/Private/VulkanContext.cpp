@@ -9,9 +9,14 @@
 
 #include <memory>
 
-FVulkanContextTest::FVulkanContextTest(FConfiguration InConfig) : Config(std::move(InConfig)) {};
+// provide a mechanism to create cmd buffers
+// provide a mechanism to create/recreate swapchain
+// provide a mechanism to create fence and semaphore
+// provide a mechanism to get swapchain images
 
-void FVulkanContextTest::Initialize()
+FVulkanContext::FVulkanContext(FConfiguration InConfig) : Config(std::move(InConfig)) {};
+
+void FVulkanContext::Initialize()
 {
 	CHECK(!bHasInitialized, "Vulkan Context is already initialized");
 
@@ -25,14 +30,55 @@ void FVulkanContextTest::Initialize()
 		// creates command pool
 		CommandBufferPool =
 		    std::make_unique<FVulkanCommandBufferPool>(*Core->GetDevice(), *Core->GetDevice()->GetGraphicsQueue());
+
+		auto cmd = CommandBufferPool->Create();
 	}
 }
 
-FVulkanContextTest::~FVulkanContextTest()
+FVulkanSwapChain *FVulkanContext::CreateSwapchain(FVulkanGenericPlatformWindowContext &InWindowContext,
+                                                  uint32_t InWidth, uint32_t InHeight, uint32_t *InDesiredImageCount)
+{
+	CHECK(bHasInitialized, "Vulkan Context is not initialized");
+
+	if (SwapChain != nullptr)
+	{
+		return SwapChain.get();
+	}
+
+	SwapChain = std::make_unique<FVulkanSwapChain>(*Core.get());
+	CHECK(SwapChain);
+
+	SwapChain->Create(InWindowContext, InWidth, InHeight, InDesiredImageCount, nullptr);
+
+	return SwapChain.get();
+}
+
+// FVulkanDevice *FVulkanContext::GetDevice() const
+//{
+//	return Core->GetDevice();
+// }
+//
+// vk::Instance FVulkanContext::GetInstance() const
+//{
+//	return Core->GetInstance();
+// }
+//
+// FVulkanQueue *FVulkanContext::GetGraphicsQueue() const
+//{
+//	return Core->GetDevice()->GetGraphicsQueue();
+// }
+
+FVulkanContext::~FVulkanContext()
 {
 	if (CommandBufferPool)
 	{
 		CommandBufferPool.reset();
+	}
+
+	if (SwapChain)
+	{
+		SwapChain->Destroy(nullptr);
+		SwapChain.reset();
 	}
 
 	if (Core)

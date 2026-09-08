@@ -2,33 +2,9 @@
 
 #include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "Check.hpp"
-#include "Vulkan/Private/VulkanCommandBuffer.hpp"
+#include "Renderer/Public/FrameContext.hpp"
 #include "Vulkan/Private/VulkanGenericPlatform.h"
-#include "Vulkan/Private/VulkanSwapchain.hpp"
-#include "Vulkan/Private/VulkanSynchronization.hpp"
 #include "Vulkan/Public/VulkanContext.hpp"
-
-// #include "Check.hpp"
-// #include "Core/ServiceLocator.hpp"
-// #include "Error.hpp"
-// #include "Input/InputManager.hpp"
-// #include "Platform/Window.hpp"
-// #include "Resources/Builtin.hpp"
-// #include "Resources/ResourceManager.hpp"
-// #include "SDL3/SDL_events.h"
-// #include "SDL3/SDL_video.h"
-// #include "Scene/RenderObject.hpp"
-// #include "Scene/Scene.hpp"
-// #include "Utils/ExpectedUtil.hpp"
-// #include "Vulkan/Core/Context.hpp"
-// #include "Vulkan/Core/Private/VulkanCore.hpp"
-// #include "Vulkan/Core/Private/VulkanGenericPlatform.h"
-// #include "Vulkan/Core/Private/VulkanSwapchain.hpp"
-// #include "Vulkan/Core/Swapchain.hpp"
-// #include "Vulkan/Core/VulkanDevice.hpp"
-// #include "Vulkan/Graphics/PipelineManager.hpp"
-// #include "Vulkan/Renderer.hpp"
-// #include "vulkan/vulkan.hpp"
 
 #include <SDL3/SDL_timer.h>
 #include <spdlog/spdlog.h>
@@ -41,37 +17,15 @@ FEngine::FEngine(FConfiguration VulkanConfig, FGenericWindowParams InWindowParam
 void FEngine::Initialize()
 {
 	Window.Initialize();
-	// Core.Initialize();
 
 	Context.Initialize();
 
-	// FVulkanSwapChain Swapchain{Core};
+	FVulkanGenericPlatformWindowContext WindowContext(Window.GetOSWindowHandle());
+	uint32_t DesiredImageCount = 3;
 
-	// uint32 DesiredImageCount = 3;
+	Context.CreateSwapchain(WindowContext, 1920, 1080, &DesiredImageCount);
 
-	// FVulkanGenericPlatformWindowContext Context(Window.GetOSWindowHandle());
-
-	// {
-	// 	FVulkanCommandBufferPool *Pool = Core.GetDevice()->GetGraphicsQueue()->AcquireCommandBufferPool();
-
-	// 	Pool->GetHandle();
-	// }
-
-	// Swapchain.Create(Context, 400, 600, &DesiredImageCount, nullptr);
-
-	// FVulkanFence Fence{*Core.GetDevice()};
-
-	// Fence.Create(true);
-
-	// FVulkanSemaphore Semaphore{*Core.GetDevice()};
-
-	// WIND_LOG(info, "Created semaphore {}", (void *)Semaphore.GetHandle());
-
-	// Fence.Destroy();
-
-	// Semaphore.Destroy();
-
-	// Swapchain.Destroy(nullptr);
+	// FFrameContext FrameContext{nullptr};
 }
 
 void FEngine::Run() WIND_NOEXCEPT

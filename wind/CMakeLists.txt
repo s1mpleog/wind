@@ -56,6 +56,7 @@ include(WindTargetDefaults)
 add_subdirectory(Source/Core)
 add_subdirectory(Source/ApplicationCore)
 add_subdirectory(Source/Vulkan)
+add_subdirectory(Source/Renderer)
 
 add_executable(wind)
 
@@ -84,6 +85,7 @@ target_link_libraries(wind
         WindCore
         WindVulkan
         WindApplicationCore
+        WindRenderer
         spdlog::spdlog
         cpptrace::cpptrace
         glm::glm

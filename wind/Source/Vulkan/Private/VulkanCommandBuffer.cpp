@@ -6,9 +6,13 @@
 #include "vulkan/vulkan_core.h"
 
 #include <algorithm>
+#include <ranges>
 
 FVulkanCommandBuffer::FVulkanCommandBuffer(FVulkanDevice &InDevice, FVulkanCommandBufferPool &InCommandBufferPool)
-    : Device(InDevice), CommandBufferPool(InCommandBufferPool) {};
+    : Device(InDevice), CommandBufferPool(InCommandBufferPool)
+{
+	AllocMemory();
+};
 
 void FVulkanCommandBuffer::AllocMemory()
 {
@@ -28,7 +32,7 @@ FVulkanCommandBufferPool::FVulkanCommandBufferPool(FVulkanDevice &InDevice, FVul
 {
 	vk::CommandPoolCreateInfo CmdPoolCreateInfo{};
 	CmdPoolCreateInfo.queueFamilyIndex = Queue.GetFamilyIndex();
-	// the specs says: eResetCommandBuffer allows any command buffer allocated from the pool
+	// the spec says: eResetCommandBuffer allows any command buffer allocated from the pool
 	// to be individually reset to be initial state either by calling vk::ResetCommandBuffer or via implicit reset
 	CmdPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 
@@ -39,8 +43,28 @@ FVulkanCommandBufferPool::FVulkanCommandBufferPool(FVulkanDevice &InDevice, FVul
 
 FVulkanCommandBufferPool::~FVulkanCommandBufferPool()
 {
+	for (auto *CmdBuffer : CmdBuffers)
+	{
+		delete CmdBuffer;
+	}
+
 	if (Handle != VK_NULL_HANDLE)
 	{
 		Device.GetHandle().destroyCommandPool(Handle);
 	}
+}
+
+FVulkanCommandBuffer *FVulkanCommandBufferPool::Create()
+{
+	// if there is free cmd buffers then pop it and return
+	// else allocate a cmd buffer add to CmdBuffers and return
+	// free_cmd:    [cb_1, cb_2, cb_3, ...., cb_n]
+	// cmd_buffers: []
+
+	FVulkanCommandBuffer *CmdBuffer = new FVulkanCommandBuffer(Device, *this);
+	CHECK(CmdBuffer);
+
+	CmdBuffers.push_back(CmdBuffer);
+
+	return CmdBuffer;
 }

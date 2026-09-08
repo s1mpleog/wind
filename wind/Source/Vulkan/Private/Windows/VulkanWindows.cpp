@@ -1,9 +1,10 @@
 #include "VulkanWindows.hpp"
-#include "VulkanCheck.hpp"
+
+#include "Check.hpp"
 #include "SDL3/SDL_error.h"
 #include "SDL3/SDL_video.h"
 #include "SDL3/SDL_vulkan.h"
-#include "Check.hpp"
+#include "VulkanCheck.hpp"
 
 void FVulkanPlatformWindows::GetInstanceExtensions(std::vector<const char *> &OutExtensions)
 {
@@ -42,4 +43,8 @@ void FVulkanPlatformWindows::CreateSurface(FVulkanGenericPlatformWindowContext &
 
 void FVulkanPlatformWindows::DestroySurface(const vk::Instance Instance, vk::SurfaceKHR Surface)
 {
+	if (Surface != VK_NULL_HANDLE)
+	{
+		Instance.destroySurfaceKHR(Surface);
+	}
 }
