@@ -2,6 +2,8 @@
 
 #include "FrameContext.hpp"
 
+#include <vector>
+
 class FVulkanContext;
 
 class FVulkanRenderer
@@ -17,5 +19,6 @@ class FVulkanRenderer
 
   private:
 	FVulkanContext *Context;
-	FFrameContext FrameContext;
+	std::uint32_t CurrentFrame = 0;
+	std::vector<FFrameContext> Frames;
 };

@@ -47,4 +47,5 @@ target_link_libraries(WindRenderer
         WindCore
         WindVulkan
         spdlog::spdlog
+        volk
 )

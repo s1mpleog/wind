@@ -108,20 +108,6 @@ target_link_libraries(wind
         GPUOpen::VulkanMemoryAllocator
 )
 
-if(MSVC)
-  target_compile_options(wind PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:
-            /FI${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
-        >
-    )
-else()
-  target_compile_options(wind PRIVATE
-        $<$<COMPILE_LANGUAGE:CXX>:
-            -include${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
-        >
-    )
-endif()
-
 target_precompile_headers(wind
     PRIVATE
         <vulkan/vulkan.hpp>
@@ -139,6 +125,7 @@ if(MSVC)
             /W4
             /permissive-
             /EHs-c-
+            /wd4530
     )
 else()
   target_compile_options(wind

@@ -30,8 +30,6 @@ void FVulkanContext::Initialize()
 		// creates command pool
 		CommandBufferPool =
 		    std::make_unique<FVulkanCommandBufferPool>(*Core->GetDevice(), *Core->GetDevice()->GetGraphicsQueue());
-
-		auto cmd = CommandBufferPool->Create();
 	}
 }
 

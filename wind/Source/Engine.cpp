@@ -34,6 +34,7 @@ void FEngine::Initialize()
 
 void FEngine::Run() WIND_NOEXCEPT
 {
+	Renderer->BeginFrame();
 	return;
 }
 
