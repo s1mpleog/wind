@@ -2,6 +2,21 @@ add_library(WindRenderer STATIC)
 
 wind_target_defaults(WindRenderer)
 
+# Temporary fix
+if(MSVC)
+  target_compile_options(WindRenderer PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            /FI${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+else()
+  target_compile_options(WindRenderer PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            -include${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+endif()
+
 target_compile_definitions(WindRenderer
     PRIVATE
         VULKAN_HPP_NO_EXCEPTIONS
@@ -11,8 +26,9 @@ target_compile_definitions(WindRenderer
 )
 
 target_sources(WindRenderer
-    PRIVATE
-      Private/test.cpp
+    PRIVATE  
+      Private/Renderer.cpp
+      Private/FrameContext.cpp
 )
 
 target_include_directories(WindRenderer
@@ -30,7 +46,5 @@ target_link_libraries(WindRenderer
     PRIVATE
         WindCore
         WindVulkan
-        #Vulkan::Vulkan
-        volk
         spdlog::spdlog
 )

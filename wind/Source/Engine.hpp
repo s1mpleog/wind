@@ -3,14 +3,10 @@
 #include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "ApplicationCore/Public/LinuxWindow.hpp"
 #include "Config.hpp"
-// #include "Input/InputManager.hpp"
-// #include "Resources/ResourceManager.hpp"
-// #include "Scene/Scene.hpp"
 #include "Vulkan/Public/Configuration.hpp"
-// #include "Vulkan/Core/Context.hpp"
 #include "Vulkan/Public/VulkanContext.hpp"
-// #include "Vulkan/Graphics/PipelineManager.hpp"
-// #include "Vulkan/Renderer.hpp"
+
+#include <Renderer.hpp>
 
 class FEngine
 {
@@ -32,12 +28,6 @@ class FEngine
   private:
 	// TODO: for now just use core type later add unique ptr and use generic platform instead
 	FLinuxWindow Window;
-	// FVulkanCore Core;
 	FVulkanContext Context;
-	// std::unique_ptr<FVulkanContext> MVulkanContext;
-	// FRenderer MRenderer;
-	// std::unique_ptr<FUPipelineManager> MPipelineManager;
-	// std::unique_ptr<FUResourceManager> MResourceManager;
-	// std::unique_ptr<FUInputManger> MInputManager;
-	// FUScene MScene;
+	std::unique_ptr<FVulkanRenderer> Renderer;
 };

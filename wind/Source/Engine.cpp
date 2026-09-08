@@ -25,7 +25,11 @@ void FEngine::Initialize()
 
 	Context.CreateSwapchain(WindowContext, 1920, 1080, &DesiredImageCount);
 
-	// FFrameContext FrameContext{nullptr};
+	// do other setups
+
+	// create renderer once context is valid
+	Renderer = std::make_unique<FVulkanRenderer>(&Context);
+	CHECK(Renderer);
 }
 
 void FEngine::Run() WIND_NOEXCEPT

@@ -10,14 +10,18 @@ class FVulkanContext;
 class FFrameContext
 {
   public:
-	FFrameContext(FVulkanContext &Context)
+	FFrameContext(FVulkanContext *Context);
+	~FFrameContext();
+
+	inline uint32_t GetCurrentFrameIndex() const
 	{
-		// allocate objects through context
+		return CurrentFrame;
 	}
 
   private:
 	std::uint32_t CurrentFrame = 0;
-	FVulkanFence *Fence;
-	FVulkanSemaphore *Semaphore;
-	FVulkanCommandBuffer *CmdBuffer;
+	FVulkanFence *InFlightFence = nullptr;
+	FVulkanSemaphore *ImageAvailableSemaphore = nullptr;
+	FVulkanSemaphore *RenderFinishedSemaphore = nullptr;
+	FVulkanCommandBuffer *CmdBuffer = nullptr;
 };

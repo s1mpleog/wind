@@ -60,6 +60,21 @@ add_subdirectory(Source/Renderer)
 
 add_executable(wind)
 
+# Temporary fix
+if(MSVC)
+  target_compile_options(wind PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            /FI${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+else()
+  target_compile_options(wind PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            -include${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+endif()
+
 add_custom_command(TARGET wind POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         $<TARGET_FILE:SDL3::SDL3>

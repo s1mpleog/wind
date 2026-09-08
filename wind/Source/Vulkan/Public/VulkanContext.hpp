@@ -11,6 +11,7 @@ class FVulkanQueue;
 class FVulkanFence;
 class FVulkanSwapChain;
 class FVulkanGenericPlatformWindowContext;
+class FVulkanCommandBuffer;
 
 class FVulkanContext
 {
@@ -20,16 +21,17 @@ class FVulkanContext
 
 	void Initialize();
 
-	// create the swapchain
-	// should CreateSwapChain() will return *FVulkanSwapChain or void ?
-	// should Recreate take FVulkanSwapChain* as parameter ?
-
 	FVulkanSwapChain *CreateSwapchain(FVulkanGenericPlatformWindowContext &InWindowContext, uint32_t InWidth,
 	                                  uint32_t InHeight, uint32_t *InDesiredImageCount);
 
-	// FVulkanDevice *GetDevice() const;
-	// vk::Instance GetInstance() const;
-	// FVulkanQueue *GetGraphicsQueue() const;
+	FVulkanCore *GetCore() const
+	{
+		return Core.get();
+	}
+
+	FVulkanDevice *GetDevice() const;
+
+	FVulkanCommandBuffer *CreateGraphicsCommandBuffer();
 
   private:
 	bool bHasInitialized = false;

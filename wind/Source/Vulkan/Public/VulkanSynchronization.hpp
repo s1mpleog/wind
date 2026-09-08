@@ -1,13 +1,8 @@
 #pragma once
 
-// FVulkanFence Fence{Signaled}
-// Fence.wait()
-// Fence.reset()
-// Fence.destroy()
-
-// #include "Config.hpp"
 #include "vulkan/vulkan.hpp"
 #include "vulkan/vulkan_core.h"
+
 #include <cstddef>
 #include <cstdint>
 
@@ -42,6 +37,9 @@ class FVulkanFence
 	{
 		return Handle;
 	}
+
+	void Wait();
+	void Reset();
 
 	void Destroy();
 

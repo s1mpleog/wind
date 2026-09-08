@@ -53,20 +53,15 @@ FVulkanSwapChain *FVulkanContext::CreateSwapchain(FVulkanGenericPlatformWindowCo
 	return SwapChain.get();
 }
 
-// FVulkanDevice *FVulkanContext::GetDevice() const
-//{
-//	return Core->GetDevice();
-// }
-//
-// vk::Instance FVulkanContext::GetInstance() const
-//{
-//	return Core->GetInstance();
-// }
-//
-// FVulkanQueue *FVulkanContext::GetGraphicsQueue() const
-//{
-//	return Core->GetDevice()->GetGraphicsQueue();
-// }
+FVulkanDevice *FVulkanContext::GetDevice() const
+{
+	return Core->GetDevice();
+}
+
+FVulkanCommandBuffer *FVulkanContext::CreateGraphicsCommandBuffer()
+{
+	return CommandBufferPool->Create();
+}
 
 FVulkanContext::~FVulkanContext()
 {

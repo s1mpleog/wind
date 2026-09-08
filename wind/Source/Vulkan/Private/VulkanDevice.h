@@ -1,16 +1,16 @@
 #pragma once
 
 #include "Check.hpp"
+#include "Definitions.hpp"
 #include "VulkanGenericPlatform.h"
 #include "VulkanQueue.hpp"
-#include "Definitions.hpp"
 #include "vulkan/vulkan.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan_core.h>
-#include <cstddef>
-#include <cstdint>
 
 struct FOptionalVulkanDeviceExtensions
 {
