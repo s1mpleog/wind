@@ -51,7 +51,18 @@ void FVulkanDevice::CreateDevice()
 {
 	CHECK(Device == VK_NULL_HANDLE);
 
+	// enable synchronization 2 and dynamic rendering since we are using profile we don't need to check for support
+	vk::PhysicalDeviceVulkan13Features Features13{};
+	Features13.dynamicRendering = vk::True;
+	Features13.synchronization2 = vk::True;
+
+	vk::PhysicalDeviceSwapchainMaintenance1FeaturesEXT Maintenance1{};
+	Maintenance1.swapchainMaintenance1 = vk::True;
+
+	Features13.pNext = &Maintenance1;
+
 	vk::DeviceCreateInfo DeviceInfo{};
+	DeviceInfo.pNext = &Features13;
 
 	std::vector<vk::DeviceQueueCreateInfo> QueueFamilyInfos;
 

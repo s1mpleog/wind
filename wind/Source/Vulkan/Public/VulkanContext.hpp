@@ -3,6 +3,7 @@
 #include "Configuration.hpp"
 
 #include <memory>
+#include <vulkan/vulkan.hpp>
 
 class FVulkanCore;
 class FVulkanCommandBufferPool;
@@ -23,6 +24,9 @@ class FVulkanContext
 
 	FVulkanSwapChain *CreateSwapchain(FVulkanGenericPlatformWindowContext &InWindowContext, uint32_t InWidth,
 	                                  uint32_t InHeight, uint32_t *InDesiredImageCount);
+	FVulkanSwapChain *GetSwapChain();
+	vk::Image GetSwapChainImage(uint32_t Index) const;
+	vk::ImageView GetSwapChainImageView(uint32_t Index) const;
 
 	FVulkanCore *GetCore() const
 	{

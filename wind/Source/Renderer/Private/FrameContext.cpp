@@ -5,12 +5,28 @@
 
 // todo: let context expose create fence and swapchain don't voilate the boundary
 FFrameContext::FFrameContext(FVulkanContext *Context)
-    : InFlightFence(new FVulkanFence(*Context->GetDevice())),
+    : InFlightFence(new FVulkanFence(*Context->GetDevice())), PresentFence(new FVulkanFence(*Context->GetDevice())),
       ImageAvailableSemaphore(new FVulkanSemaphore(*Context->GetDevice())),
       RenderFinishedSemaphore(new FVulkanSemaphore(*Context->GetDevice())),
       CmdBuffer(Context->CreateGraphicsCommandBuffer())
 {
 	InFlightFence->Create(true);
+	PresentFence->Create(true);
+}
+
+FVulkanSemaphore *FFrameContext::GetImageAvailableSemaphore()
+{
+	return ImageAvailableSemaphore;
+}
+
+FVulkanSemaphore *FFrameContext::GetRenderFinishedSemaphore()
+{
+	return RenderFinishedSemaphore;
+}
+
+FVulkanFence *FFrameContext::GetInFlightFence()
+{
+	return InFlightFence;
 }
 
 FFrameContext::~FFrameContext()
@@ -19,6 +35,12 @@ FFrameContext::~FFrameContext()
 	{
 		InFlightFence->Destroy();
 		delete InFlightFence;
+	}
+
+	if (PresentFence != nullptr)
+	{
+		PresentFence->Destroy();
+		delete PresentFence;
 	}
 
 	if (ImageAvailableSemaphore != nullptr)

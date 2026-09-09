@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schema.khronos.org/vulkan/profiles-0.8.1-204.json#",
+  "$schema": "https://schema.khronos.org/vulkan/profiles-0.8-latest.json#",
   "capabilities": {
     "vulkan10requirements": {
       "features": {
@@ -50,7 +50,11 @@
             "maxDescriptorSetStorageImages": 144,
             "maxFragmentCombinedOutputResources": 16,
             "maxComputeWorkGroupInvocations": 256,
-            "maxComputeWorkGroupSize": [256, 256, 64],
+            "maxComputeWorkGroupSize": [
+              256,
+              256,
+              64
+            ],
             "subTexelPrecisionBits": 8,
             "mipmapPrecisionBits": 6,
             "maxSamplerLodBias": 14,
@@ -119,6 +123,8 @@
         "VkPhysicalDeviceVulkan12Features": {
           "uniformBufferStandardLayout": true,
           "subgroupBroadcastDynamicId": true,
+          "separateDepthStencilLayouts": true,
+          "hostQueryReset": true,
           "timelineSemaphore": true,
           "shaderSubgroupExtendedTypes": true
         }
@@ -219,14 +225,37 @@
           "descriptorBindingInlineUniformBlockUpdateAfterBind": true
         }
       }
+    },
+    "wind2026requirements": {
+      "extensions": {
+        "VK_KHR_surface": 1,
+        "VK_KHR_get_surface_capabilities2": 1,
+        "VK_KHR_swapchain": 1,
+        "VK_KHR_surface_maintenance1": 1,
+        "VK_KHR_swapchain_maintenance1": 1,
+        "VK_KHR_shader_untyped_pointers": 1,
+        "VK_KHR_maintenance5": 1,
+        "VK_EXT_descriptor_heap": 1
+    },
+    "features": {
+      "VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR": {
+        "swapchainMaintenance1": true
+      },
+      "VkPhysicalDeviceShaderUntypedPointersFeaturesKHR": {
+        "shaderUntypedPointers": true
+      },
+      "VkPhysicalDeviceDescriptorHeapFeaturesEXT": {
+        "descriptorHeap": true
+      }
     }
+  }
   },
   "profiles": {
-    "VP_KHR_roadmap_2022": {
+    "VP_WIND_engine_2026": {
       "version": 1,
       "api-version": "1.3.204",
-      "label": "Khronos Vulkan Roadmap 2022 profile",
-      "description": "This roadmap profile is intended to be supported by newer devices shipping in 2022 across mainstream smartphone, tablet, laptops, console and desktop devices.",
+      "label": "Wind Vulkan 2026 profile",
+      "description": "Custom renderer profile based on the Khronos Vulkan Roadmap 2022 requirements, with swapchain maintenance 1 and descriptor heap support.",
       "contributors": {
         "Tobias Hector": {
           "company": "AMD",
@@ -297,9 +326,10 @@
         "vulkan12requirements",
         "vulkan12requirements_roadmap2022",
         "vulkan13requirements",
-        "vulkan13requirements_roadmap2022"
+        "vulkan13requirements_roadmap2022",
+        "wind2026requirements"
       ],
-      "optionals": ["vulkan10optionals_roadmap2022"]
+      "optionals": []
     }
   }
 }

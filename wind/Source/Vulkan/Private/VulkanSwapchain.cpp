@@ -144,11 +144,15 @@ void FVulkanSwapChain::Create(FVulkanGenericPlatformWindowContext &WindowContext
 		FATAL("Create swapchain failed Error: {}", vk::to_string(SwapChainResult.error()));
 	}
 
-	WIND_LOG(info, "Creating swapchain with {}, {}, {}, images {}", vk::to_string(SwapChainInfo.presentMode),
+	WIND_LOG(info, "Creating swapchain with {}, {}, {}, {}, {}, images {}", SwapChainInfo.imageExtent.width,
+	         SwapChainInfo.imageExtent.height, vk::to_string(SwapChainInfo.presentMode),
 	         vk::to_string(SwapChainInfo.imageFormat), vk::to_string(SwapChainInfo.imageColorSpace),
 	         SwapChainInfo.minImageCount);
 
 	SwapChain = SwapChainResult.value();
+
+	Extent = SurfaceCapabilities.currentExtent;
+	Format = SwapChainInfo.imageFormat;
 
 	VERIFYVULKANRESULT_UNWRAP(TempSwapChainImages, Core.GetDevice()->GetHandle().getSwapchainImagesKHR(SwapChain));
 
@@ -168,6 +172,16 @@ void FVulkanSwapChain::Create(FVulkanGenericPlatformWindowContext &WindowContext
 
 		SwapChainImageViews.push_back(std::move(ImageView));
 	}
+}
+
+std::span<const vk::Image> FVulkanSwapChain::GetImages() const
+{
+	return std::span<const vk::Image>{SwapChainImages};
+}
+
+std::span<const vk::ImageView> FVulkanSwapChain::GetImageViews() const
+{
+	return std::span<const vk::ImageView>{SwapChainImageViews};
 }
 
 void FVulkanSwapChain::Destroy(FVulkanSwapchainRecreateInfo *RecreateInfo)

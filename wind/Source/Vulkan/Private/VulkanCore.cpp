@@ -4,17 +4,17 @@
 #include "VulkanDevice.h"
 #include "VulkanExtension.hpp"
 #include "spdlog/spdlog.h"
+#include "vulkan/vulkan_profiles.h"
 
 #include <algorithm>
 #include <ranges>
 #include <vector>
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_profiles.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 
 static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance,
-                                               const VpProfileProperties &InProfileProperties)
+                                               const VpProfileProperties &InProfileProperties,
+                                               VpFunctions InProfileFunction)
 {
 	VERIFYVULKANRESULT_UNWRAP(PhysicalDevices, Instance.enumeratePhysicalDevices());
 
@@ -50,7 +50,8 @@ static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance,
 	{
 		vk::Bool32 bProfileSupported = vk::False;
 
-		vpGetPhysicalDeviceProfileSupport(Instance, PhysicalDevice, &InProfileProperties, &bProfileSupported);
+		vpGetPhysicalDeviceProfileSupport(InProfileFunction, Instance, PhysicalDevice, &InProfileProperties,
+		                                  &bProfileSupported);
 
 		// skip the device that does not supports profile
 		if (!bProfileSupported)
@@ -82,16 +83,58 @@ static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance,
 	return PhysicalDeviceInfos[0].PhysicalDevice;
 }
 
+void FVulkanCore::CreateProfileFunctions()
+{
+	VpFunctionsCreateInfo ProfileCreateInfo{};
+
+	ProfileCreateInfo.GetInstanceProcAddr = vkGetInstanceProcAddr;
+	ProfileCreateInfo.EnumerateInstanceVersion = vkEnumerateInstanceVersion;
+	ProfileCreateInfo.EnumerateInstanceExtensionProperties = vkEnumerateInstanceExtensionProperties;
+	ProfileCreateInfo.EnumerateDeviceExtensionProperties = vkEnumerateDeviceExtensionProperties;
+	ProfileCreateInfo.CreateInstance = vkCreateInstance;
+	ProfileCreateInfo.CreateDevice = vkCreateDevice;
+	ProfileCreateInfo.GetPhysicalDeviceFeatures2 = vkGetPhysicalDeviceFeatures2;
+	ProfileCreateInfo.GetPhysicalDeviceProperties2 = vkGetPhysicalDeviceProperties2;
+	ProfileCreateInfo.GetPhysicalDeviceFormatProperties2 = vkGetPhysicalDeviceFormatProperties2;
+	ProfileCreateInfo.GetPhysicalDeviceQueueFamilyProperties2 = vkGetPhysicalDeviceQueueFamilyProperties2;
+
+	VkResult Result = vpCreateFunctions(&ProfileCreateInfo, nullptr, &ProfileFunctions);
+
+	if (Result != VK_SUCCESS)
+	{
+		FATAL("Failed to create Vulkan Profiles functions: {}", vk::to_string(static_cast<vk::Result>(Result)));
+	}
+
+	Result = vpInitializeGlobalFunctions(ProfileFunctions, vkGetInstanceProcAddr);
+
+	if (Result != VK_SUCCESS)
+	{
+		FATAL("Failed to initialize Vulkan Profiles global functions: {}",
+		      vk::to_string(static_cast<vk::Result>(Result)));
+	};
+}
+
 FVulkanCore::FVulkanCore(FConfiguration &InConfig) : Instance(VK_NULL_HANDLE), Device(VK_NULL_HANDLE), Config(InConfig)
 {
 	VERIFYVULKANRESULT(volkInitialize());
 
-	VkBool32 bProfileSupported = vk::False;
+	// create and init profile functions required
+	CreateProfileFunctions();
 
-	vpGetInstanceProfileSupport(nullptr, &ProfileProperties, &bProfileSupported);
-	if (!bProfileSupported)
+	vk::Bool32 bProfileSupported = vk::False;
+
+	VkResult Result = vpGetInstanceProfileSupport(ProfileFunctions, nullptr, &ProfileProperties, &bProfileSupported);
+
+	if (Result != VK_SUCCESS)
 	{
-		FATAL("System does not supports required vulkan profile either your GPU is too old or Driver is not updated");
+		FATAL("Vulkan profile query failed: profile='{}', VkResult={}", std::string_view{ProfileProperties.profileName},
+		      vk::to_string(static_cast<vk::Result>(Result)));
+	}
+
+	if (bProfileSupported != vk::True)
+	{
+		FATAL("Vulkan instance does not support profile '{}' (spec version {})",
+		      std::string_view{ProfileProperties.profileName}, ProfileProperties.specVersion);
 	}
 
 	CreateInstance();
@@ -131,7 +174,8 @@ void FVulkanCore::CreateInstance()
 	ProfileInstInfo.pCreateInfo = InstInfo;
 
 	VkInstance RawInstance{};
-	auto InstanceResult = static_cast<vk::Result>(vpCreateInstance(&ProfileInstInfo, nullptr, &RawInstance));
+	auto InstanceResult =
+	    static_cast<vk::Result>(vpCreateInstance(ProfileFunctions, &ProfileInstInfo, nullptr, &RawInstance));
 
 	if (InstanceResult == vk::Result::eErrorIncompatibleDriver)
 	{
@@ -179,7 +223,7 @@ void FVulkanCore::CreateInstance()
 
 void FVulkanCore::SelectDevice()
 {
-	vk::PhysicalDevice PhysicalDevice = SelectPhysicalDevice(Instance, ProfileProperties);
+	vk::PhysicalDevice PhysicalDevice = SelectPhysicalDevice(Instance, ProfileProperties, ProfileFunctions);
 	Device = new FVulkanDevice(PhysicalDevice);
 }
 

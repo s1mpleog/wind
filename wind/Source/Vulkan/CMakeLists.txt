@@ -21,12 +21,14 @@ target_compile_definitions(WindVulkan
         VULKAN_HPP_NO_EXCEPTIONS
         VULKAN_HPP_USE_STD_EXPECTED
         VK_NO_PROTOTYPES
+        VP_USE_OBJECT=1
         VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=0
 )
 
 target_sources(WindVulkan
     PRIVATE
         Private/VulkanCore.cpp
+        ${CMAKE_SOURCE_DIR}/Generated/VulkanProfiles/vulkan_profiles.cpp
         Private/VulkanDevice.cpp
         Private/VulkanDebug.cpp
         Private/VulkanQueue.cpp
@@ -39,6 +41,7 @@ target_sources(WindVulkan
 target_include_directories(WindVulkan
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/Public
+        ${CMAKE_SOURCE_DIR}/Generated/VulkanProfiles
 
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/Private

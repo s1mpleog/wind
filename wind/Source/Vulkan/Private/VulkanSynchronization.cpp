@@ -25,6 +25,16 @@ void FVulkanFence::Create(bool bCreateSignaled)
 	Handle = std::move(Fence);
 }
 
+void FVulkanFence::Wait()
+{
+	Device.GetHandle().waitForFences(Handle, vk::True, UINT64_MAX);
+}
+
+void FVulkanFence::Reset()
+{
+	Device.GetHandle().resetFences(Handle);
+}
+
 void FVulkanFence::Destroy()
 {
 	if (Handle != VK_NULL_HANDLE)

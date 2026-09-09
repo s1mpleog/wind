@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Configuration.hpp"
-#include "vulkan/vulkan_profiles.hpp"
+#include "vulkan/vulkan_profiles.h"
 
 #include <cstdint>
 #include <vector>
@@ -51,13 +51,15 @@ class FVulkanCore
 
 	// later set image layout, get viewports
 
-	static constexpr VpProfileProperties ProfileProperties = {VP_KHR_ROADMAP_2022_NAME,
-	                                                          VP_KHR_ROADMAP_2022_SPEC_VERSION};
+	static constexpr VpProfileProperties ProfileProperties = {VP_WIND_ENGINE_2026_NAME,
+	                                                          VP_WIND_ENGINE_2026_SPEC_VERSION};
 
   private:
 	vk::Instance Instance{VK_NULL_HANDLE};
 
 	uint32_t ApiVersion = vk::ApiVersion13;
+
+	VpFunctions ProfileFunctions = VK_NULL_HANDLE;
 
 	std::vector<const char *> InstanceExtensions;
 	std::vector<const char *> InstanceLayers;
@@ -66,6 +68,7 @@ class FVulkanCore
 
 	FConfiguration Config = Default;
 
+	void CreateProfileFunctions();
 	void CreateInstance();
 	void SelectDevice();
 

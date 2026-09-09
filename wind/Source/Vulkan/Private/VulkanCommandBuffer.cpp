@@ -27,6 +27,22 @@ void FVulkanCommandBuffer::AllocMemory()
 	Handle = std::move(CommandBuffers.front());
 }
 
+// todo: error handling
+void FVulkanCommandBuffer::Reset()
+{
+	Handle.reset();
+}
+
+void FVulkanCommandBuffer::Begin(vk::CommandBufferBeginInfo &InBeginInfo)
+{
+	Handle.begin(InBeginInfo);
+}
+
+void FVulkanCommandBuffer::End()
+{
+	Handle.end();
+}
+
 FVulkanCommandBufferPool::FVulkanCommandBufferPool(FVulkanDevice &InDevice, FVulkanQueue &InQueue)
     : Device(InDevice), Queue(InQueue)
 {

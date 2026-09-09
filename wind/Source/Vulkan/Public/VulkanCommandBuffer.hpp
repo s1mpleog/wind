@@ -23,8 +23,9 @@ class FVulkanCommandBuffer
   public:
 	FVulkanCommandBuffer(FVulkanDevice &InDevice, FVulkanCommandBufferPool &InCommandBufferPool);
 
-	void Begin() {};
-	void End() {};
+	void Reset();
+	void Begin(vk::CommandBufferBeginInfo &InBeginInfo);
+	void End();
 
 	vk::CommandBuffer GetHandle() const
 	{

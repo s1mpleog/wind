@@ -30,6 +30,8 @@ void FVulkanContext::Initialize()
 		// creates command pool
 		CommandBufferPool =
 		    std::make_unique<FVulkanCommandBufferPool>(*Core->GetDevice(), *Core->GetDevice()->GetGraphicsQueue());
+
+		bHasInitialized = true;
 	}
 }
 
@@ -49,6 +51,26 @@ FVulkanSwapChain *FVulkanContext::CreateSwapchain(FVulkanGenericPlatformWindowCo
 	SwapChain->Create(InWindowContext, InWidth, InHeight, InDesiredImageCount, nullptr);
 
 	return SwapChain.get();
+}
+
+FVulkanSwapChain *FVulkanContext::GetSwapChain()
+{
+	CHECK(bHasInitialized);
+
+	return SwapChain.get();
+}
+
+vk::Image FVulkanContext::GetSwapChainImage(uint32_t Index) const
+{
+	CHECK(bHasInitialized);
+	// TODO: should we validate index ?
+	return SwapChain->GetImages()[Index];
+}
+
+vk::ImageView FVulkanContext::GetSwapChainImageView(uint32_t Index) const
+{
+	CHECK(bHasInitialized);
+	return SwapChain->GetImageViews()[Index];
 }
 
 FVulkanDevice *FVulkanContext::GetDevice() const

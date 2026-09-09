@@ -3,8 +3,9 @@
 #include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "Check.hpp"
 #include "Renderer/Public/FrameContext.hpp"
-#include "Vulkan/Private/VulkanGenericPlatform.h"
+#include "Renderer/Public/Renderer.hpp"
 #include "Vulkan/Public/VulkanContext.hpp"
+#include "VulkanGenericPlatform.h"
 
 #include <SDL3/SDL_timer.h>
 #include <spdlog/spdlog.h>
@@ -23,19 +24,37 @@ void FEngine::Initialize()
 	FVulkanGenericPlatformWindowContext WindowContext(Window.GetOSWindowHandle());
 	uint32_t DesiredImageCount = 3;
 
-	Context.CreateSwapchain(WindowContext, 1920, 1080, &DesiredImageCount);
+	Context.CreateSwapchain(WindowContext, 1280, 720, &DesiredImageCount);
 
 	// do other setups
 
 	// create renderer once context is valid
 	Renderer = std::make_unique<FVulkanRenderer>(&Context);
 	CHECK(Renderer);
+
+	Renderer->Initialize();
 }
 
 void FEngine::Run() WIND_NOEXCEPT
 {
-	Renderer->BeginFrame();
-	return;
+	bool bIsRunning = true;
+
+	while (bIsRunning)
+	{
+		SDL_Event Event{};
+
+		while (SDL_PollEvent(&Event))
+		{
+			if (Event.type == SDL_EVENT_QUIT)
+			{
+				bIsRunning = false;
+			}
+		}
+
+		Renderer->BeginFrame();
+		Renderer->Draw();
+		Renderer->EndFrame();
+	}
 }
 
 void FEngine::Destroy()
