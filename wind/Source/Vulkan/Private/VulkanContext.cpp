@@ -5,7 +5,6 @@
 #include "VulkanCommandBuffer.hpp"
 #include "VulkanCore.hpp"
 #include "VulkanDevice.h"
-#include "VulkanSwapchain.hpp"
 
 #include <memory>
 
@@ -35,44 +34,6 @@ void FVulkanContext::Initialize()
 	}
 }
 
-FVulkanSwapChain *FVulkanContext::CreateSwapchain(FVulkanGenericPlatformWindowContext &InWindowContext,
-                                                  uint32_t InWidth, uint32_t InHeight, uint32_t *InDesiredImageCount)
-{
-	CHECK(bHasInitialized, "Vulkan Context is not initialized");
-
-	if (SwapChain != nullptr)
-	{
-		return SwapChain.get();
-	}
-
-	SwapChain = std::make_unique<FVulkanSwapChain>(*Core.get());
-	CHECK(SwapChain);
-
-	SwapChain->Create(InWindowContext, InWidth, InHeight, InDesiredImageCount, nullptr);
-
-	return SwapChain.get();
-}
-
-FVulkanSwapChain *FVulkanContext::GetSwapChain()
-{
-	CHECK(bHasInitialized);
-
-	return SwapChain.get();
-}
-
-vk::Image FVulkanContext::GetSwapChainImage(uint32_t Index) const
-{
-	CHECK(bHasInitialized);
-	// TODO: should we validate index ?
-	return SwapChain->GetImages()[Index];
-}
-
-vk::ImageView FVulkanContext::GetSwapChainImageView(uint32_t Index) const
-{
-	CHECK(bHasInitialized);
-	return SwapChain->GetImageViews()[Index];
-}
-
 FVulkanDevice *FVulkanContext::GetDevice() const
 {
 	return Core->GetDevice();
@@ -88,12 +49,6 @@ FVulkanContext::~FVulkanContext()
 	if (CommandBufferPool)
 	{
 		CommandBufferPool.reset();
-	}
-
-	if (SwapChain)
-	{
-		SwapChain->Destroy(nullptr);
-		SwapChain.reset();
 	}
 
 	if (Core)

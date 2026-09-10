@@ -57,6 +57,13 @@ void FVulkanSwapChain::Create(FVulkanGenericPlatformWindowContext &WindowContext
 		      "Note there was a request to Recreate swapchain but `Surface` in RecreateInfo is null this is not a "
 		      "normal behaviour in engine terminating...");
 
+		for (vk::ImageView &ImageView : SwapChainImageViews)
+		{
+			Core.GetDevice()->GetHandle().destroyImageView(ImageView);
+		}
+
+		SwapChainImageViews.clear();
+
 		Surface = RecreateInfo->Surface;
 		RecreateInfo->Surface = VK_NULL_HANDLE;
 	}
@@ -116,9 +123,12 @@ void FVulkanSwapChain::Create(FVulkanGenericPlatformWindowContext &WindowContext
 	vk::SwapchainCreateInfoKHR SwapChainInfo{};
 	SwapChainInfo.oldSwapchain = nullptr;
 
+	vk::SwapchainKHR OldSwapchain = VK_NULL_HANDLE;
+
 	if (RecreateInfo && RecreateInfo->SwapChain != VK_NULL_HANDLE)
 	{
-		SwapChainInfo.oldSwapchain = RecreateInfo->SwapChain;
+		OldSwapchain = RecreateInfo->SwapChain;
+		SwapChainInfo.oldSwapchain = OldSwapchain;
 	}
 
 	SwapChainInfo.clipped = vk::True;
@@ -151,6 +161,14 @@ void FVulkanSwapChain::Create(FVulkanGenericPlatformWindowContext &WindowContext
 
 	SwapChain = SwapChainResult.value();
 
+	// destroy old swapchain
+	if (OldSwapchain != VK_NULL_HANDLE)
+	{
+		// todo: find a better way later instead of wait until idle
+		Core.GetDevice()->WaitUntilIdle();
+		Core.GetDevice()->GetHandle().destroySwapchainKHR(OldSwapchain);
+	}
+
 	Extent = SurfaceCapabilities.currentExtent;
 	Format = SwapChainInfo.imageFormat;
 
@@ -174,14 +192,13 @@ void FVulkanSwapChain::Create(FVulkanGenericPlatformWindowContext &WindowContext
 	}
 }
 
-std::span<const vk::Image> FVulkanSwapChain::GetImages() const
+const vk::Image FVulkanSwapChain::GetImage(uint32_t Index) const
 {
-	return std::span<const vk::Image>{SwapChainImages};
+	return SwapChainImages[Index];
 }
-
-std::span<const vk::ImageView> FVulkanSwapChain::GetImageViews() const
+const vk::ImageView FVulkanSwapChain::GetImageView(uint32_t Index) const
 {
-	return std::span<const vk::ImageView>{SwapChainImageViews};
+	return SwapChainImageViews[Index];
 }
 
 void FVulkanSwapChain::Destroy(FVulkanSwapchainRecreateInfo *RecreateInfo)
@@ -190,18 +207,26 @@ void FVulkanSwapChain::Destroy(FVulkanSwapchainRecreateInfo *RecreateInfo)
 	// if we have recreated info then assign this->SwapChain and this->Surface to RecreateInfo
 	// otherwise destroy swapchain and surface
 
+	Core.GetDevice()->WaitUntilIdle();
+
 	for (vk::ImageView &ImageView : SwapChainImageViews)
 	{
 		Core.GetDevice()->GetHandle().destroyImageView(ImageView);
 	}
 
+	SwapChainImageViews.clear();
+
 	if (SwapChain != VK_NULL_HANDLE)
 	{
 		Core.GetDevice()->GetHandle().destroySwapchainKHR(SwapChain);
+		SwapChain = VK_NULL_HANDLE;
 	}
 
 	if (Surface != VK_NULL_HANDLE)
 	{
 		FVulkanPlatform::DestroySurface(Core.GetInstance(), Surface);
+		Surface = VK_NULL_HANDLE;
 	}
+
+	spdlog::info("destroyed swapchain, surface and image views");
 }

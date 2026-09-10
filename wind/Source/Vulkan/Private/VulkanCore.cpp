@@ -235,6 +235,8 @@ void FVulkanCore::Initialize() noexcept
 // TODO: use Destroy() instead
 FVulkanCore::~FVulkanCore()
 {
+	Device->WaitUntilIdle();
+
 	if (Device != nullptr)
 	{
 		Device->Destroy();

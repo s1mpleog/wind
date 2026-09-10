@@ -1,11 +1,22 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 
 class FVulkanFence;
 class FVulkanSemaphore;
 class FVulkanCommandBuffer;
 class FVulkanContext;
+
+enum class EFrameError : uint8_t
+{
+	OutOfDate,
+	SubOptimal,
+	DeviceLost,
+	Fatal
+};
+
+using FFrameResult = std::expected<void, EFrameError>;
 
 class FFrameContext
 {

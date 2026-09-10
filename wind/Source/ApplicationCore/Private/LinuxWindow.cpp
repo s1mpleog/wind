@@ -25,7 +25,8 @@ FLinuxWindow::~FLinuxWindow()
 void FLinuxWindow::Initialize()
 {
 	CHECK(bIsSdlInit);
-	HWnd = SDL_CreateWindow(WindowParams.Title, WindowParams.Width, WindowParams.Height, SDL_WINDOW_VULKAN);
+	HWnd = SDL_CreateWindow(WindowParams.Title, WindowParams.Width, WindowParams.Height,
+	                        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 
 	if (HWnd == nullptr)
 	{

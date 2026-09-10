@@ -48,6 +48,16 @@ class FLinuxWindow : public FGenericWindow
 	virtual void Show() override {};
 	virtual void Hide() override {};
 
+	inline uint32_t GetWidth() const
+	{
+		return WindowParams.Width;
+	}
+
+	inline uint32_t GetHeight() const
+	{
+		return WindowParams.Height;
+	}
+
   private:
 	SDL_Window *HWnd;
 	bool bIsSdlInit = false;

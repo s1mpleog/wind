@@ -2,12 +2,14 @@
 
 #include "VulkanContext.hpp"
 #include "VulkanDevice.h"
+#include "VulkanGenericPlatform.h"
 #include "VulkanSwapchain.hpp"
 #include "VulkanSynchronization.hpp"
 
 #include <spdlog/spdlog.h>
 
-FVulkanRenderer::FVulkanRenderer(FVulkanContext *InContext) : Context(InContext)
+FVulkanRenderer::FVulkanRenderer(FVulkanContext *InContext, FPresentationTarget &InPresentationTarget)
+    : Context(InContext), PresentationTarget(InPresentationTarget)
 {
 }
 
@@ -15,7 +17,10 @@ void FVulkanRenderer::Initialize()
 {
 	if (SwapChain == nullptr)
 	{
-		// SwapChain;
+		uint32_t DesiredImageCount = 3;
+		SwapChain = std::make_unique<FVulkanSwapChain>(*Context->GetCore());
+		SwapChain->Create(PresentationTarget.WindowContext, PresentationTarget.Width, PresentationTarget.Height,
+		                  &DesiredImageCount, nullptr);
 	}
 
 	Frames.reserve(MAX_FRAME_IN_FLIGHT);
@@ -36,7 +41,7 @@ void FVulkanRenderer::Initialize()
 	}
 }
 
-void FVulkanRenderer::BeginFrame()
+FFrameResult FVulkanRenderer::BeginFrame(uint32_t InWidth, uint32_t InHeight)
 {
 	FFrameContext &Frame = Frames[CurrentFrame];
 
@@ -45,19 +50,27 @@ void FVulkanRenderer::BeginFrame()
 	Frame.GetPresentFence()->Wait();
 
 	uint32_t NextImageIndex = 0;
-	VkResult Result =
-	    vkAcquireNextImageKHR(Context->GetDevice()->GetHandle(), Context->GetSwapChain()->GetHandle(), UINT64_MAX,
-	                          Frame.GetImageAvailableSemaphore()->GetHandle(), nullptr, &NextImageIndex);
+	VkResult Result = vkAcquireNextImageKHR(Context->GetDevice()->GetHandle(), SwapChain->GetHandle(), UINT64_MAX,
+	                                        Frame.GetImageAvailableSemaphore()->GetHandle(), nullptr, &NextImageIndex);
 
 	if (Result == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		// recreate swapchain
 		spdlog::info("invalid swapchain recreate");
+
+		uint32_t DesiredImageCount = 3;
+
+		FVulkanSwapchainRecreateInfo RecreateInfo = {.SwapChain = SwapChain->GetHandle(),
+		                                             .Surface = SwapChain->GetSurface()};
+
+		SwapChain->Create(PresentationTarget.WindowContext, InWidth, InHeight, &DesiredImageCount, &RecreateInfo);
+
+		return std::unexpected(EFrameError::OutOfDate);
 	}
 
-	if (Result == VK_SUCCESS)
+	if (Result != VK_SUCCESS && Result != VK_SUBOPTIMAL_KHR && Result != VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		spdlog::info("Got new swapchain image index: {}", NextImageIndex);
+		return std::unexpected(EFrameError::Fatal);
 	}
 
 	SwapChainImageIndex = NextImageIndex;
@@ -80,7 +93,7 @@ void FVulkanRenderer::BeginFrame()
 	vk::ImageMemoryBarrier2 SwapChainImageBarrier{};
 
 	// specify the target image
-	SwapChainImageBarrier.image = Context->GetSwapChainImage(SwapChainImageIndex);
+	SwapChainImageBarrier.image = SwapChain->GetImage(SwapChainImageIndex);
 
 	// the inital layout of allocated image is undefined
 	SwapChainImageBarrier.oldLayout = vk::ImageLayout::eUndefined;
@@ -88,10 +101,9 @@ void FVulkanRenderer::BeginFrame()
 	// underlying data and metadata in a way that is suitable for color attachment
 	SwapChainImageBarrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
 
-	// producer side since our initial layout was undefined we can ignore producer side
+	SwapChainImageBarrier.srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput;
+	// producer side since our initial layout was undefined we can ignore producer side operation
 	// in simple terms UNDEFINED said to driver i don't care about previous data you can discard it
-	// we use None for that
-	SwapChainImageBarrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
 	SwapChainImageBarrier.srcAccessMask = vk::AccessFlagBits2::eNone;
 
 	// consumer side who is consumer its color attachment when stage where GPU writes pixels to image
@@ -109,12 +121,16 @@ void FVulkanRenderer::BeginFrame()
 	Frame.GetCommandBuffer()->GetHandle().pipelineBarrier2(DepInfo);
 
 	//================Dynamic Rendering=============================
-	std::array<float, 4> ClearColor{0.055F, 0.0577F, 0.055F, 1.0F};
+
+	//[NVIDIA] Clearing image with format VK_FORMAT_B8G8R8A8_SRGB without a 1.0f or 0.0f clear color. The clear will not
+	//get compressed in the GPU, harming performance. This can be fixed using a clear color of VkClearColorValue{0.0f,
+	//0.0f, 0.0f, 0.0f}, or VkClearColorValue{1.0f, 1.0f, 1.0f, 1.0f}.
+	std::array<float, 4> ClearColor{1.0F, 1.0F, 1.0F, 1.0F};
 
 	// todo: let FVulkanCommandBuffer handle this
 	vk::RenderingAttachmentInfo RenderingAttachInfo{};
 	RenderingAttachInfo.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
-	RenderingAttachInfo.imageView = Context->GetSwapChainImageView(SwapChainImageIndex);
+	RenderingAttachInfo.imageView = SwapChain->GetImageView(SwapChainImageIndex);
 	// clear during load
 	RenderingAttachInfo.loadOp = vk::AttachmentLoadOp::eClear;
 	// store it (learn more about it)
@@ -128,16 +144,15 @@ void FVulkanRenderer::BeginFrame()
 	RenderingInfo.colorAttachmentCount = 1;
 	RenderingInfo.pColorAttachments = &RenderingAttachInfo;
 
-	vk::Extent2D SwapChainExtent = Context->GetSwapChain()->GetExtent();
-
-	// todo: extent from swapchain
-	vk::Rect2D RenderArea = {0, SwapChainExtent};
+	vk::Rect2D RenderArea = {0, SwapChain->GetExtent()};
 
 	RenderingInfo.renderArea = RenderArea;
 	RenderingInfo.layerCount = 1;
 
 	// begin a dynamic rendering instance now the command buffer is ready to record draw commands
 	Frame.GetCommandBuffer()->GetHandle().beginRendering(RenderingInfo);
+
+	return {};
 }
 
 void FVulkanRenderer::Draw()
@@ -147,13 +162,13 @@ void FVulkanRenderer::Draw()
 	FFrameContext &Frame = Frames[CurrentFrame];
 
 	vk::Rect2D Scissor{0};
-	Scissor.extent = Context->GetSwapChain()->GetExtent();
+	Scissor.extent = SwapChain->GetExtent();
 
 	vk::Viewport ViewPort{};
 	ViewPort.x = 0.0F;
 	ViewPort.y = 0.0F;
-	ViewPort.width = static_cast<float>(Context->GetSwapChain()->GetExtent().width);
-	ViewPort.height = static_cast<float>(Context->GetSwapChain()->GetExtent().height);
+	ViewPort.width = static_cast<float>(SwapChain->GetExtent().width);
+	ViewPort.height = static_cast<float>(SwapChain->GetExtent().height);
 	ViewPort.minDepth = 0.0F;
 	ViewPort.maxDepth = 1.0F;
 
@@ -162,14 +177,8 @@ void FVulkanRenderer::Draw()
 }
 
 // submission
-void FVulkanRenderer::EndFrame()
+FFrameResult FVulkanRenderer::EndFrame()
 {
-	// end dynamic rendering instance
-	// end the cmd buffer
-	// transition image from color attach to present_khr
-	// sumbit
-	// present
-
 	FFrameContext &Frame = Frames[CurrentFrame];
 
 	// end the dynamic rendering instance
@@ -178,7 +187,7 @@ void FVulkanRenderer::EndFrame()
 	// transition swapchain image from color attachment to present_khr
 	vk::ImageMemoryBarrier2 SwapChainImageBarrier{};
 
-	SwapChainImageBarrier.image = Context->GetSwapChainImage(SwapChainImageIndex);
+	SwapChainImageBarrier.image = SwapChain->GetImage(SwapChainImageIndex);
 
 	SwapChainImageBarrier.subresourceRange = vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
 
@@ -231,7 +240,7 @@ void FVulkanRenderer::EndFrame()
 	vk::SemaphoreSubmitInfo SignalInfo{};
 	SignalInfo.semaphore = Frame.GetRenderFinishedSemaphore()->GetHandle();
 	// once the graphics pipeline completed
-	SignalInfo.stageMask = vk::PipelineStageFlagBits2::eAllGraphics;
+	SignalInfo.stageMask = vk::PipelineStageFlagBits2::eAllCommands;
 
 	vk::SubmitInfo2 SubmitInfo{};
 	SubmitInfo.commandBufferInfoCount = 1;
@@ -250,13 +259,20 @@ void FVulkanRenderer::EndFrame()
 	auto SubmitResult = Context->GetDevice()->GetGraphicsQueue()->GetHandle().submit2(
 	    SubmitInfo, Frame.GetInFlightFence()->GetHandle());
 
-	// TODO: error or skip frame umm i will go with skip frame does not make sense to crash engine
-	// because of one frame failed
-	CHECK(SubmitResult.has_value(), "Failed to submit");
+	// useful so we can write device lost error in crash file
+	if (!SubmitResult && SubmitResult.error() == vk::Result::eErrorDeviceLost)
+	{
+		return std::unexpected(EFrameError::DeviceLost);
+	}
+
+	if (!SubmitResult && SubmitResult.error() != vk::Result::eSuccess)
+	{
+		return std::unexpected(EFrameError::Fatal);
+	}
 
 	//=========================Prepare for presentation=========================
 
-	const vk::SwapchainKHR SwapChain = Context->GetSwapChain()->GetHandle();
+	const vk::SwapchainKHR SwapChainHandle = SwapChain->GetHandle();
 	const vk::Semaphore RenderFinishedSemaphore = Frame.GetRenderFinishedSemaphore()->GetHandle();
 
 	// ==================maintaince 1 extension==========================
@@ -270,7 +286,7 @@ void FVulkanRenderer::EndFrame()
 	vk::PresentInfoKHR PresentInfo{};
 	PresentInfo.pNext = &PresentFenceInfo;
 	PresentInfo.swapchainCount = 1;
-	PresentInfo.pSwapchains = &SwapChain;
+	PresentInfo.pSwapchains = &SwapChainHandle;
 	PresentInfo.waitSemaphoreCount = 1;
 	// wait for RenderFinishedSemaphore to be signaled before presenting
 	// we set RenderFinishedSemaphore in submit signal info so when GPU process all graphics commands
@@ -286,8 +302,19 @@ void FVulkanRenderer::EndFrame()
 
 	if (PresentResult != VK_SUCCESS && PresentResult != VK_SUBOPTIMAL_KHR && PresentResult != VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		spdlog::info("Failed to submit");
+		return std::unexpected(EFrameError::Fatal);
 	}
 
 	CurrentFrame = (CurrentFrame + 1) % MAX_FRAME_IN_FLIGHT;
+}
+
+FVulkanRenderer::~FVulkanRenderer()
+{
+	Context->GetDevice()->WaitUntilIdle();
+
+	if (SwapChain != nullptr)
+	{
+		SwapChain->Destroy(nullptr);
+		SwapChain.reset();
+	}
 }

@@ -110,6 +110,8 @@ class FVulkanDevice
 
 	void WaitUntilIdle()
 	{
+		// todod handle error ?
+		Device.waitIdle();
 	}
 
 	FVulkanQueue *GetQueue(EVulkanQueueType QueueType)

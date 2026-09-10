@@ -3,10 +3,9 @@
 #include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "ApplicationCore/Public/LinuxWindow.hpp"
 #include "Config.hpp"
+#include "Renderer.hpp"
 #include "Vulkan/Public/Configuration.hpp"
 #include "Vulkan/Public/VulkanContext.hpp"
-
-#include <Renderer.hpp>
 
 class FEngine
 {

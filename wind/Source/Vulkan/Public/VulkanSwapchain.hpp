@@ -12,15 +12,6 @@
 class FVulkanCore;
 class FVulkanDevice;
 
-// accept context in constructor
-// provide create method takes dimesions and window context optionally recreate info creates swapchain and image
-// internally something like
-//  FVulkanSwapChain Swapchain{VulkanCore}; creates surface Swapchain->create();
-// Swapchain->AcquireImage(idx);
-// Swapchain->GetImageView(idx);
-// Swapchain->Present(PresentInfo);
-// Swapchain->Destroy();
-
 struct FVulkanSwapchainRecreateInfo
 {
 	vk::SwapchainKHR SwapChain = VK_NULL_HANDLE;
@@ -35,8 +26,8 @@ class FVulkanSwapChain
 	void Create(FVulkanGenericPlatformWindowContext &WindowContext, uint32_t InWidth, uint32_t InHeight,
 	            uint32_t *DesiredImageCount, FVulkanSwapchainRecreateInfo *RecreateInfo);
 
-	std::span<const vk::Image> GetImages() const;
-	std::span<const vk::ImageView> GetImageViews() const;
+	const vk::Image GetImage(uint32_t Index) const;
+	const vk::ImageView GetImageView(uint32_t Index) const;
 
 	inline vk::SwapchainKHR GetHandle() const
 	{
@@ -46,6 +37,11 @@ class FVulkanSwapChain
 	inline vk::Extent2D GetExtent() const
 	{
 		return Extent;
+	}
+
+	inline vk::SurfaceKHR GetSurface() const
+	{
+		return Surface;
 	}
 
 	inline vk::Format GetFormat() const
