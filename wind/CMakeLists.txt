@@ -2,17 +2,27 @@ cmake_minimum_required(VERSION 3.28)
 
 project(Wind
     VERSION 0.1.0
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
-set(CMAKE_CXX_STANDARD 26)
+if (MSVC)
+  set(CMAKE_CXX_STANDARD 23)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+
+  add_compile_options(/std:c++latest)
+else()
+  set(CMAKE_CXX_STANDARD 26)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
 option(WIND_VALIDATION
@@ -30,64 +40,70 @@ option(WIND_LOG_ENABLE
     OFF
 )
 
-
 add_subdirectory(
     ${CMAKE_CURRENT_SOURCE_DIR}/../ThirdParty
     ${CMAKE_BINARY_DIR}/ThirdParty
 )
 
-
 find_package(Vulkan REQUIRED)
 
+list(APPEND CMAKE_MODULE_PATH
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake
+)
+
+include(WindTargetDefaults)
+
+add_subdirectory(Source/Core)
+add_subdirectory(Source/ApplicationCore)
+add_subdirectory(Source/Vulkan)
+add_subdirectory(Source/Renderer)
 
 add_executable(wind)
 
+# Temporary fix
+if(MSVC)
+  target_compile_options(wind PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            /FI${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+else()
+  target_compile_options(wind PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:
+            -include${PROJECT_SOURCE_DIR}/../ThirdParty/volk/volk.h
+        >
+    )
+endif()
+
+add_custom_command(TARGET wind POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_FILE:SDL3::SDL3>
+        $<TARGET_FILE_DIR:wind>
+)
+
 target_sources(wind
     PRIVATE
-        src/main.cc
-        src/engine.cc
+        Source/Main.cpp
+        Source/Engine.cpp
 
-        src/platform/window.cc
-
-        src/vulkan/core/context.cc
-        src/vulkan/core/instance.cc
-        src/vulkan/core/validation_layer.cc
-        src/vulkan/core/device.cc
-        src/vulkan/core/swapchain.cc
-
-        src/vulkan/frame/frame_context.cc
-
-        src/vulkan/graphics/pipeline.cc
-        src/vulkan/renderer.cc
-
-        src/vulkan/memory/allocator.cc
-
-        src/resources/resource_manager.cc
-        src/resources/descriptor_manager.cc
-        src/resources/builtin.cc
-
-        src/input/input_manager.cc
-
-        src/scene/scene.cc
-
-        src/vma_impl.cc
+        Source/VmaImpl.cpp
 )
 
 target_include_directories(wind
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/Source/Core
         ${CMAKE_BINARY_DIR}/generated
 )
 
 target_link_libraries(wind
     PRIVATE
-        SDL3::SDL3
+        WindCore
+        WindVulkan
+        WindApplicationCore
+        WindRenderer
         spdlog::spdlog
         cpptrace::cpptrace
         glm::glm
-
-        Vulkan::Headers
-        Vulkan::Vulkan
 
         GPUOpen::VulkanMemoryAllocator
 )
@@ -99,40 +115,52 @@ target_precompile_headers(wind
         <spdlog/spdlog.h>
         <ranges>
 
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/config.hpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/utils/expected_util.hpp"
+        # "${CMAKE_CURRENT_SOURCE_DIR}/Source/Config.hpp"
+        # "${CMAKE_CURRENT_SOURCE_DIR}/Source/Utils/ExpectedUtil.hpp"
 )
 
-target_compile_options(wind
-    PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        -fno-exceptions
-        -Wno-gnu-statement-expression-from-macro-expansion
-)
+if(MSVC)
+  target_compile_options(wind
+        PRIVATE
+            /W4
+            /permissive-
+            /EHs-c-
+            /wd4530
+    )
+else()
+  target_compile_options(wind
+        PRIVATE
+            -Wall
+            -Wextra
+            -Wpedantic
+            -fno-exceptions
+    )
+endif()
 
 target_compile_definitions(wind
     PRIVATE
         VULKAN_HPP_NO_EXCEPTIONS
         VULKAN_HPP_USE_STD_EXPECTED
+        VK_NO_PROTOTYPES
+        VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=0
         GLM_FORCE_DEPTH_ZERO_TO_ONE
         FMT_EXCEPTIONS=0
-        SPDLOG_NO_EXCEPTIONS
+        DSPDLOG_NO_EXCEPTIONS
 )
 
 if(WIN32)
-    target_compile_definitions(wind
+  target_compile_definitions(wind
         PRIVATE
             WIN32_LEAN_AND_MEAN
             NOMINMAX
     )
 endif()
 
-if(WIND_LOG_ENABLE)
-    target_compile_definitions(wind
+
+if(WIND_RENDERER_WARNINGS_AS_ERRORS)
+  target_compile_options(wind
         PRIVATE
-            WIND_LOG_ENABLE
+            -Werror
     )
 endif()
 
@@ -143,22 +171,15 @@ if(WIND_VALIDATION)
     )
 endif()
 
-if(WIND_RENDERER_WARNINGS_AS_ERRORS)
-    target_compile_options(wind
-        PRIVATE
-            -Werror
-    )
-endif()
-
 find_program(CCACHE_PROGRAM ccache)
 
 if(CCACHE_PROGRAM)
-    message(STATUS "ccache          : ${CCACHE_PROGRAM}")
+  message(STATUS "ccache          : ${CCACHE_PROGRAM}")
 
-    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+  set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
 else()
-    message(STATUS "ccache          : not found")
+  message(STATUS "ccache          : not found")
 endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
@@ -197,16 +218,16 @@ set(WIND_COMPILED_SHADERS)
 
 foreach(SHADER_SOURCE ${WIND_SHADER_SOURCES})
 
-    file(RELATIVE_PATH SHADER_RELATIVE
+  file(RELATIVE_PATH SHADER_RELATIVE
         "${WIND_SHADER_SOURCE_DIR}"
         "${SHADER_SOURCE}"
     )
 
-    set(SHADER_OUTPUT
+  set(SHADER_OUTPUT
         "${WIND_SHADER_OUTPUT_DIR}/${SHADER_RELATIVE}.spv"
     )
 
-    add_custom_command(
+  add_custom_command(
         OUTPUT
             "${SHADER_OUTPUT}"
 
@@ -226,7 +247,7 @@ foreach(SHADER_SOURCE ${WIND_SHADER_SOURCES})
         VERBATIM
     )
 
-    list(APPEND
+  list(APPEND
         WIND_COMPILED_SHADERS
         "${SHADER_OUTPUT}"
     )
@@ -258,16 +279,16 @@ set(WIND_MODEL_OUTPUTS)
 
 foreach(MODEL_SOURCE ${WIND_MODEL_SOURCES})
 
-    file(RELATIVE_PATH MODEL_RELATIVE
+  file(RELATIVE_PATH MODEL_RELATIVE
         "${WIND_MODEL_SOURCE_DIR}"
         "${MODEL_SOURCE}"
     )
 
-    set(MODEL_OUTPUT
+  set(MODEL_OUTPUT
         "${WIND_MODEL_OUTPUT_DIR}/${MODEL_RELATIVE}"
     )
 
-    add_custom_command(
+  add_custom_command(
         OUTPUT
             "${MODEL_OUTPUT}"
 
@@ -289,7 +310,7 @@ foreach(MODEL_SOURCE ${WIND_MODEL_SOURCES})
         VERBATIM
     )
 
-    list(APPEND WIND_MODEL_OUTPUTS
+  list(APPEND WIND_MODEL_OUTPUTS
         "${MODEL_OUTPUT}"
     )
 
@@ -308,14 +329,14 @@ string(TOLOWER "${CMAKE_BUILD_TYPE}" WIND_BUILD_TYPE_LOWER)
 
 if(WIND_BUILD_TYPE_LOWER STREQUAL "debug")
 
-    target_compile_definitions(wind
+  target_compile_definitions(wind
         PRIVATE
             RENDERER_DEBUG
     )
 
 elseif(WIND_BUILD_TYPE_LOWER STREQUAL "release")
 
-    target_compile_definitions(wind
+  target_compile_definitions(wind
         PRIVATE
             RENDERER_RELEASE
     )
