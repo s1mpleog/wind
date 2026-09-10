@@ -2,6 +2,7 @@
 
 #include "Check.hpp"
 #include "Definitions.hpp"
+#include "VulkanAllocator.hpp"
 #include "VulkanGenericPlatform.h"
 #include "VulkanQueue.hpp"
 #include "vulkan/vulkan.hpp"
@@ -76,7 +77,7 @@ class FVulkanDevice
 
 	void Destroy();
 
-	void InitGpu() noexcept;
+	void InitGpu(const vk::Instance InInstance) noexcept;
 
 	vk::Device GetHandle() const
 	{
@@ -141,7 +142,6 @@ class FVulkanDevice
 	void SetupPresentQueue(vk::SurfaceKHR Surface);
 
   private:
-	// void CreateDevice(FVulkanDeviceExtensionArray &WindExtensions);
 	void CreateDevice();
 
 	FVulkanPhysicalDeviceFeatures PhysicalDeviceFeatures;
@@ -158,9 +158,10 @@ class FVulkanDevice
 	vk::Device Device{VK_NULL_HANDLE};
 	vk::PhysicalDevice Gpu{VK_NULL_HANDLE};
 
-	// std::inplace_vector<std::unique_ptr<FVulkanQueue>, (uint32_t)EVulkanQueueType::Count> Queues;
 	std::array<std::unique_ptr<FVulkanQueue>, (uint32_t)EVulkanQueueType::Count> Queues;
 	FVulkanQueue *PresentQueue = nullptr;
 
 	std::vector<const char *> DeviceExtensions;
+
+	FVulkanAllocator Allocator;
 };

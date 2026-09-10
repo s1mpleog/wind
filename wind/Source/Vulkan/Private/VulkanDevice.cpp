@@ -183,7 +183,7 @@ void FVulkanDevice::CreateDevice()
 	}
 }
 
-void FVulkanDevice::InitGpu() noexcept
+void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
 {
 	QueueFamilyProps = Gpu.getQueueFamilyProperties2();
 	CHECK(QueueFamilyProps.size() >= 1, "Vulkan return zero queues this should not happen on normal GPU");
@@ -192,6 +192,9 @@ void FVulkanDevice::InitGpu() noexcept
 	PhysicalDeviceFeatures.Query(Gpu, vk::ApiVersion13);
 
 	CreateDevice();
+
+	// create allocator
+	Allocator = FVulkanAllocator(InInstance, Gpu, Device);
 }
 
 void FVulkanDevice::Destroy()

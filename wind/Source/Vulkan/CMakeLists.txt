@@ -36,7 +36,7 @@ target_sources(WindVulkan
         Private/VulkanSynchronization.cpp
         Private/VulkanCommandBuffer.cpp
         Private/VulkanContext.cpp
-)
+ "Private/VulkanAllocator.cpp")
 
 target_include_directories(WindVulkan
     PUBLIC
@@ -57,10 +57,10 @@ target_link_libraries(WindVulkan
     PUBLIC
         Vulkan::Headers
         SDL3::SDL3
+        GPUOpen::VulkanMemoryAllocator
 
     PRIVATE
         WindCore
-        #Vulkan::Vulkan
         volk
         spdlog::spdlog
 )
