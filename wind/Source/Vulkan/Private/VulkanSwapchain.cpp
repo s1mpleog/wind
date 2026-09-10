@@ -120,7 +120,13 @@ void FVulkanSwapChain::Create(FVulkanGenericPlatformWindowContext &WindowContext
 		    std::clamp(InHeight, SurfaceCapabilities.minImageExtent.height, SurfaceCapabilities.maxImageExtent.height);
 	}
 
+	vk::SwapchainPresentModesCreateInfoKHR PresentModesInfo{};
+	PresentModesInfo.presentModeCount = 1;
+	PresentModesInfo.pPresentModes = &*FifoPresentMode;
+
 	vk::SwapchainCreateInfoKHR SwapChainInfo{};
+	SwapChainInfo.pNext = &PresentModesInfo;
+
 	SwapChainInfo.oldSwapchain = nullptr;
 
 	vk::SwapchainKHR OldSwapchain = VK_NULL_HANDLE;

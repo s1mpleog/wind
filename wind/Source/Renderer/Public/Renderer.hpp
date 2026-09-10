@@ -18,15 +18,14 @@ struct FPresentationTarget
 class FVulkanRenderer
 {
   public:
-	static constexpr uint32_t MAX_FRAME_IN_FLIGHT = 3;
+	static constexpr uint32_t MAX_FRAME_IN_FLIGHT = 2;
 
 	FVulkanRenderer(FVulkanContext *InContext, FPresentationTarget &InPresentationTarget);
 	~FVulkanRenderer();
 
 	void Initialize();
 
-	// temporary
-	// use expected also
+	// temporary later event bus will pass width and height
 	FFrameResult BeginFrame(uint32_t InWidth, uint32_t InHeight);
 	void Draw();
 	FFrameResult EndFrame();

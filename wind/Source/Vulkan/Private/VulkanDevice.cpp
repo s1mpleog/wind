@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string_view>
 #include <vector>
 #include <vulkan/vulkan_core.h>
@@ -27,6 +28,15 @@ void FVulkanPhysicalDeviceFeatures::Query(vk::PhysicalDevice PhysicalDevice, uin
 		Core_1_3.pNext = &Core_1_4;
 	}
 }
+
+static bool IsExtensionAvailable(vk::PhysicalDevice Gpu, std::string_view RequestedExtension)
+{
+	// todo: can we ignore error ?
+	std::vector<vk::ExtensionProperties> DeviceExtensions = Gpu.enumerateDeviceExtensionProperties().value();
+
+	return std::ranges::any_of(DeviceExtensions, [&](const vk::ExtensionProperties &Extension)
+	                           { return std::string_view{Extension.extensionName} == RequestedExtension; });
+};
 
 // later FenceManager, MemoryManager
 FVulkanDevice::FVulkanDevice(vk::PhysicalDevice InGpu) : Device(VK_NULL_HANDLE), Gpu(InGpu)
@@ -51,6 +61,10 @@ void FVulkanDevice::CreateDevice()
 {
 	CHECK(Device == VK_NULL_HANDLE);
 
+	// optional
+	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT PageableMemory{};
+	vk::PhysicalDeviceMemoryPriorityFeaturesEXT MemoryPriority{};
+
 	// enable synchronization 2 and dynamic rendering since we are using profile we don't need to check for support
 	vk::PhysicalDeviceVulkan13Features Features13{};
 	Features13.dynamicRendering = vk::True;
@@ -59,9 +73,23 @@ void FVulkanDevice::CreateDevice()
 	vk::PhysicalDeviceSwapchainMaintenance1FeaturesEXT Maintenance1{};
 	Maintenance1.swapchainMaintenance1 = vk::True;
 
+	if (IsExtensionAvailable(Gpu, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) &&
+	    IsExtensionAvailable(Gpu, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME))
+	{
+		MemoryPriority.memoryPriority = vk::True;
+		PageableMemory.pageableDeviceLocalMemory = vk::True;
+
+		WIND_LOG(info,
+		         "Enabling optional extensions: MEMORY_PRIORITY_EXTENSION and PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION");
+
+		Maintenance1.pNext = &MemoryPriority;
+		MemoryPriority.pNext = &PageableMemory;
+	}
+
 	Features13.pNext = &Maintenance1;
 
 	vk::DeviceCreateInfo DeviceInfo{};
+
 	DeviceInfo.pNext = &Features13;
 
 	std::vector<vk::DeviceQueueCreateInfo> QueueFamilyInfos;
@@ -115,6 +143,14 @@ void FVulkanDevice::CreateDevice()
 	DeviceInfo.pQueueCreateInfos = QueueFamilyInfos.data();
 
 	std::vector<const char *> WindDeviceExtensions = GetWindDeviceExtensions();
+
+	// enable pageable device-local memory when available
+	if (IsExtensionAvailable(Gpu, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) &&
+	    IsExtensionAvailable(Gpu, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME))
+	{
+		WindDeviceExtensions.push_back(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
+		WindDeviceExtensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
+	}
 
 	DeviceInfo.enabledExtensionCount = WindDeviceExtensions.size();
 	DeviceInfo.ppEnabledExtensionNames = WindDeviceExtensions.data();
