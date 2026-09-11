@@ -229,7 +229,7 @@ void FVulkanCore::SelectDevice()
 
 void FVulkanCore::Initialize() noexcept
 {
-	Device->InitGpu();
+	Device->InitGpu(Instance);
 }
 
 // TODO: use Destroy() instead
