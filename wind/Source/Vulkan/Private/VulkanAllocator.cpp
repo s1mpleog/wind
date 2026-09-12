@@ -212,18 +212,19 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 	vk::CommandBufferBeginInfo CmdBufferBeginInfo{};
 	CommandBuffer->Begin(CmdBufferBeginInfo);
 
+	std::vector<FVulkanBuffer> StagingBuffers;
+	StagingBuffers.reserve(TextureInfos.size());
+
+	std::vector<FVulkanTexture> OutTextures;
+	OutTextures.reserve(TextureInfos.size());
+
 	for (auto &&[Index, TextureInfo] : std::views::enumerate(TextureInfos))
 	{
-		// for each texture
-		// create a staging buffer
-		// create vkImage
-		// create vkImageView
-		// create sampler
+		StagingBuffers.emplace_back(StagingAllocator.Upload(Allocator, TextureInfo.Pixels));
 
-		FVulkanBuffer StagingBuffer = StagingAllocator.Upload(Allocator, TextureInfo.Pixels);
-
+		//===========================Create Image======================================
 		vk::ImageCreateInfo ImageInfo{};
-		ImageInfo.extent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1.0F};
+		ImageInfo.extent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1};
 		ImageInfo.format = ToVk(TextureInfo.Format);
 		ImageInfo.imageType = vk::ImageType::e2D;
 		ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
@@ -232,7 +233,173 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 		ImageInfo.arrayLayers = 1;
 		ImageInfo.samples = vk::SampleCountFlagBits::e1;
 		ImageInfo.tiling = vk::ImageTiling::eOptimal;
+		// todo: accept usage in Info
+		ImageInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+
+		VmaAllocationCreateInfo ImageAllocationInfo{};
+		ImageAllocationInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+		VmaAllocation ImageAllocation{};
+		VkImage Image{};
+
+		// todo: if image creation failed then skip the current loop
+		// in result provide some info which texture create which failed etc
+		// and use expected
+		if (vmaCreateImage(Allocator, ImageInfo, &ImageAllocationInfo, &Image, &ImageAllocation, nullptr) != VK_SUCCESS)
+		{
+			spdlog::info("failed to create image");
+			return {};
+		}
+
+		//=====================Create Image View=============================
+		vk::ImageViewCreateInfo ImageViewInfo{};
+		ImageViewInfo.format = ToVk(TextureInfo.Format);
+		ImageViewInfo.image = Image;
+		// todo: don't hardcode
+		ImageViewInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		ImageViewInfo.viewType = vk::ImageViewType::e2D;
+
+		auto ImageView = Device.createImageView(ImageViewInfo);
+
+		if (!ImageView)
+		{
+			spdlog::info("failed to create image view: {}", vk::to_string(ImageView.error()));
+			return {};
+		}
+
+		//===============Transition the image from undefined to transferDst optimal==========
+		vk::ImageMemoryBarrier2 ImageTransitionBarrier{};
+
+		// ====initial layout is undefined so we don't care about producer side============
+
+		ImageTransitionBarrier.image = Image;
+
+		ImageTransitionBarrier.oldLayout = vk::ImageLayout::eUndefined;
+		// pick optimal layout for transfer
+		ImageTransitionBarrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+
+		// todo: later stop hardcoding this i have to support depth image also
+		ImageTransitionBarrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+
+		// Sync scope A happens-before Sync scope B
+		ImageTransitionBarrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
+		// producer memory op. this will be visible to consumer (here its none so ignore)
+		ImageTransitionBarrier.srcAccessMask = vk::AccessFlagBits2::eNone;
+
+		// consumer side the point is transfer and the operation will be write
+		// since we are copying from staging buffer -> image
+
+		// Sync scope B happens after Sync Scope A
+		ImageTransitionBarrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
+		// consumer memory operation
+		ImageTransitionBarrier.dstAccessMask = vk::AccessFlagBits2::eTransferWrite;
+
+		vk::DependencyInfo DepInfo{};
+		DepInfo.imageMemoryBarrierCount = 1;
+		DepInfo.pImageMemoryBarriers = &ImageTransitionBarrier;
+
+		CommandBuffer->GetHandle().pipelineBarrier2(DepInfo);
+
+		//=============== Copy Texels from staging buffer (cpu side) to Image (Gpu side)================
+
+		vk::BufferImageCopy2 CopyRegion{};
+		CopyRegion.imageSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
+		CopyRegion.imageExtent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1};
+
+		vk::CopyBufferToImageInfo2 CopyInfo{};
+
+		// copy from staging buffer to image
+		CopyInfo.srcBuffer = StagingBuffers[Index].Buffer;
+		CopyInfo.dstImage = Image;
+
+		CopyInfo.dstImageLayout = vk::ImageLayout::eTransferDstOptimal;
+		CopyInfo.regionCount = 1;
+		CopyInfo.pRegions = &CopyRegion;
+
+		CommandBuffer->GetHandle().copyBufferToImage2(CopyInfo);
+
+		//===============Transition image from TransferDst to ShaderReadOptimal===========
+		ImageTransitionBarrier.image = Image;
+
+		ImageTransitionBarrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+
+		ImageTransitionBarrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+		ImageTransitionBarrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+		// producer side
+		ImageTransitionBarrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
+		ImageTransitionBarrier.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
+
+		// =========dependency============
+
+		// consumer side
+		ImageTransitionBarrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
+		ImageTransitionBarrier.dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead;
+
+		DepInfo.imageMemoryBarrierCount = 1;
+		DepInfo.pImageMemoryBarriers = &ImageTransitionBarrier;
+
+		CommandBuffer->GetHandle().pipelineBarrier2(DepInfo);
+
+		// =================create sampler=================
+		vk::SamplerCreateInfo SamplerInfo{};
+
+		SamplerInfo.magFilter = vk::Filter::eLinear;
+		SamplerInfo.minFilter = vk::Filter::eLinear;
+		SamplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+
+		SamplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+		SamplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+		SamplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+
+		SamplerInfo.anisotropyEnable = vk::True;
+		SamplerInfo.maxAnisotropy = 16.0F;
+
+		SamplerInfo.minLod = 0.0F;
+		SamplerInfo.maxLod = vk::LodClampNone;
+		SamplerInfo.mipLodBias = 0.0F;
+
+		SamplerInfo.compareEnable = vk::False;
+		SamplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+		SamplerInfo.unnormalizedCoordinates = vk::False;
+
+		auto SamplerResult = Device.createSampler(SamplerInfo);
+
+		if (!SamplerResult)
+		{
+			spdlog::info("failed to create sampler: {}", vk::to_string(SamplerResult.error()));
+			return {};
+		}
+
+		OutTextures.emplace_back(Allocator, ImageAllocation, Device, Image, ImageView.value(), SamplerResult.value(),
+		                         ToVk(TextureInfo.Format), vk::Extent2D{TextureInfo.Width, TextureInfo.Height});
 	}
+
+	CommandBuffer->End();
+
+	vk::CommandBufferSubmitInfo CmdBufferSubmitInfo{};
+	CmdBufferSubmitInfo.commandBuffer = CommandBuffer->GetHandle();
+
+	vk::SubmitInfo2 SubmitInfo{};
+	SubmitInfo.commandBufferInfoCount = 1;
+	SubmitInfo.pCommandBufferInfos = &CmdBufferSubmitInfo;
+
+	auto SubmitResult = TransferQueue->GetHandle().submit2(SubmitInfo, Fence->GetHandle());
+
+	// todo: make sure to use expected
+	if (!SubmitResult)
+	{
+		// error
+		spdlog::info("submit failed: {}", vk::to_string(SubmitResult.error()));
+		return {};
+	}
+
+	spdlog::info("created texture");
+
+	// wait for gpu to finish before cleaning up staging buffer
+	Fence->Wait();
+
+	return OutTextures;
 }
 
 FVulkanAllocator::~FVulkanAllocator()

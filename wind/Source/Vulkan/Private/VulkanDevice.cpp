@@ -208,6 +208,21 @@ void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
 	std::vector<FVulkanBuffer> Buffer = Allocator->AllocateBuffers(std::move(VertexInfo));
 
 	WIND_LOG(info, "Buffer created successfully: {}", (void *)Buffer[0].Buffer);
+
+	constexpr std::array<std::byte, 16> TestBC7Block{
+	    std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+	    std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+	    std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
+	};
+
+	FVulkanTextureCreateInfo TextureInfo{
+	    .Format = ETextureFormat::BC7, .Width = 1920, .Height = 1080, .Pixels = TestBC7Block};
+
+	std::vector<FVulkanTexture> Textures = Allocator->AllocateTextures(std::move(TextureInfo));
+
+	WIND_LOG(info, "Texture created successfully: {}, {}, {}, {}x{}", (void *)Textures[0].Image,
+	         (void *)Textures[0].ImageView, (void *)Textures[0].Sampler, Textures[0].Extent.width,
+	         Textures[0].Extent.height);
 }
 
 void FVulkanDevice::Destroy()
