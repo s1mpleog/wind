@@ -75,6 +75,9 @@ void FVulkanDevice::CreateDevice()
 	vk::PhysicalDeviceSwapchainMaintenance1FeaturesEXT Maintenance1{};
 	Maintenance1.swapchainMaintenance1 = vk::True;
 
+	vk::PhysicalDeviceFeatures GpuFeatures{};
+	GpuFeatures.samplerAnisotropy = vk::True;
+
 	if (IsExtensionAvailable(Gpu, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) &&
 	    IsExtensionAvailable(Gpu, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME))
 	{
@@ -93,6 +96,7 @@ void FVulkanDevice::CreateDevice()
 	vk::DeviceCreateInfo DeviceInfo{};
 
 	DeviceInfo.pNext = &Features13;
+	DeviceInfo.pEnabledFeatures = &GpuFeatures;
 
 	std::vector<vk::DeviceQueueCreateInfo> QueueFamilyInfos;
 
@@ -216,7 +220,7 @@ void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
 	};
 
 	FVulkanTextureCreateInfo TextureInfo{
-	    .Format = ETextureFormat::BC7, .Width = 1920, .Height = 1080, .Pixels = TestBC7Block};
+	    .Format = ETextureFormat::BC7, .Width = 4, .Height = 4, .Pixels = TestBC7Block};
 
 	std::vector<FVulkanTexture> Textures = Allocator->AllocateTextures(std::move(TextureInfo));
 

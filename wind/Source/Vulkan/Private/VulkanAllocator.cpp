@@ -202,6 +202,15 @@ FVulkanAllocator::AllocateBuffers(std::span<const FVulkanBufferCreateInfo> Buffe
 	return OutBuffers;
 } // staging will get destroyed here automatically
 
+struct FTextureUploadContext
+{
+	VmaAllocation Allocation = VK_NULL_HANDLE;
+	vk::Image Image = VK_NULL_HANDLE;
+	vk::ImageView ImageView = VK_NULL_HANDLE;
+};
+
+// before using the Texture make sure to transition the Image to the prefered format
+// initially the format will be eTransferDstOptimal
 [[nodiscard]] std::vector<FVulkanTexture>
 FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> TextureInfos)
 {
@@ -217,6 +226,12 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 
 	std::vector<FVulkanTexture> OutTextures;
 	OutTextures.reserve(TextureInfos.size());
+
+	std::vector<FTextureUploadContext> UploadContext{};
+	UploadContext.reserve(TextureInfos.size());
+
+	std::vector<vk::ImageMemoryBarrier2> TransitionBarriers;
+	TransitionBarriers.reserve(TextureInfos.size());
 
 	for (auto &&[Index, TextureInfo] : std::views::enumerate(TextureInfos))
 	{
@@ -268,40 +283,44 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 		}
 
 		//===============Transition the image from undefined to transferDst optimal==========
-		vk::ImageMemoryBarrier2 ImageTransitionBarrier{};
+		vk::ImageMemoryBarrier2 TransitionBarrier{};
 
 		// ====initial layout is undefined so we don't care about producer side============
+		TransitionBarrier.image = Image;
 
-		ImageTransitionBarrier.image = Image;
-
-		ImageTransitionBarrier.oldLayout = vk::ImageLayout::eUndefined;
+		TransitionBarrier.oldLayout = vk::ImageLayout::eUndefined;
 		// pick optimal layout for transfer
-		ImageTransitionBarrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+		TransitionBarrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
 
 		// todo: later stop hardcoding this i have to support depth image also
-		ImageTransitionBarrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		TransitionBarrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
 
 		// Sync scope A happens-before Sync scope B
-		ImageTransitionBarrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
+		TransitionBarrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
 		// producer memory op. this will be visible to consumer (here its none so ignore)
-		ImageTransitionBarrier.srcAccessMask = vk::AccessFlagBits2::eNone;
+		TransitionBarrier.srcAccessMask = vk::AccessFlagBits2::eNone;
 
 		// consumer side the point is transfer and the operation will be write
 		// since we are copying from staging buffer -> image
 
 		// Sync scope B happens after Sync Scope A
-		ImageTransitionBarrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
+		TransitionBarrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
 		// consumer memory operation
-		ImageTransitionBarrier.dstAccessMask = vk::AccessFlagBits2::eTransferWrite;
+		TransitionBarrier.dstAccessMask = vk::AccessFlagBits2::eTransferWrite;
 
-		vk::DependencyInfo DepInfo{};
-		DepInfo.imageMemoryBarrierCount = 1;
-		DepInfo.pImageMemoryBarriers = &ImageTransitionBarrier;
+		TransitionBarriers.push_back(std::move(TransitionBarrier));
 
-		CommandBuffer->GetHandle().pipelineBarrier2(DepInfo);
+		UploadContext.emplace_back(ImageAllocation, Image, ImageView.value());
+	}
 
-		//=============== Copy Texels from staging buffer (cpu side) to Image (Gpu side)================
+	vk::DependencyInfo DepInfo{};
+	DepInfo.imageMemoryBarrierCount = static_cast<uint32_t>(TransitionBarriers.size());
+	DepInfo.pImageMemoryBarriers = TransitionBarriers.data();
 
+	CommandBuffer->GetHandle().pipelineBarrier2(DepInfo);
+
+	for (auto &&[Index, TextureInfo] : std::views::enumerate(TextureInfos))
+	{
 		vk::BufferImageCopy2 CopyRegion{};
 		CopyRegion.imageSubresource = {vk::ImageAspectFlagBits::eColor, 0, 0, 1};
 		CopyRegion.imageExtent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1};
@@ -310,38 +329,18 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 
 		// copy from staging buffer to image
 		CopyInfo.srcBuffer = StagingBuffers[Index].Buffer;
-		CopyInfo.dstImage = Image;
+		CopyInfo.dstImage = UploadContext[Index].Image;
 
 		CopyInfo.dstImageLayout = vk::ImageLayout::eTransferDstOptimal;
 		CopyInfo.regionCount = 1;
 		CopyInfo.pRegions = &CopyRegion;
 
 		CommandBuffer->GetHandle().copyBufferToImage2(CopyInfo);
+	}
 
-		//===============Transition image from TransferDst to ShaderReadOptimal===========
-		ImageTransitionBarrier.image = Image;
-
-		ImageTransitionBarrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
-
-		ImageTransitionBarrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
-		ImageTransitionBarrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-
-		// producer side
-		ImageTransitionBarrier.srcStageMask = vk::PipelineStageFlagBits2::eTransfer;
-		ImageTransitionBarrier.srcAccessMask = vk::AccessFlagBits2::eTransferWrite;
-
-		// =========dependency============
-
-		// consumer side
-		ImageTransitionBarrier.dstStageMask = vk::PipelineStageFlagBits2::eFragmentShader;
-		ImageTransitionBarrier.dstAccessMask = vk::AccessFlagBits2::eShaderSampledRead;
-
-		DepInfo.imageMemoryBarrierCount = 1;
-		DepInfo.pImageMemoryBarriers = &ImageTransitionBarrier;
-
-		CommandBuffer->GetHandle().pipelineBarrier2(DepInfo);
-
-		// =================create sampler=================
+	for (auto &&[Index, TextureInfo] : std::views::enumerate(TextureInfos))
+	{
+		// todo: later do sampler optimization create one sampler instead of N
 		vk::SamplerCreateInfo SamplerInfo{};
 
 		SamplerInfo.magFilter = vk::Filter::eLinear;
@@ -371,10 +370,12 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 			return {};
 		}
 
-		OutTextures.emplace_back(Allocator, ImageAllocation, Device, Image, ImageView.value(), SamplerResult.value(),
-		                         ToVk(TextureInfo.Format), vk::Extent2D{TextureInfo.Width, TextureInfo.Height});
+		OutTextures.emplace_back(Allocator, UploadContext[Index].Allocation, Device, UploadContext[Index].Image,
+		                         UploadContext[Index].ImageView, SamplerResult.value(), ToVk(TextureInfo.Format),
+		                         vk::Extent2D{TextureInfo.Width, TextureInfo.Height});
 	}
 
+	//===========Submit===============
 	CommandBuffer->End();
 
 	vk::CommandBufferSubmitInfo CmdBufferSubmitInfo{};
