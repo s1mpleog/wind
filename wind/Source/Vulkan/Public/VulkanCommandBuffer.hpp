@@ -62,13 +62,13 @@ class FVulkanCommandBufferPool
 		return Handle;
 	}
 
+	FVulkanCommandBuffer *Create();
+
   private:
 	FVulkanDevice &Device;
 	FVulkanQueue &Queue;
 	vk::CommandPool Handle = VK_NULL_HANDLE;
 	std::vector<FVulkanCommandBuffer *> CmdBuffers;
-
-	FVulkanCommandBuffer *Create();
 
 	// todo: better way to do it ?
 	friend class FVulkanContext;
