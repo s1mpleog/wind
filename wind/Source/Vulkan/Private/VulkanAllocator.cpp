@@ -202,6 +202,39 @@ FVulkanAllocator::AllocateBuffers(std::span<const FVulkanBufferCreateInfo> Buffe
 	return OutBuffers;
 } // staging will get destroyed here automatically
 
+[[nodiscard]] std::vector<FVulkanTexture>
+FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> TextureInfos)
+{
+	Fence->Wait();
+
+	Fence->Reset();
+
+	vk::CommandBufferBeginInfo CmdBufferBeginInfo{};
+	CommandBuffer->Begin(CmdBufferBeginInfo);
+
+	for (auto &&[Index, TextureInfo] : std::views::enumerate(TextureInfos))
+	{
+		// for each texture
+		// create a staging buffer
+		// create vkImage
+		// create vkImageView
+		// create sampler
+
+		FVulkanBuffer StagingBuffer = StagingAllocator.Upload(Allocator, TextureInfo.Pixels);
+
+		vk::ImageCreateInfo ImageInfo{};
+		ImageInfo.extent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1.0F};
+		ImageInfo.format = ToVk(TextureInfo.Format);
+		ImageInfo.imageType = vk::ImageType::e2D;
+		ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
+		ImageInfo.sharingMode = vk::SharingMode::eExclusive;
+		ImageInfo.mipLevels = 1;
+		ImageInfo.arrayLayers = 1;
+		ImageInfo.samples = vk::SampleCountFlagBits::e1;
+		ImageInfo.tiling = vk::ImageTiling::eOptimal;
+	}
+}
+
 FVulkanAllocator::~FVulkanAllocator()
 {
 	if (Allocator != VK_NULL_HANDLE)
