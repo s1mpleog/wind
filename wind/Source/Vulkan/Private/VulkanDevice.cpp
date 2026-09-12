@@ -2,12 +2,14 @@
 
 #include "Check.hpp"
 #include "Definitions.hpp"
+#include "VulkanAllocator.hpp"
 #include "VulkanCheck.hpp"
 #include "VulkanExtension.hpp"
 #include "VulkanQueue.hpp"
 #include "spdlog/spdlog.h"
 #include "vulkan/vulkan.hpp"
 
+#include <VulkanSynchronization.hpp>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -194,7 +196,18 @@ void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
 	CreateDevice();
 
 	// create allocator
-	Allocator = FVulkanAllocator(InInstance, Gpu, Device);
+	Allocator = std::make_unique<FVulkanAllocator>(
+	    InInstance, Gpu, Device,
+	    HasTransferQueue() ? Queues[(uint32_t)EVulkanQueueType::Transfer].get() : GetGraphicsQueue(),
+	    new FVulkanFence(*this));
+
+	std::array<float, 4> Vertices{0.01F, 0.02F, 1.0F, 0.5F};
+
+	FVulkanBufferCreateInfo VertexInfo{.Type = EBufferType::Vertex, .Data = std::as_bytes(std::span{Vertices})};
+
+	std::vector<FVulkanBuffer> Buffer = Allocator->AllocateBuffers(std::move(VertexInfo));
+
+	WIND_LOG(info, "Buffer created successfully: {}", (void *)Buffer[0].Buffer);
 }
 
 void FVulkanDevice::Destroy()

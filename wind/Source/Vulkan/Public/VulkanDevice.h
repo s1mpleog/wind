@@ -2,7 +2,6 @@
 
 #include "Check.hpp"
 #include "Definitions.hpp"
-#include "VulkanAllocator.hpp"
 #include "VulkanGenericPlatform.h"
 #include "VulkanQueue.hpp"
 #include "vulkan/vulkan.hpp"
@@ -12,6 +11,8 @@
 #include <memory>
 #include <vector>
 #include <vulkan/vulkan_core.h>
+
+class FVulkanAllocator;
 
 struct FOptionalVulkanDeviceExtensions
 {
@@ -163,5 +164,5 @@ class FVulkanDevice
 
 	std::vector<const char *> DeviceExtensions;
 
-	FVulkanAllocator Allocator;
+	std::unique_ptr<FVulkanAllocator> Allocator;
 };
