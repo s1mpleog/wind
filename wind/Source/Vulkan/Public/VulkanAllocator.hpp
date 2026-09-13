@@ -76,6 +76,9 @@ class FVulkanAllocator
 	[[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
 	AllocateTexturesUsingHostImageCopy(std::span<const FVulkanTextureCreateInfo> TextureInfos);
 
+	[[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
+	AllocateTexturesUsingStagingBuffer(std::span<const FVulkanTextureCreateInfo> TextureInfos);
+
 	[[nodiscard]] TAllocationResult<std::pair<VkImage, VmaAllocation>>
 	CreateImage(const FVulkanTextureCreateInfo &TextureInfo, bool bHostImageCopy = false);
 

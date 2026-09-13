@@ -47,7 +47,8 @@
     defined(VK_KHR_surface) && \
     defined(VK_KHR_surface_maintenance1) && \
     defined(VK_KHR_swapchain) && \
-    defined(VK_KHR_swapchain_maintenance1)
+    defined(VK_KHR_swapchain_maintenance1) && \
+    defined(VK_KHR_unified_image_layouts)
 #define VP_WIND_engine_2026 1
 #define VP_WIND_ENGINE_2026_NAME "VP_WIND_engine_2026"
 #define VP_WIND_ENGINE_2026_SPEC_VERSION 1
@@ -961,6 +962,7 @@ static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SWAPCHAIN_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, 1 },
+    VkExtensionProperties{ VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME, 1 },
 };
 
 static const VpFeatureDesc featureDesc = {
@@ -1937,6 +1939,7 @@ static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SWAPCHAIN_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, 1 },
+    VkExtensionProperties{ VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME, 1 },
 };
 
 static const VpFeatureDesc featureDesc = {

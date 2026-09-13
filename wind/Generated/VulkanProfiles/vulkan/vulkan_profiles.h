@@ -39,7 +39,8 @@
     defined(VK_KHR_surface) && \
     defined(VK_KHR_surface_maintenance1) && \
     defined(VK_KHR_swapchain) && \
-    defined(VK_KHR_swapchain_maintenance1)
+    defined(VK_KHR_swapchain_maintenance1) && \
+    defined(VK_KHR_unified_image_layouts)
 #define VP_WIND_engine_2026 1
 #define VP_WIND_ENGINE_2026_NAME "VP_WIND_engine_2026"
 #define VP_WIND_ENGINE_2026_SPEC_VERSION 1

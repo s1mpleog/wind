@@ -74,12 +74,6 @@ void FVulkanDevice::CreateDevice()
 	Features13.dynamicRendering = vk::True;
 	Features13.synchronization2 = vk::True;
 
-	vk::PhysicalDeviceSwapchainMaintenance1FeaturesEXT Maintenance1{};
-	Maintenance1.swapchainMaintenance1 = vk::True;
-
-	vk::PhysicalDeviceFeatures GpuFeatures{};
-	GpuFeatures.samplerAnisotropy = vk::True;
-
 	void *pNext = nullptr;
 
 	auto Chain = [&](auto &Feature)
@@ -87,6 +81,18 @@ void FVulkanDevice::CreateDevice()
 		Feature.pNext = pNext;
 		pNext = &Feature;
 	};
+
+	vk::PhysicalDeviceUnifiedImageLayoutsFeaturesKHR UnifiedImageLayouts{};
+	UnifiedImageLayouts.unifiedImageLayouts = vk::True;
+	UnifiedImageLayouts.unifiedImageLayoutsVideo = vk::False;
+
+	Chain(UnifiedImageLayouts);
+
+	vk::PhysicalDeviceSwapchainMaintenance1FeaturesEXT Maintenance1{};
+	Maintenance1.swapchainMaintenance1 = vk::True;
+
+	vk::PhysicalDeviceFeatures GpuFeatures{};
+	GpuFeatures.samplerAnisotropy = vk::True;
 
 	Chain(Maintenance1);
 

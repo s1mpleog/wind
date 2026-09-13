@@ -466,6 +466,7 @@ static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SWAPCHAIN_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, 1 },
+    VkExtensionProperties{ VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME, 1 },
 };
 
 static const VpFeatureDesc featureDesc = {
@@ -1442,6 +1443,7 @@ static const VkExtensionProperties deviceExtensions[] = {
     VkExtensionProperties{ VK_KHR_SHADER_UNTYPED_POINTERS_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SWAPCHAIN_EXTENSION_NAME, 1 },
     VkExtensionProperties{ VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME, 1 },
+    VkExtensionProperties{ VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME, 1 },
 };
 
 static const VpFeatureDesc featureDesc = {

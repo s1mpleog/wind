@@ -259,6 +259,9 @@ FVulkanAllocator::CreateImage(const FVulkanTextureCreateInfo &TextureInfo, bool 
 [[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
 FVulkanAllocator::AllocateTexturesUsingHostImageCopy(std::span<const FVulkanTextureCreateInfo> TextureInfos)
 {
+	std::vector<FVulkanTexture> OutTextures;
+	OutTextures.reserve(TextureInfos.size());
+
 	for (auto &&[Index, TextureInfo] : std::views::enumerate(TextureInfos))
 	{
 		if (TextureInfo.Width == 0 || TextureInfo.Height == 0)
@@ -275,16 +278,25 @@ FVulkanAllocator::AllocateTexturesUsingHostImageCopy(std::span<const FVulkanText
 
 		auto &[Image, ImageAllocation] = *ImageResult;
 
-		// no need to create staging buffer
+		// create texture initially so that we can take advantage of FVulkanTexture RAII
+		FVulkanTexture Texture{};
+		Texture.Allocator = Allocator;
+		Texture.Device = Device;
 
+		Texture.Image = Image;
+		Texture.Allocation = ImageAllocation;
+
+		// host to image copy
 		vk::MemoryToImageCopyEXT Region{};
+		// actual data
 		Region.pHostPointer = TextureInfo.Pixels.data();
 		Region.imageExtent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1};
 		Region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
 		Region.imageSubresource.layerCount = 1;
 
 		vk::CopyMemoryToImageInfoEXT MemoryToImage{};
-		MemoryToImage.dstImage = Image;
+		MemoryToImage.dstImage = Texture.Image;
+		MemoryToImage.dstImageLayout = vk::ImageLayout::eGeneral;
 		MemoryToImage.regionCount = 1;
 		MemoryToImage.pRegions = &Region;
 
@@ -295,20 +307,77 @@ FVulkanAllocator::AllocateTexturesUsingHostImageCopy(std::span<const FVulkanText
 		vk::HostImageLayoutTransitionInfoEXT ImageLayoutTransition{};
 		ImageLayoutTransition.oldLayout = vk::ImageLayout::eUndefined;
 		ImageLayoutTransition.newLayout = vk::ImageLayout::eGeneral;
-		ImageLayoutTransition.image = Image;
+		ImageLayoutTransition.image = Texture.Image;
 		ImageLayoutTransition.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+
+		// transition layout from undefined -> general and since we are using
+		// VK_KHR_unified_image_layouts using general have no performance penalty
+		if (auto TransitionResult = Device.transitionImageLayoutEXT(ImageLayoutTransition); !TransitionResult)
+		{
+			return std::unexpected(TranslateAllocationError(TransitionResult.error()));
+		}
+
+		if (auto CopyResult = Device.copyMemoryToImageEXT(MemoryToImage); !CopyResult)
+		{
+			return std::unexpected(TranslateAllocationError(CopyResult.error()));
+		}
+
+		vk::ImageViewCreateInfo ImageViewInfo{};
+		ImageViewInfo.format = ToVk(TextureInfo.Format);
+		ImageViewInfo.image = Texture.Image;
+		ImageViewInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		ImageViewInfo.viewType = vk::ImageViewType::e2D;
+
+		auto ImageView = Device.createImageView(ImageViewInfo);
+
+		if (!ImageView)
+		{
+			return std::unexpected(TranslateAllocationError(ImageView.error()));
+		}
+
+		Texture.ImageView = *ImageView;
+
+		vk::SamplerCreateInfo SamplerInfo{};
+
+		SamplerInfo.magFilter = vk::Filter::eLinear;
+		SamplerInfo.minFilter = vk::Filter::eLinear;
+		SamplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+
+		SamplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+		SamplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+		SamplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+
+		SamplerInfo.anisotropyEnable = vk::True;
+		SamplerInfo.maxAnisotropy = 16.0F;
+
+		SamplerInfo.minLod = 0.0F;
+		SamplerInfo.maxLod = vk::LodClampNone;
+		SamplerInfo.mipLodBias = 0.0F;
+
+		SamplerInfo.compareEnable = vk::False;
+		SamplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+		SamplerInfo.unnormalizedCoordinates = vk::False;
+
+		auto SamplerResult = Device.createSampler(SamplerInfo);
+
+		if (!SamplerResult)
+		{
+			return std::unexpected(TranslateAllocationError(SamplerResult.error()));
+		}
+
+		Texture.Sampler = *SamplerResult;
+		Texture.Extent = vk::Extent2D{TextureInfo.Width, TextureInfo.Height};
+		Texture.Format = ToVk(TextureInfo.Format);
+
+		OutTextures.push_back(std::move(Texture));
 	}
+
+	return OutTextures;
 }
 
 [[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
-FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> TextureInfos)
+FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanTextureCreateInfo> TextureInfos)
 {
-
-	if (bHostImageCopySupported)
-	{
-		AllocateTexturesUsingHostImageCopy(TextureInfos);
-	}
-
 	Fence->Wait();
 
 	Fence->Reset();
@@ -344,38 +413,21 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 
 		StagingBuffers.push_back(std::move(*StagingBuffer));
 
-		//===========================Create Image======================================
-		vk::ImageCreateInfo ImageInfo{};
-		ImageInfo.extent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1};
-		ImageInfo.format = ToVk(TextureInfo.Format);
-		ImageInfo.imageType = vk::ImageType::e2D;
-		ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
-		ImageInfo.sharingMode = vk::SharingMode::eExclusive;
-		ImageInfo.mipLevels = 1;
-		ImageInfo.arrayLayers = 1;
-		ImageInfo.samples = vk::SampleCountFlagBits::e1;
-		ImageInfo.tiling = vk::ImageTiling::eOptimal;
-		// todo: accept usage in Info
-		ImageInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+		//===========================Create Image=====================================
+		TAllocationResult<std::pair<VkImage, VmaAllocation>> ImageResult = CreateImage(TextureInfo, false);
 
-		VmaAllocationCreateInfo ImageAllocationInfo{};
-		ImageAllocationInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
-
-		VmaAllocation ImageAllocation{};
-		VkImage Image{};
-
-		if (VkResult Result =
-		        vmaCreateImage(Allocator, ImageInfo, &ImageAllocationInfo, &Image, &ImageAllocation, nullptr);
-		    Result != VK_SUCCESS)
+		if (!ImageResult)
 		{
-			return std::unexpected(TranslateAllocationError(Result));
+			return std::unexpected(ImageResult.error());
 		}
+
+		auto &[Image, ImageAllocation] = *ImageResult;
 
 		//=====================Create Image View=============================
 		vk::ImageViewCreateInfo ImageViewInfo{};
 		ImageViewInfo.format = ToVk(TextureInfo.Format);
 		ImageViewInfo.image = Image;
-		// todo: don't hardcode
+		// todo: don't hard code
 		ImageViewInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
 		ImageViewInfo.viewType = vk::ImageViewType::e2D;
 
@@ -388,35 +440,24 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 			return std::unexpected(TranslateAllocationError(ImageView.error()));
 		}
 
-		//===============Transition the image from undefined to transferDst optimal==========
+		//===============Transition the image from undefined to general==========
 		vk::ImageMemoryBarrier2 TransitionBarrier{};
-
-		// ====initial layout is undefined so we don't care about producer side============
 		TransitionBarrier.image = Image;
 
 		TransitionBarrier.oldLayout = vk::ImageLayout::eUndefined;
-		// pick optimal layout for transfer
-		TransitionBarrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+		TransitionBarrier.newLayout = vk::ImageLayout::eGeneral;
 
-		// todo: later stop hardcoding this i have to support depth image also
 		TransitionBarrier.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
 
-		// Sync scope A happens-before Sync scope B
 		TransitionBarrier.srcStageMask = vk::PipelineStageFlagBits2::eNone;
-		// producer memory op. this will be visible to consumer (here its none so ignore)
 		TransitionBarrier.srcAccessMask = vk::AccessFlagBits2::eNone;
 
-		// consumer side the point is transfer and the operation will be write
-		// since we are copying from staging buffer -> image
-
-		// Sync scope B happens after Sync Scope A
 		TransitionBarrier.dstStageMask = vk::PipelineStageFlagBits2::eTransfer;
-		// consumer memory operation
 		TransitionBarrier.dstAccessMask = vk::AccessFlagBits2::eTransferWrite;
 
 		TransitionBarriers.push_back(std::move(TransitionBarrier));
 
-		UploadContext.emplace_back(ImageAllocation, Image, ImageView.value());
+		UploadContext.emplace_back(ImageAllocation, Image, *ImageView);
 	}
 
 	vk::DependencyInfo DepInfo{};
@@ -437,7 +478,7 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 		CopyInfo.srcBuffer = StagingBuffers[Index].Buffer;
 		CopyInfo.dstImage = UploadContext[Index].Image;
 
-		CopyInfo.dstImageLayout = vk::ImageLayout::eTransferDstOptimal;
+		CopyInfo.dstImageLayout = vk::ImageLayout::eGeneral;
 		CopyInfo.regionCount = 1;
 		CopyInfo.pRegions = &CopyRegion;
 
@@ -505,6 +546,25 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 	Fence->Wait();
 
 	return OutTextures;
+}
+
+[[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
+FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> TextureInfos)
+{
+	// todo: query VkPhysicalDeviceHostImageCopyDevicePerformanceQueryEXT
+	if (bHostImageCopySupported)
+	{
+		spdlog::info("Allocating texture using host image copy");
+		// no cmd buffer recording no barriers no staging buffer no fence
+		return AllocateTexturesUsingHostImageCopy(TextureInfos);
+	}
+	else
+	{
+		spdlog::info("allocating texture using staging buffer");
+		// allocate using dedicated transfer queue, explicit cmd buffer recording
+		// fence and barrier
+		return AllocateTexturesUsingStagingBuffer(TextureInfos);
+	}
 }
 
 FVulkanAllocator::~FVulkanAllocator()

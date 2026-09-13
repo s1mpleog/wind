@@ -34,6 +34,7 @@ static inline std::vector<const char *> GetWindDeviceExtensions()
 	// WindExtensions.emplace_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 	// WindExtensions.emplace_back(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
 	WindExtensions.emplace_back(VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
+	WindExtensions.emplace_back(VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME);
 
 	FVulkanPlatform::GetDeviceExtensions(WindExtensions);
 
