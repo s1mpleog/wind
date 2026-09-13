@@ -26,8 +26,6 @@ struct FOptionalVulkanDeviceExtensions
 			uint64_t HasEXTLoadStoreOpNone : 1;
 			uint64_t HasEXTHostImageCopy : 1;
 			uint64_t HasExtDescriptorIndexing : 1;
-			uint64_t HasExtDynamicRendering : 1;
-			uint64_t HasKHRSynchronization2 : 1;
 		};
 		uint64_t Packed;
 	};
@@ -74,8 +72,6 @@ class FVulkanDevice
 	FVulkanDevice(FVulkanDevice &&) = default;
 	FVulkanDevice &operator=(FVulkanDevice &&) = default;
 
-	// ~FVulkanDevice();
-
 	void Destroy();
 
 	void InitGpu(const vk::Instance InInstance) noexcept;
@@ -112,7 +108,7 @@ class FVulkanDevice
 
 	void WaitUntilIdle()
 	{
-		// todod handle error ?
+		// todo: handle error ?
 		Device.waitIdle();
 	}
 

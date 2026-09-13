@@ -2,6 +2,7 @@
 
 #include "Check.hpp"
 #include "Definitions.hpp"
+#include "VulkanAllocationError.hpp"
 #include "VulkanAllocator.hpp"
 #include "VulkanCheck.hpp"
 #include "VulkanExtension.hpp"
@@ -66,6 +67,7 @@ void FVulkanDevice::CreateDevice()
 	// optional
 	vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT PageableMemory{};
 	vk::PhysicalDeviceMemoryPriorityFeaturesEXT MemoryPriority{};
+	vk::PhysicalDeviceHostImageCopyFeatures HostImageCopy{};
 
 	// enable synchronization 2 and dynamic rendering since we are using profile we don't need to check for support
 	vk::PhysicalDeviceVulkan13Features Features13{};
@@ -78,20 +80,36 @@ void FVulkanDevice::CreateDevice()
 	vk::PhysicalDeviceFeatures GpuFeatures{};
 	GpuFeatures.samplerAnisotropy = vk::True;
 
+	void *pNext = nullptr;
+
+	auto Chain = [&](auto &Feature)
+	{
+		Feature.pNext = pNext;
+		pNext = &Feature;
+	};
+
+	Chain(Maintenance1);
+
 	if (IsExtensionAvailable(Gpu, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME) &&
 	    IsExtensionAvailable(Gpu, VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME))
 	{
 		MemoryPriority.memoryPriority = vk::True;
 		PageableMemory.pageableDeviceLocalMemory = vk::True;
-
 		WIND_LOG(info,
 		         "Enabling optional extensions: MEMORY_PRIORITY_EXTENSION and PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION");
-
-		Maintenance1.pNext = &MemoryPriority;
-		MemoryPriority.pNext = &PageableMemory;
+		Chain(MemoryPriority);
+		Chain(PageableMemory);
 	}
 
-	Features13.pNext = &Maintenance1;
+	if (IsExtensionAvailable(Gpu, VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME))
+	{
+		HostImageCopy.hostImageCopy = vk::True;
+		Chain(HostImageCopy);
+		OptionalDeviceExtensions.HasEXTHostImageCopy = true;
+		WIND_LOG(info, "Enabling HOST_IMAGE_COPY optional feature");
+	}
+
+	Features13.pNext = pNext;
 
 	vk::DeviceCreateInfo DeviceInfo{};
 
@@ -158,6 +176,12 @@ void FVulkanDevice::CreateDevice()
 		WindDeviceExtensions.push_back(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
 	}
 
+	if (IsExtensionAvailable(Gpu, VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME))
+	{
+		WindDeviceExtensions.push_back(VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME);
+		WIND_LOG(info, "Using host_image_copy for texture allocation");
+	}
+
 	DeviceInfo.enabledExtensionCount = WindDeviceExtensions.size();
 	DeviceInfo.ppEnabledExtensionNames = WindDeviceExtensions.data();
 
@@ -203,15 +227,20 @@ void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
 	Allocator = std::make_unique<FVulkanAllocator>(
 	    InInstance, Gpu, Device,
 	    HasTransferQueue() ? Queues[(uint32_t)EVulkanQueueType::Transfer].get() : GetGraphicsQueue(),
-	    new FVulkanFence(*this));
+	    new FVulkanFence(*this), OptionalDeviceExtensions.HasEXTHostImageCopy == true);
 
 	std::array<float, 4> Vertices{0.01F, 0.02F, 1.0F, 0.5F};
 
 	FVulkanBufferCreateInfo VertexInfo{.Type = EBufferType::Vertex, .Data = std::as_bytes(std::span{Vertices})};
 
-	std::vector<FVulkanBuffer> Buffer = Allocator->AllocateBuffers(std::move(VertexInfo));
+	TAllocationResult<std::vector<FVulkanBuffer>> Buffers = Allocator->AllocateBuffers(VertexInfo);
 
-	WIND_LOG(info, "Buffer created successfully: {}", (void *)Buffer[0].Buffer);
+	if (!Buffers)
+	{
+		spdlog::info("buffer allocation failed");
+	}
+
+	WIND_LOG(info, "Buffer created successfully: {}", (void *)Buffers.value()[0].Buffer);
 
 	constexpr std::array<std::byte, 16> TestBC7Block{
 	    std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x00},
@@ -222,11 +251,11 @@ void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
 	FVulkanTextureCreateInfo TextureInfo{
 	    .Format = ETextureFormat::BC7, .Width = 4, .Height = 4, .Pixels = TestBC7Block};
 
-	std::vector<FVulkanTexture> Textures = Allocator->AllocateTextures(std::move(TextureInfo));
+	TAllocationResult<std::vector<FVulkanTexture>> Textures = Allocator->AllocateTextures(TextureInfo);
 
-	WIND_LOG(info, "Texture created successfully: {}, {}, {}, {}x{}", (void *)Textures[0].Image,
-	         (void *)Textures[0].ImageView, (void *)Textures[0].Sampler, Textures[0].Extent.width,
-	         Textures[0].Extent.height);
+	WIND_LOG(info, "Texture created successfully: {}, {}, {}, {}x{}", (void *)Textures.value()[0].Image,
+	         (void *)Textures.value()[0].ImageView, (void *)Textures.value()[0].Sampler,
+	         Textures.value()[0].Extent.width, Textures.value()[0].Extent.height);
 }
 
 void FVulkanDevice::Destroy()

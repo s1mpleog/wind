@@ -1,5 +1,6 @@
 #include "VulkanAllocator.hpp"
 
+#include "VulkanAllocationError.hpp"
 #include "VulkanCheck.hpp"
 #include "VulkanCommandBuffer.hpp"
 #include "VulkanQueue.hpp"
@@ -11,8 +12,9 @@
 #include <vulkan/vulkan.hpp>
 
 FVulkanAllocator::FVulkanAllocator(const vk::Instance Instance, const vk::PhysicalDevice Gpu, vk::Device InDevice,
-                                   FVulkanQueue *InTransferQueue, FVulkanFence *InFence)
-    : Device(InDevice), TransferQueue(InTransferQueue), Fence(InFence)
+                                   FVulkanQueue *InTransferQueue, FVulkanFence *InFence, bool bInHostImageCopySupported)
+    : Device(InDevice), TransferQueue(InTransferQueue), Fence(InFence),
+      bHostImageCopySupported(bInHostImageCopySupported)
 {
 	VmaVulkanFunctions Functions{};
 
@@ -35,7 +37,7 @@ FVulkanAllocator::FVulkanAllocator(const vk::Instance Instance, const vk::Physic
 }
 
 // TODO: expected for error handling
-FVulkanBuffer FStagingAllocator::Upload(VmaAllocator Allocator, std::span<const std::byte> Data)
+TAllocationResult<FVulkanBuffer> FStagingAllocator::Upload(VmaAllocator Allocator, std::span<const std::byte> Data)
 {
 	vk::BufferCreateInfo BufferInfo{};
 	BufferInfo.size = vk::DeviceSize{Data.size()};
@@ -55,9 +57,8 @@ FVulkanBuffer FStagingAllocator::Upload(VmaAllocator Allocator, std::span<const 
 	        vmaCreateBuffer(Allocator, BufferInfo, &AllocationCreateInfo, &Buffer, &Allocation, &AllocationInfo);
 	    Result != VK_SUCCESS)
 	{
-		spdlog::info("staging buffer allocation failed");
-		return {};
-	}
+		return std::unexpected(TranslateAllocationError(Result));
+	};
 
 	std::memcpy(AllocationInfo.pMappedData, Data.data(), Data.size());
 
@@ -68,7 +69,8 @@ FVulkanBuffer FStagingAllocator::Upload(VmaAllocator Allocator, std::span<const 
 	};
 }
 
-FVulkanBuffer FVulkanAllocator::UploadToDeviceLocal(const FVulkanBufferCreateInfo &InBufferCreateInfo)
+TAllocationResult<FVulkanBuffer>
+FVulkanAllocator::UploadToDeviceLocal(const FVulkanBufferCreateInfo &InBufferCreateInfo)
 {
 	const bool bIsUniformType = InBufferCreateInfo.Type == EBufferType::Uniform;
 
@@ -90,13 +92,12 @@ FVulkanBuffer FVulkanAllocator::UploadToDeviceLocal(const FVulkanBufferCreateInf
 	VkBuffer Buffer{};
 	VmaAllocation Allocation{};
 
-	// todo: handle error with expected
 	if (VkResult Result = vmaCreateBuffer(Allocator, BufferInfo, &AllocationCreateInfo, &Buffer, &Allocation,
 	                                      bIsUniformType ? &AllocationInfo : nullptr);
 	    Result != VK_SUCCESS)
 	{
-		return {};
-	}
+		return std::unexpected(TranslateAllocationError(Result));
+	};
 
 	// memcpy if its uniform buffer and data is not empty
 	if (bIsUniformType && !InBufferCreateInfo.Data.empty())
@@ -108,16 +109,16 @@ FVulkanBuffer FVulkanAllocator::UploadToDeviceLocal(const FVulkanBufferCreateInf
 	                     bIsUniformType ? AllocationInfo.pMappedData : nullptr};
 }
 
-[[nodiscard]] std::vector<FVulkanBuffer>
+[[nodiscard]] TAllocationResult<std::vector<FVulkanBuffer>>
 FVulkanAllocator::AllocateBuffers(std::span<const FVulkanBufferCreateInfo> BufferInfos)
 {
 	// during first allocation if fence is not signaled then it can hang forever
-	// so assuming inital fence is signaled we can wait for it at first it will return instant since
-	// initial fence is signaled then reset it to unsignaled and do operation
+	// so assuming initial fence is signaled we can wait for it at first it will return instant since
+	// initial fence is signaled then reset it to un-signaled and do operation
 
 	// wait for fence to be signaled
 	Fence->Wait();
-	// reset the fence to unsignaled because we can not sumbit with signaled fence
+	// reset the fence to un-signaled because we can not submit with signaled fence
 	Fence->Reset();
 
 	vk::CommandBufferBeginInfo BeginInfo{};
@@ -135,13 +136,23 @@ FVulkanAllocator::AllocateBuffers(std::span<const FVulkanBufferCreateInfo> Buffe
 
 		if (bNeedsStaging)
 		{
-			// upload to staging buffer then copy to device local
+			TAllocationResult<FVulkanBuffer> StagingBuffer = StagingAllocator.Upload(Allocator, BufferInfo.Data);
 
-			// staging buffer host visible + memcpy
-			StagingBuffers.emplace_back(StagingAllocator.Upload(Allocator, BufferInfo.Data));
+			if (!StagingBuffer)
+			{
+				return std::unexpected(StagingBuffer.error());
+			}
 
-			// device local buffer !host visible
-			OutBuffers.emplace_back(UploadToDeviceLocal(BufferInfo));
+			StagingBuffers.push_back(std::move(*StagingBuffer));
+
+			TAllocationResult<FVulkanBuffer> DeviceLocalBuffer = UploadToDeviceLocal(BufferInfo);
+
+			if (!DeviceLocalBuffer)
+			{
+				return std::unexpected(DeviceLocalBuffer.error());
+			}
+
+			OutBuffers.push_back(std::move(*DeviceLocalBuffer));
 
 			vk::BufferCopy2 CopyRegion{};
 			CopyRegion.size = vk::DeviceSize{BufferInfo.Data.size()};
@@ -158,9 +169,14 @@ FVulkanAllocator::AllocateBuffers(std::span<const FVulkanBufferCreateInfo> Buffe
 		}
 		else
 		{
-			// so here we don't have data and buffer type is not uniform
-			// just upload to device local that's it
-			OutBuffers.emplace_back(UploadToDeviceLocal(BufferInfo));
+			TAllocationResult<FVulkanBuffer> DeviceLocalBuffer = UploadToDeviceLocal(BufferInfo);
+
+			if (!DeviceLocalBuffer)
+			{
+				return std::unexpected(DeviceLocalBuffer.error());
+			}
+
+			OutBuffers.push_back(std::move(*DeviceLocalBuffer));
 		}
 	}
 
@@ -189,9 +205,7 @@ FVulkanAllocator::AllocateBuffers(std::span<const FVulkanBufferCreateInfo> Buffe
 	// todo: make sure to use expected
 	if (!SubmitResult)
 	{
-		// error
-		spdlog::info("submit failed: {}", vk::to_string(SubmitResult.error()));
-		return {};
+		return std::unexpected(TranslateAllocationError(SubmitResult.error()));
 	}
 
 	spdlog::info("created buffer");
@@ -209,11 +223,92 @@ struct FTextureUploadContext
 	vk::ImageView ImageView = VK_NULL_HANDLE;
 };
 
-// before using the Texture make sure to transition the Image to the prefered format
-// initially the format will be eTransferDstOptimal
-[[nodiscard]] std::vector<FVulkanTexture>
+[[nodiscard]] TAllocationResult<std::pair<VkImage, VmaAllocation>>
+FVulkanAllocator::CreateImage(const FVulkanTextureCreateInfo &TextureInfo, bool bHostImageCopy)
+{
+	vk::ImageCreateInfo ImageInfo{};
+	ImageInfo.extent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1};
+	ImageInfo.format = ToVk(TextureInfo.Format);
+	ImageInfo.imageType = vk::ImageType::e2D;
+	ImageInfo.initialLayout = vk::ImageLayout::eUndefined;
+	ImageInfo.sharingMode = vk::SharingMode::eExclusive;
+	ImageInfo.mipLevels = 1;
+	ImageInfo.arrayLayers = 1;
+	ImageInfo.samples = vk::SampleCountFlagBits::e1;
+	ImageInfo.tiling = vk::ImageTiling::eOptimal;
+	// todo: accept usage in Info
+	ImageInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled |=
+	    // images that use host image copy we need to specify the VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT usage flag
+	    bHostImageCopy ? vk::ImageUsageFlagBits::eHostTransferEXT : vk::ImageUsageFlags{};
+
+	VmaAllocationCreateInfo ImageAllocationInfo{};
+	ImageAllocationInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+
+	VmaAllocation ImageAllocation{};
+	VkImage Image{};
+
+	if (VkResult Result = vmaCreateImage(Allocator, ImageInfo, &ImageAllocationInfo, &Image, &ImageAllocation, nullptr);
+	    Result != VK_SUCCESS)
+	{
+		return std::unexpected(TranslateAllocationError(Result));
+	}
+
+	return std::make_pair(Image, ImageAllocation);
+}
+
+[[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
+FVulkanAllocator::AllocateTexturesUsingHostImageCopy(std::span<const FVulkanTextureCreateInfo> TextureInfos)
+{
+	for (auto &&[Index, TextureInfo] : std::views::enumerate(TextureInfos))
+	{
+		if (TextureInfo.Width == 0 || TextureInfo.Height == 0)
+		{
+			return std::unexpected(EAllocationError::InvalidCreateInfo);
+		}
+
+		TAllocationResult<std::pair<VkImage, VmaAllocation>> ImageResult = CreateImage(TextureInfo, true);
+
+		if (!ImageResult)
+		{
+			return std::unexpected(ImageResult.error());
+		}
+
+		auto &[Image, ImageAllocation] = *ImageResult;
+
+		// no need to create staging buffer
+
+		vk::MemoryToImageCopyEXT Region{};
+		Region.pHostPointer = TextureInfo.Pixels.data();
+		Region.imageExtent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1};
+		Region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+		Region.imageSubresource.layerCount = 1;
+
+		vk::CopyMemoryToImageInfoEXT MemoryToImage{};
+		MemoryToImage.dstImage = Image;
+		MemoryToImage.regionCount = 1;
+		MemoryToImage.pRegions = &Region;
+
+		// VK_EXT_host_image_copy also introduces a simplified way of doing the required image transition on the host
+		// This no longer requires a dedicated command buffer to submit the barrier
+		// We also no longer need multiple transitions, and only have to do one for the final layout
+
+		vk::HostImageLayoutTransitionInfoEXT ImageLayoutTransition{};
+		ImageLayoutTransition.oldLayout = vk::ImageLayout::eUndefined;
+		ImageLayoutTransition.newLayout = vk::ImageLayout::eGeneral;
+		ImageLayoutTransition.image = Image;
+		ImageLayoutTransition.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+	}
+}
+
+[[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
 FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> TextureInfos)
 {
+
+	if (bHostImageCopySupported)
+	{
+		AllocateTexturesUsingHostImageCopy(TextureInfos);
+	}
+
 	Fence->Wait();
 
 	Fence->Reset();
@@ -235,7 +330,19 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 
 	for (auto &&[Index, TextureInfo] : std::views::enumerate(TextureInfos))
 	{
-		StagingBuffers.emplace_back(StagingAllocator.Upload(Allocator, TextureInfo.Pixels));
+		if (TextureInfo.Width == 0 || TextureInfo.Height == 0)
+		{
+			return std::unexpected(EAllocationError::InvalidCreateInfo);
+		}
+
+		TAllocationResult<FVulkanBuffer> StagingBuffer = StagingAllocator.Upload(Allocator, TextureInfo.Pixels);
+
+		if (!StagingBuffer)
+		{
+			return std::unexpected(StagingBuffer.error());
+		}
+
+		StagingBuffers.push_back(std::move(*StagingBuffer));
 
 		//===========================Create Image======================================
 		vk::ImageCreateInfo ImageInfo{};
@@ -257,13 +364,11 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 		VmaAllocation ImageAllocation{};
 		VkImage Image{};
 
-		// todo: if image creation failed then skip the current loop
-		// in result provide some info which texture create which failed etc
-		// and use expected
-		if (vmaCreateImage(Allocator, ImageInfo, &ImageAllocationInfo, &Image, &ImageAllocation, nullptr) != VK_SUCCESS)
+		if (VkResult Result =
+		        vmaCreateImage(Allocator, ImageInfo, &ImageAllocationInfo, &Image, &ImageAllocation, nullptr);
+		    Result != VK_SUCCESS)
 		{
-			spdlog::info("failed to create image");
-			return {};
+			return std::unexpected(TranslateAllocationError(Result));
 		}
 
 		//=====================Create Image View=============================
@@ -278,8 +383,9 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 
 		if (!ImageView)
 		{
-			spdlog::info("failed to create image view: {}", vk::to_string(ImageView.error()));
-			return {};
+			// todo: cleanup image and allocation before return either use scope_exit
+			// or construct FVulkanTexture early
+			return std::unexpected(TranslateAllocationError(ImageView.error()));
 		}
 
 		//===============Transition the image from undefined to transferDst optimal==========
@@ -366,12 +472,12 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 
 		if (!SamplerResult)
 		{
-			spdlog::info("failed to create sampler: {}", vk::to_string(SamplerResult.error()));
-			return {};
+			// todo: same here image, allocation and image view will leak
+			return std::unexpected(TranslateAllocationError(SamplerResult.error()));
 		}
 
 		OutTextures.emplace_back(Allocator, UploadContext[Index].Allocation, Device, UploadContext[Index].Image,
-		                         UploadContext[Index].ImageView, SamplerResult.value(), ToVk(TextureInfo.Format),
+		                         UploadContext[Index].ImageView, *SamplerResult, ToVk(TextureInfo.Format),
 		                         vk::Extent2D{TextureInfo.Width, TextureInfo.Height});
 	}
 
@@ -390,9 +496,7 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 	// todo: make sure to use expected
 	if (!SubmitResult)
 	{
-		// error
-		spdlog::info("submit failed: {}", vk::to_string(SubmitResult.error()));
-		return {};
+		return std::unexpected(TranslateAllocationError(SubmitResult.error()));
 	}
 
 	spdlog::info("created texture");
