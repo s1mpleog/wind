@@ -123,8 +123,8 @@ FFrameResult FVulkanRenderer::BeginFrame(uint32_t InWidth, uint32_t InHeight)
 	//================Dynamic Rendering=============================
 
 	//[NVIDIA] Clearing image with format VK_FORMAT_B8G8R8A8_SRGB without a 1.0f or 0.0f clear color. The clear will not
-	//get compressed in the GPU, harming performance. This can be fixed using a clear color of VkClearColorValue{0.0f,
-	//0.0f, 0.0f, 0.0f}, or VkClearColorValue{1.0f, 1.0f, 1.0f, 1.0f}.
+	// get compressed in the GPU, harming performance. This can be fixed using a clear color of VkClearColorValue{0.0f,
+	// 0.0f, 0.0f, 0.0f}, or VkClearColorValue{1.0f, 1.0f, 1.0f, 1.0f}.
 	std::array<float, 4> ClearColor{1.0F, 1.0F, 1.0F, 1.0F};
 
 	// todo: let FVulkanCommandBuffer handle this
@@ -204,7 +204,7 @@ FFrameResult FVulkanRenderer::EndFrame()
 
 	// ==========consumer side================
 
-	// consumer point (syncrhonizes with producer side)
+	// consumer point (synchronizes with producer side)
 	// why None ? because presentation engine is not a part of vulkan its OS stuffs
 	// presentation engine is not a graphics pipeline layout vulkan have no control
 	// consumer point
@@ -295,7 +295,7 @@ FFrameResult FVulkanRenderer::EndFrame()
 	// which swapchain image we wanna present
 	PresentInfo.pImageIndices = &SwapChainImageIndex;
 
-	// there is weird issues with presntation and vulkan hpp use c api for it
+	// there is weird issues with presentation and vulkan hpp use c api for it
 	VkPresentInfoKHR PresentInfoC = static_cast<VkPresentInfoKHR>(PresentInfo);
 
 	VkResult PresentResult = vkQueuePresentKHR(Context->GetDevice()->GetPresentQueue()->GetHandle(), &PresentInfoC);

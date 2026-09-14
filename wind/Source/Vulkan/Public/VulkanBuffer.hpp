@@ -29,32 +29,6 @@ inline vk::BufferUsageFlags ToVk(EBufferType Type)
 	}
 };
 
-enum class ETextureFormat
-{
-	BC7,
-	BC5,
-	BC4,
-	BC1
-};
-
-inline vk::Format ToVk(ETextureFormat Format)
-{
-	switch (Format)
-	{
-	case ETextureFormat::BC7:
-		return vk::Format::eBc7SrgbBlock;
-	case ETextureFormat::BC5:
-		return vk::Format::eBc5UnormBlock;
-	case ETextureFormat::BC4:
-		return vk::Format::eBc4UnormBlock;
-	case ETextureFormat::BC1:
-		return vk::Format::eBc1RgbUnormBlock;
-
-	default:
-		std::unreachable();
-	}
-}
-
 struct FVulkanBufferCreateInfo
 {
 	EBufferType Type;

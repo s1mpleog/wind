@@ -1,10 +1,39 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <span>
 #include <utility>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
+
+enum class ETextureFormat : uint8_t
+{
+	BC7,
+	BC5,
+	BC4,
+	BC1,
+
+	Count
+};
+
+inline vk::Format ToVk(ETextureFormat Format)
+{
+	switch (Format)
+	{
+	case ETextureFormat::BC7:
+		return vk::Format::eBc7SrgbBlock;
+	case ETextureFormat::BC5:
+		return vk::Format::eBc5UnormBlock;
+	case ETextureFormat::BC4:
+		return vk::Format::eBc4UnormBlock;
+	case ETextureFormat::BC1:
+		return vk::Format::eBc1RgbUnormBlock;
+
+	default:
+		std::unreachable();
+	}
+}
 
 struct FVulkanTextureCreateInfo
 {
@@ -14,20 +43,21 @@ struct FVulkanTextureCreateInfo
 	std::span<const std::byte> Pixels;
 };
 
-struct FVulkanTexture
+class FVulkanTexture
 {
   public:
-	VmaAllocator Allocator = VK_NULL_HANDLE;
 	VmaAllocation Allocation = VK_NULL_HANDLE;
-	vk::Device Device = VK_NULL_HANDLE;
-
 	vk::Image Image = VK_NULL_HANDLE;
 	vk::ImageView ImageView = VK_NULL_HANDLE;
 	vk::Sampler Sampler = VK_NULL_HANDLE;
-	vk::Format Format;
+	vk::Format Format{};
 	vk::Extent2D Extent{};
 
-	FVulkanTexture() = default;
+	FVulkanTexture(VmaAllocator InAllocator, vk::Device InDevice)
+	    : Allocator(InAllocator), Allocation(VK_NULL_HANDLE), Device(InDevice), Image(VK_NULL_HANDLE),
+	      ImageView(VK_NULL_HANDLE), Sampler(VK_NULL_HANDLE), Format(), Extent()
+	{
+	}
 
 	FVulkanTexture(VmaAllocator InAllocator, VmaAllocation InAllocation, vk::Device InDevice, vk::Image InImage,
 	               vk::ImageView InImageView, vk::Sampler InSampler, vk::Format InFormat, vk::Extent2D InExtent)
@@ -111,4 +141,7 @@ struct FVulkanTexture
 		Format = {};
 		Extent = vk::Extent2D{};
 	};
+
+	VmaAllocator Allocator = VK_NULL_HANDLE;
+	vk::Device Device = VK_NULL_HANDLE;
 };

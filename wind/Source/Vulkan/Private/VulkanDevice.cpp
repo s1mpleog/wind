@@ -219,22 +219,14 @@ void FVulkanDevice::CreateDevice()
 	}
 }
 
-void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
+void FVulkanDevice::InitAllocator(const vk::Instance InInstance)
 {
-	QueueFamilyProps = Gpu.getQueueFamilyProperties2();
-	CHECK(QueueFamilyProps.size() >= 1, "Vulkan return zero queues this should not happen on normal GPU");
-
-	// TODO: later take version from somewhere else
-	PhysicalDeviceFeatures.Query(Gpu, vk::ApiVersion13);
-
-	CreateDevice();
-
-	// create allocator
 	Allocator = std::make_unique<FVulkanAllocator>(
 	    InInstance, Gpu, Device,
 	    HasTransferQueue() ? Queues[(uint32_t)EVulkanQueueType::Transfer].get() : GetGraphicsQueue(),
 	    new FVulkanFence(*this), OptionalDeviceExtensions.HasEXTHostImageCopy == true);
 
+	//==========testing=================
 	std::array<float, 4> Vertices{0.01F, 0.02F, 1.0F, 0.5F};
 
 	FVulkanBufferCreateInfo VertexInfo{.Type = EBufferType::Vertex, .Data = std::as_bytes(std::span{Vertices})};
@@ -262,6 +254,20 @@ void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
 	WIND_LOG(info, "Texture created successfully: {}, {}, {}, {}x{}", (void *)Textures.value()[0].Image,
 	         (void *)Textures.value()[0].ImageView, (void *)Textures.value()[0].Sampler,
 	         Textures.value()[0].Extent.width, Textures.value()[0].Extent.height);
+}
+
+void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
+{
+	QueueFamilyProps = Gpu.getQueueFamilyProperties2();
+	CHECK(QueueFamilyProps.size() >= 1, "Vulkan return zero queues this should not happen on normal GPU");
+
+	// TODO: later take version from somewhere else
+	PhysicalDeviceFeatures.Query(Gpu, vk::ApiVersion13);
+
+	CreateDevice();
+
+	// create allocator
+	InitAllocator(InInstance);
 }
 
 void FVulkanDevice::Destroy()

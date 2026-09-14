@@ -6,19 +6,43 @@
 #include "VulkanQueue.hpp"
 #include "VulkanSynchronization.hpp"
 
+#include <iterator>
 #include <ranges>
 #include <spdlog/spdlog.h>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 
-FVulkanAllocator::FVulkanAllocator(const vk::Instance Instance, const vk::PhysicalDevice Gpu, vk::Device InDevice,
+bool FVulkanAllocator::SupportsOptimalHostImageCopy(ETextureFormat Format) const
+{
+	vk::PhysicalDeviceImageFormatInfo2 FormatInfo{};
+	FormatInfo.format = ToVk(Format);
+	FormatInfo.type = vk::ImageType::e2D;
+	FormatInfo.tiling = vk::ImageTiling::eOptimal;
+	FormatInfo.usage = vk::ImageUsageFlagBits::eSampled;
+
+	auto Chain =
+	    Gpu.getImageFormatProperties2<vk::ImageFormatProperties2, vk::HostImageCopyDevicePerformanceQuery>(FormatInfo);
+
+	vk::HostImageCopyDevicePerformanceQuery &PerfQuery = Chain->get<vk::HostImageCopyDevicePerformanceQuery>();
+
+	if (PerfQuery.optimalDeviceAccess)
+	{
+		spdlog::info("optimal to use host image copy");
+		return true;
+	}
+
+	spdlog::info("not optimal to use host image copy");
+	return false;
+};
+
+FVulkanAllocator::FVulkanAllocator(const vk::Instance Instance, const vk::PhysicalDevice InGpu, vk::Device InDevice,
                                    FVulkanQueue *InTransferQueue, FVulkanFence *InFence, bool bInHostImageCopySupported)
-    : Device(InDevice), TransferQueue(InTransferQueue), Fence(InFence),
+    : Gpu(InGpu), Device(InDevice), TransferQueue(InTransferQueue), Fence(InFence),
       bHostImageCopySupported(bInHostImageCopySupported)
 {
 	VmaVulkanFunctions Functions{};
 
-	// todo: hardcode version for now
+	// todo: hard-code version for now
 	VmaAllocatorCreateInfo AllocatorInfo{
 	    .physicalDevice = Gpu, .device = Device, .instance = Instance, .vulkanApiVersion = VK_API_VERSION_1_3};
 
@@ -28,12 +52,18 @@ FVulkanAllocator::FVulkanAllocator(const vk::Instance Instance, const vk::Physic
 
 	VERIFYVULKANRESULT(vmaCreateAllocator(&AllocatorInfo, &Allocator));
 
-	spdlog::info("vma allocator created");
+	spdlog::info("VMA allocator created");
 
 	CommandBuffer = TransferQueue->AcquireCommandBufferPool()->Create();
 
 	// create signaled fence
 	Fence->Create(true);
+
+	// populates which texture format supports optimal host copy
+	for (uint8_t Index = 0; Index < OptimalHostImageCopySupport.size(); ++Index)
+	{
+		OptimalHostImageCopySupport[Index] = SupportsOptimalHostImageCopy(static_cast<ETextureFormat>(Index));
+	}
 }
 
 // TODO: expected for error handling
@@ -279,9 +309,7 @@ FVulkanAllocator::AllocateTexturesUsingHostImageCopy(std::span<const FVulkanText
 		auto &[Image, ImageAllocation] = *ImageResult;
 
 		// create texture initially so that we can take advantage of FVulkanTexture RAII
-		FVulkanTexture Texture{};
-		Texture.Allocator = Allocator;
-		Texture.Device = Device;
+		FVulkanTexture Texture{Allocator, Device};
 
 		Texture.Image = Image;
 		Texture.Allocation = ImageAllocation;
@@ -534,7 +562,6 @@ FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanText
 
 	auto SubmitResult = TransferQueue->GetHandle().submit2(SubmitInfo, Fence->GetHandle());
 
-	// todo: make sure to use expected
 	if (!SubmitResult)
 	{
 		return std::unexpected(TranslateAllocationError(SubmitResult.error()));
@@ -551,18 +578,29 @@ FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanText
 [[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
 FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> TextureInfos)
 {
-	// todo: query VkPhysicalDeviceHostImageCopyDevicePerformanceQueryEXT
 	if (bHostImageCopySupported)
 	{
 		spdlog::info("Allocating texture using host image copy");
-		// no cmd buffer recording no barriers no staging buffer no fence
+
+		std::vector<FVulkanTextureCreateInfo> HostCopyBatch;
+		std::vector<FVulkanTextureCreateInfo> StagingBatch;
+
+		// todo: is this good ? should we reserve here
+		HostCopyBatch.reserve(TextureInfos.size());
+		StagingBatch.reserve(TextureInfos.size());
+
+		// for now std::views::as_rvalue does not give any benefits since FVulkanTextureCreateInfo
+		// is only 24 bytes
+		std::ranges::partition_copy(TextureInfos | std::views::as_rvalue, std::back_inserter(HostCopyBatch),
+		                            std::back_inserter(StagingBatch), [&](const FVulkanTextureCreateInfo &Info)
+		                            { return OptimalHostImageCopySupport[(uint8_t)Info.Format]; });
+
+		// todo: split the allocation if StagingBatch is not empty
 		return AllocateTexturesUsingHostImageCopy(TextureInfos);
 	}
 	else
 	{
 		spdlog::info("allocating texture using staging buffer");
-		// allocate using dedicated transfer queue, explicit cmd buffer recording
-		// fence and barrier
 		return AllocateTexturesUsingStagingBuffer(TextureInfos);
 	}
 }

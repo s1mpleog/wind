@@ -140,6 +140,7 @@ class FVulkanDevice
 
   private:
 	void CreateDevice();
+	void InitAllocator(const vk::Instance InInstance);
 
 	FVulkanPhysicalDeviceFeatures PhysicalDeviceFeatures;
 	EGpuVendorId VendorId = EGpuVendorId::NotQueried;

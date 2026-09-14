@@ -36,7 +36,8 @@ target_sources(WindVulkan
         Private/VulkanSynchronization.cpp
         Private/VulkanCommandBuffer.cpp
         Private/VulkanContext.cpp
- "Private/VulkanAllocator.cpp")
+        Private/VulkanAllocator.cpp   
+)
 
 target_include_directories(WindVulkan
     PUBLIC
