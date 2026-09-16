@@ -26,10 +26,6 @@ void FVulkanContext::Initialize()
 		// init logical device creation
 		Core->Initialize();
 
-		// creates command pool
-		CommandBufferPool =
-		    std::make_unique<FVulkanCommandBufferPool>(*Core->GetDevice(), *Core->GetDevice()->GetGraphicsQueue());
-
 		bHasInitialized = true;
 	}
 }
@@ -41,16 +37,12 @@ FVulkanDevice *FVulkanContext::GetDevice() const
 
 FVulkanCommandBuffer *FVulkanContext::CreateGraphicsCommandBuffer()
 {
-	return CommandBufferPool->Create();
+	FVulkanCommandBufferPool *Pool = Core->GetDevice()->GetGraphicsQueue()->AcquireCommandBufferPool();
+	return Pool->Create();
 }
 
 FVulkanContext::~FVulkanContext()
 {
-	if (CommandBufferPool)
-	{
-		CommandBufferPool.reset();
-	}
-
 	if (Core)
 	{
 		Core.reset();

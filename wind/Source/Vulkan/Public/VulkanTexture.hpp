@@ -79,10 +79,8 @@ class FVulkanTexture
 	FVulkanTexture &operator=(const FVulkanTexture &) = delete;
 
 	FVulkanTexture(FVulkanTexture &&Other) noexcept
-	    : Allocator(std::exchange(Other.Allocator, VK_NULL_HANDLE)),
-	      Allocation(std::exchange(Other.Allocation, VK_NULL_HANDLE)),
-	      Device(std::exchange(Other.Device, VK_NULL_HANDLE)), Image(std::exchange(Other.Image, VK_NULL_HANDLE)),
-	      ImageView(std::exchange(Other.ImageView, VK_NULL_HANDLE)),
+	    : Allocator(Other.Allocator), Allocation(std::exchange(Other.Allocation, VK_NULL_HANDLE)), Device(Other.Device),
+	      Image(std::exchange(Other.Image, VK_NULL_HANDLE)), ImageView(std::exchange(Other.ImageView, VK_NULL_HANDLE)),
 	      Sampler(std::exchange(Other.Sampler, VK_NULL_HANDLE)), Format(std::exchange(Other.Format, {})),
 	      Extent(std::exchange(Other.Extent, {}))
 	{
@@ -94,9 +92,9 @@ class FVulkanTexture
 		{
 			Destroy();
 
-			Allocator = std::exchange(Other.Allocator, VK_NULL_HANDLE);
+			Allocator = Other.Allocator;
 			Allocation = std::exchange(Other.Allocation, VK_NULL_HANDLE);
-			Device = std::exchange(Other.Device, VK_NULL_HANDLE);
+			Device = Other.Device;
 
 			Image = std::exchange(Other.Image, VK_NULL_HANDLE);
 			ImageView = std::exchange(Other.ImageView, VK_NULL_HANDLE);

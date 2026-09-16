@@ -3,7 +3,7 @@
 #include "VulkanContext.hpp"
 #include "VulkanSynchronization.hpp"
 
-// todo: let context expose create fence and swapchain don't voilate the boundary
+// todo: let context expose create fence and swapchain don't violate the boundary
 FFrameContext::FFrameContext(FVulkanContext *Context)
     : InFlightFence(new FVulkanFence(*Context->GetDevice())), PresentFence(new FVulkanFence(*Context->GetDevice())),
       ImageAvailableSemaphore(new FVulkanSemaphore(*Context->GetDevice())),

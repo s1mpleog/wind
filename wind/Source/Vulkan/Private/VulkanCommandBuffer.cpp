@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <ranges>
+#include <spdlog/spdlog.h>
 
 FVulkanCommandBuffer::FVulkanCommandBuffer(FVulkanDevice &InDevice, FVulkanCommandBufferPool &InCommandBufferPool)
     : Device(InDevice), CommandBufferPool(InCommandBufferPool)

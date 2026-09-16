@@ -272,6 +272,10 @@ void FVulkanDevice::InitGpu(const vk::Instance InInstance) noexcept
 
 void FVulkanDevice::Destroy()
 {
+	Queues = {};
+
+	Allocator.reset();
+
 	if (Device != VK_NULL_HANDLE)
 	{
 		Device.destroy();

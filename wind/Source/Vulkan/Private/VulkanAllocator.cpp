@@ -18,7 +18,8 @@ bool FVulkanAllocator::SupportsOptimalHostImageCopy(ETextureFormat Format) const
 	FormatInfo.format = ToVk(Format);
 	FormatInfo.type = vk::ImageType::e2D;
 	FormatInfo.tiling = vk::ImageTiling::eOptimal;
-	FormatInfo.usage = vk::ImageUsageFlagBits::eSampled;
+	FormatInfo.usage = vk::ImageUsageFlagBits::eSampled |
+	                   (bHostImageCopySupported ? vk::ImageUsageFlagBits::eHostTransfer : vk::ImageUsageFlags{});
 
 	auto Chain =
 	    Gpu.getImageFormatProperties2<vk::ImageFormatProperties2, vk::HostImageCopyDevicePerformanceQuery>(FormatInfo);
@@ -106,8 +107,8 @@ FVulkanAllocator::UploadToDeviceLocal(const FVulkanBufferCreateInfo &InBufferCre
 
 	vk::BufferCreateInfo BufferInfo{};
 	// don't use TransferDst bit if buffer type is not uniform since it does need to be transfered to gpu
-	BufferInfo.usage = ToVk(InBufferCreateInfo.Type) |=
-	    !bIsUniformType ? vk::BufferUsageFlagBits::eTransferDst : vk::BufferUsageFlags{};
+	BufferInfo.usage = ToVk(InBufferCreateInfo.Type) |
+	                   (!bIsUniformType ? vk::BufferUsageFlagBits::eTransferDst : vk::BufferUsageFlags{});
 
 	BufferInfo.size = vk::DeviceSize{InBufferCreateInfo.Data.size()};
 	BufferInfo.sharingMode = vk::SharingMode::eExclusive;
@@ -248,9 +249,42 @@ FVulkanAllocator::AllocateBuffers(std::span<const FVulkanBufferCreateInfo> Buffe
 
 struct FTextureUploadContext
 {
+	vk::Device Device = VK_NULL_HANDLE;
+	VmaAllocator Allocator = VK_NULL_HANDLE;
 	VmaAllocation Allocation = VK_NULL_HANDLE;
 	vk::Image Image = VK_NULL_HANDLE;
 	vk::ImageView ImageView = VK_NULL_HANDLE;
+	vk::Sampler Sampler = VK_NULL_HANDLE;
+
+	FTextureUploadContext() = default;
+
+	FTextureUploadContext(const FTextureUploadContext &) = delete;
+	FTextureUploadContext &operator=(const FTextureUploadContext &) = delete;
+
+	FTextureUploadContext(FTextureUploadContext &&Other) noexcept
+	    : Device(Other.Device), Allocator(Other.Allocator), Allocation(std::exchange(Other.Allocation, VK_NULL_HANDLE)),
+	      Image(std::exchange(Other.Image, VK_NULL_HANDLE)), ImageView(std::exchange(Other.ImageView, VK_NULL_HANDLE)),
+	      Sampler(std::exchange(Other.Sampler, VK_NULL_HANDLE)) {};
+
+	FTextureUploadContext &operator=(FTextureUploadContext &&) = delete;
+
+	~FTextureUploadContext()
+	{
+		if (ImageView != VK_NULL_HANDLE)
+		{
+			Device.destroyImageView(ImageView);
+		}
+
+		if (Sampler != VK_NULL_HANDLE)
+		{
+			Device.destroySampler(Sampler);
+		}
+
+		if (Image != VK_NULL_HANDLE)
+		{
+			vmaDestroyImage(Allocator, Image, Allocation);
+		}
+	}
 };
 
 [[nodiscard]] TAllocationResult<std::pair<VkImage, VmaAllocation>>
@@ -267,9 +301,8 @@ FVulkanAllocator::CreateImage(const FVulkanTextureCreateInfo &TextureInfo, bool 
 	ImageInfo.samples = vk::SampleCountFlagBits::e1;
 	ImageInfo.tiling = vk::ImageTiling::eOptimal;
 	// todo: accept usage in Info
-	ImageInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled |=
-	    // images that use host image copy we need to specify the VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT usage flag
-	    bHostImageCopy ? vk::ImageUsageFlagBits::eHostTransferEXT : vk::ImageUsageFlags{};
+	ImageInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled |
+	                  (bHostImageCopy ? vk::ImageUsageFlagBits::eHostTransferEXT : vk::ImageUsageFlags{});
 
 	VmaAllocationCreateInfo ImageAllocationInfo{};
 	ImageAllocationInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
@@ -308,15 +341,12 @@ FVulkanAllocator::AllocateTexturesUsingHostImageCopy(std::span<const FVulkanText
 
 		auto &[Image, ImageAllocation] = *ImageResult;
 
-		// create texture initially so that we can take advantage of FVulkanTexture RAII
 		FVulkanTexture Texture{Allocator, Device};
-
 		Texture.Image = Image;
 		Texture.Allocation = ImageAllocation;
 
 		// host to image copy
 		vk::MemoryToImageCopyEXT Region{};
-		// actual data
 		Region.pHostPointer = TextureInfo.Pixels.data();
 		Region.imageExtent = vk::Extent3D{TextureInfo.Width, TextureInfo.Height, 1};
 		Region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
@@ -328,9 +358,9 @@ FVulkanAllocator::AllocateTexturesUsingHostImageCopy(std::span<const FVulkanText
 		MemoryToImage.regionCount = 1;
 		MemoryToImage.pRegions = &Region;
 
-		// VK_EXT_host_image_copy also introduces a simplified way of doing the required image transition on the host
-		// This no longer requires a dedicated command buffer to submit the barrier
-		// We also no longer need multiple transitions, and only have to do one for the final layout
+		// VK_EXT_host_image_copy also introduces a simplified way of doing the required image transition on the
+		// host This no longer requires a dedicated command buffer to submit the barrier We also no longer need
+		// multiple transitions, and only have to do one for the final layout
 
 		vk::HostImageLayoutTransitionInfoEXT ImageLayoutTransition{};
 		ImageLayoutTransition.oldLayout = vk::ImageLayout::eUndefined;
@@ -386,14 +416,14 @@ FVulkanAllocator::AllocateTexturesUsingHostImageCopy(std::span<const FVulkanText
 		SamplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 		SamplerInfo.unnormalizedCoordinates = vk::False;
 
-		auto SamplerResult = Device.createSampler(SamplerInfo);
+		auto Sampler = Device.createSampler(SamplerInfo);
 
-		if (!SamplerResult)
+		if (!Sampler)
 		{
-			return std::unexpected(TranslateAllocationError(SamplerResult.error()));
+			return std::unexpected(TranslateAllocationError(Sampler.error()));
 		}
 
-		Texture.Sampler = *SamplerResult;
+		Texture.Sampler = *Sampler;
 		Texture.Extent = vk::Extent2D{TextureInfo.Width, TextureInfo.Height};
 		Texture.Format = ToVk(TextureInfo.Format);
 
@@ -451,10 +481,18 @@ FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanText
 
 		auto &[Image, ImageAllocation] = *ImageResult;
 
+		FTextureUploadContext Context{};
+		Context.Device = Device;
+		Context.Allocator = Allocator;
+		Context.Allocation = ImageAllocation;
+		Context.Image = Image;
+
+		spdlog::info("image is: {}", (void *)Context.Image);
+
 		//=====================Create Image View=============================
 		vk::ImageViewCreateInfo ImageViewInfo{};
 		ImageViewInfo.format = ToVk(TextureInfo.Format);
-		ImageViewInfo.image = Image;
+		ImageViewInfo.image = Context.Image;
 		// todo: don't hard code
 		ImageViewInfo.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
 		ImageViewInfo.viewType = vk::ImageViewType::e2D;
@@ -463,14 +501,14 @@ FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanText
 
 		if (!ImageView)
 		{
-			// todo: cleanup image and allocation before return either use scope_exit
-			// or construct FVulkanTexture early
 			return std::unexpected(TranslateAllocationError(ImageView.error()));
 		}
 
+		Context.ImageView = *ImageView;
+
 		//===============Transition the image from undefined to general==========
 		vk::ImageMemoryBarrier2 TransitionBarrier{};
-		TransitionBarrier.image = Image;
+		TransitionBarrier.image = Context.Image;
 
 		TransitionBarrier.oldLayout = vk::ImageLayout::eUndefined;
 		TransitionBarrier.newLayout = vk::ImageLayout::eGeneral;
@@ -485,7 +523,7 @@ FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanText
 
 		TransitionBarriers.push_back(std::move(TransitionBarrier));
 
-		UploadContext.emplace_back(ImageAllocation, Image, *ImageView);
+		UploadContext.push_back(std::move(Context));
 	}
 
 	vk::DependencyInfo DepInfo{};
@@ -537,17 +575,29 @@ FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanText
 		SamplerInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
 		SamplerInfo.unnormalizedCoordinates = vk::False;
 
-		auto SamplerResult = Device.createSampler(SamplerInfo);
+		auto Sampler = Device.createSampler(SamplerInfo);
 
-		if (!SamplerResult)
+		if (!Sampler)
 		{
-			// todo: same here image, allocation and image view will leak
-			return std::unexpected(TranslateAllocationError(SamplerResult.error()));
+			return std::unexpected(TranslateAllocationError(Sampler.error()));
 		}
 
-		OutTextures.emplace_back(Allocator, UploadContext[Index].Allocation, Device, UploadContext[Index].Image,
-		                         UploadContext[Index].ImageView, *SamplerResult, ToVk(TextureInfo.Format),
-		                         vk::Extent2D{TextureInfo.Width, TextureInfo.Height});
+		FVulkanTexture Texture{Allocator,
+		                       UploadContext[Index].Allocation,
+		                       Device,
+		                       UploadContext[Index].Image,
+		                       UploadContext[Index].ImageView,
+		                       *Sampler,
+		                       ToVk(TextureInfo.Format),
+		                       vk::Extent2D{TextureInfo.Width, TextureInfo.Height}};
+
+		// todo: i don't like this we have to do this to prevent double free find a better solution
+		UploadContext[Index].Image = VK_NULL_HANDLE;
+		UploadContext[Index].ImageView = VK_NULL_HANDLE;
+		UploadContext[Index].Sampler = VK_NULL_HANDLE;
+		UploadContext[Index].Allocation = VK_NULL_HANDLE;
+
+		OutTextures.push_back(std::move(Texture));
 	}
 
 	//===========Submit===============
@@ -567,8 +617,6 @@ FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanText
 		return std::unexpected(TranslateAllocationError(SubmitResult.error()));
 	}
 
-	spdlog::info("created texture");
-
 	// wait for gpu to finish before cleaning up staging buffer
 	Fence->Wait();
 
@@ -580,29 +628,62 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 {
 	if (bHostImageCopySupported)
 	{
-		spdlog::info("Allocating texture using host image copy");
-
-		std::vector<FVulkanTextureCreateInfo> HostCopyBatch;
-		std::vector<FVulkanTextureCreateInfo> StagingBatch;
-
-		// todo: is this good ? should we reserve here
-		HostCopyBatch.reserve(TextureInfos.size());
-		StagingBatch.reserve(TextureInfos.size());
-
-		// for now std::views::as_rvalue does not give any benefits since FVulkanTextureCreateInfo
-		// is only 24 bytes
-		std::ranges::partition_copy(TextureInfos | std::views::as_rvalue, std::back_inserter(HostCopyBatch),
-		                            std::back_inserter(StagingBatch), [&](const FVulkanTextureCreateInfo &Info)
-		                            { return OptimalHostImageCopySupport[(uint8_t)Info.Format]; });
-
-		// todo: split the allocation if StagingBatch is not empty
-		return AllocateTexturesUsingHostImageCopy(TextureInfos);
-	}
-	else
-	{
 		spdlog::info("allocating texture using staging buffer");
 		return AllocateTexturesUsingStagingBuffer(TextureInfos);
 	}
+
+	// todo: maybe i don't need these complexity since the offline cooker gives us BC* formats only and they
+	// almost optimal host copy i can avoid these dances
+
+	std::vector<FVulkanTextureCreateInfo> HostCopyBatch;
+	std::vector<FVulkanTextureCreateInfo> StagingBatch;
+
+	// todo: is this good ? should we reserve here
+	HostCopyBatch.reserve(TextureInfos.size());
+	StagingBatch.reserve(TextureInfos.size());
+
+	std::ranges::partition_copy(TextureInfos, std::back_inserter(HostCopyBatch), std::back_inserter(StagingBatch),
+	                            [&](const FVulkanTextureCreateInfo &Info)
+	                            { return OptimalHostImageCopySupport[(uint8_t)Info.Format]; });
+
+	// fast path
+	if (StagingBatch.empty())
+	{
+		spdlog::info("Allocating textures using host image copy");
+		return AllocateTexturesUsingHostImageCopy(HostCopyBatch);
+	}
+
+	if (HostCopyBatch.empty())
+	{
+		return AllocateTexturesUsingStagingBuffer(StagingBatch);
+	}
+
+	// slow path another vector
+	std::vector<FVulkanTexture> OutTextures;
+	OutTextures.reserve(TextureInfos.size());
+
+	// FIXME: if ordering matters e.g. TextureInfos[i] -> OutTextures[i] then this is A bug
+	TAllocationResult<std::vector<FVulkanTexture>> HostTextures = AllocateTexturesUsingHostImageCopy(HostCopyBatch);
+
+	if (!HostTextures)
+	{
+		return std::unexpected(HostTextures.error());
+	}
+
+	// FVulkanTexture is a RAII handle so i don't have to destroy it manually in error block
+	TAllocationResult<std::vector<FVulkanTexture>> StagingTextures = AllocateTexturesUsingStagingBuffer(StagingBatch);
+
+	if (!StagingTextures)
+	{
+		return std::unexpected(StagingTextures.error());
+	}
+
+	// append_range will try to make copy by default but since FVulkanTexture texture is non-copyable
+	// it will fail so we have to use as_rvalue so it can invoke move constructor instead
+	OutTextures.append_range(*HostTextures | std::views::as_rvalue);
+	OutTextures.append_range(*StagingTextures | std::views::as_rvalue);
+
+	return OutTextures;
 }
 
 FVulkanAllocator::~FVulkanAllocator()

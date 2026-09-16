@@ -15,7 +15,7 @@ FVulkanQueue::FVulkanQueue(FVulkanDevice &InDevice, uint32_t InFamilyIndex, EVul
 };
 
 // FVulkanQueue owns FVulkanCommandBufferPool and FVulkanCommandBufferPool owns N FVulkanCommandBuffer
-// so each FVulkanQueue in FVulkanDevice have there own seperate cmd pool and cmd buffer
+// so each FVulkanQueue in FVulkanDevice have there own separate cmd pool and cmd buffer
 FVulkanCommandBufferPool *FVulkanQueue::AcquireCommandBufferPool()
 {
 	if (CommandBufferPool != nullptr)

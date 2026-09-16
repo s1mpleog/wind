@@ -44,8 +44,6 @@ struct FVulkanBuffer
 	void *MappedPtr = nullptr;
 
   public:
-	FVulkanBuffer() = default;
-
 	FVulkanBuffer(VmaAllocator InAllocator, vk::Buffer InBuffer, VmaAllocation InAllocation, EBufferType InType,
 	              void *InMappedPtr = nullptr)
 	    : Allocator(InAllocator), Buffer(InBuffer), Allocation(InAllocation), Type(InType), MappedPtr(InMappedPtr)
