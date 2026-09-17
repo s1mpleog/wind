@@ -36,6 +36,7 @@ target_sources(WindVulkan
         Private/VulkanSynchronization.cpp
         Private/VulkanCommandBuffer.cpp
         Private/VulkanContext.cpp
+        Private/VmaImpl.cpp
         Private/VulkanAllocator.cpp   
 )
 

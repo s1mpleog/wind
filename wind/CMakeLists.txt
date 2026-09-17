@@ -87,8 +87,7 @@ target_sources(wind
     PRIVATE
         Source/Main.cpp
         "Source/Engine/Private/Engine.cpp"
-
-        Source/VmaImpl.cpp
+        #"Source/Vulkan/Private/VmaImpl.cpp"
 )
 
 target_include_directories(wind
