@@ -1,11 +1,10 @@
 #pragma once
 
-#include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
-#include "ApplicationCore/Public/LinuxWindow.hpp"
-#include "Config.hpp"
+#include "Configuration.hpp"
+#include "GenericPlatform/GenericWindow.hpp"
+#include "LinuxWindow.hpp"
 #include "Renderer.hpp"
-#include "Vulkan/Public/Configuration.hpp"
-#include "Vulkan/Public/VulkanContext.hpp"
+#include "VulkanContext.hpp"
 
 class FEngine
 {
@@ -20,7 +19,7 @@ class FEngine
 
 	void Initialize();
 
-	void Run() WIND_NOEXCEPT;
+	void Run() noexcept;
 
 	void Destroy();
 

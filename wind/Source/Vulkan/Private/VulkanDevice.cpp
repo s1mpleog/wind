@@ -169,7 +169,7 @@ void FVulkanDevice::CreateDevice()
 	CHECK(!GraphicsFamilyIndex.value(), "Failed to find graphics queue for engine we need graphics queue for rendering "
 	                                    "can't continue without it... ");
 
-	DeviceInfo.queueCreateInfoCount = QueueFamilyInfos.size();
+	DeviceInfo.queueCreateInfoCount = static_cast<uint32_t>(QueueFamilyInfos.size());
 	DeviceInfo.pQueueCreateInfos = QueueFamilyInfos.data();
 
 	std::vector<const char *> WindDeviceExtensions = GetWindDeviceExtensions();
@@ -188,7 +188,7 @@ void FVulkanDevice::CreateDevice()
 		WIND_LOG(info, "Using host_image_copy for texture allocation");
 	}
 
-	DeviceInfo.enabledExtensionCount = WindDeviceExtensions.size();
+	DeviceInfo.enabledExtensionCount = static_cast<uint32_t>(WindDeviceExtensions.size());
 	DeviceInfo.ppEnabledExtensionNames = WindDeviceExtensions.data();
 
 	vk::ResultValueType<vk::Device>::type DeviceResult = Gpu.createDevice(DeviceInfo);

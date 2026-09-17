@@ -53,10 +53,12 @@ list(APPEND CMAKE_MODULE_PATH
 
 include(WindTargetDefaults)
 
+add_subdirectory(Source/Engine)
 add_subdirectory(Source/Core)
 add_subdirectory(Source/ApplicationCore)
 add_subdirectory(Source/Vulkan)
 add_subdirectory(Source/Renderer)
+#add_subdirectory(Source/Resources)
 
 add_executable(wind)
 
@@ -84,7 +86,7 @@ add_custom_command(TARGET wind POST_BUILD
 target_sources(wind
     PRIVATE
         Source/Main.cpp
-        Source/Engine.cpp
+        "Source/Engine/Private/Engine.cpp"
 
         Source/VmaImpl.cpp
 )
@@ -101,6 +103,8 @@ target_link_libraries(wind
         WindVulkan
         WindApplicationCore
         WindRenderer
+        #WindResources
+        WindEngine
         spdlog::spdlog
         cpptrace::cpptrace
         glm::glm

@@ -53,7 +53,7 @@ FVulkanAllocator::FVulkanAllocator(const vk::Instance Instance, const vk::Physic
 
 	VERIFYVULKANRESULT(vmaCreateAllocator(&AllocatorInfo, &Allocator));
 
-	spdlog::info("VMA allocator created");
+	WIND_LOG(info, "VMA Allocator created");
 
 	CommandBuffer = TransferQueue->AcquireCommandBufferPool()->Create();
 
@@ -302,6 +302,7 @@ FVulkanAllocator::CreateImage(const FVulkanTextureCreateInfo &TextureInfo, bool 
 	ImageInfo.tiling = vk::ImageTiling::eOptimal;
 	// todo: accept usage in Info
 	ImageInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled |
+	                  // we need eHostTransferEXT for host image copy
 	                  (bHostImageCopy ? vk::ImageUsageFlagBits::eHostTransferEXT : vk::ImageUsageFlags{});
 
 	VmaAllocationCreateInfo ImageAllocationInfo{};
@@ -626,7 +627,7 @@ FVulkanAllocator::AllocateTexturesUsingStagingBuffer(std::span<const FVulkanText
 [[nodiscard]] TAllocationResult<std::vector<FVulkanTexture>>
 FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> TextureInfos)
 {
-	if (bHostImageCopySupported)
+	if (!bHostImageCopySupported)
 	{
 		spdlog::info("allocating texture using staging buffer");
 		return AllocateTexturesUsingStagingBuffer(TextureInfos);
@@ -663,6 +664,8 @@ FVulkanAllocator::AllocateTextures(std::span<const FVulkanTextureCreateInfo> Tex
 	OutTextures.reserve(TextureInfos.size());
 
 	// FIXME: if ordering matters e.g. TextureInfos[i] -> OutTextures[i] then this is A bug
+	// but since FResourceManager will wrap `this` and it will provide handles i don't think
+	// i need to worry about that for now
 	TAllocationResult<std::vector<FVulkanTexture>> HostTextures = AllocateTexturesUsingHostImageCopy(HostCopyBatch);
 
 	if (!HostTextures)

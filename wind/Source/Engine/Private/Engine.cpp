@@ -1,10 +1,10 @@
 #include "Engine.hpp"
 
-#include "ApplicationCore/Public/GenericPlatform/GenericWindow.hpp"
 #include "Check.hpp"
-#include "Renderer/Public/FrameContext.hpp"
-#include "Renderer/Public/Renderer.hpp"
-#include "Vulkan/Public/VulkanContext.hpp"
+#include "FrameContext.hpp"
+#include "GenericPlatform/GenericWindow.hpp"
+#include "Renderer.hpp"
+#include "VulkanContext.hpp"
 #include "VulkanGenericPlatform.h"
 
 #include <SDL3/SDL_timer.h>
@@ -21,9 +21,6 @@ void FEngine::Initialize()
 
 	Context.Initialize();
 
-	// create renderer once context is valid
-
-	// create a presentation target for renderer
 	FPresentationTarget Target{.WindowContext = FVulkanGenericPlatformWindowContext(Window.GetOSWindowHandle()),
 	                           .Width = Window.GetWidth(),
 	                           .Height = Window.GetHeight()};
@@ -32,9 +29,11 @@ void FEngine::Initialize()
 	CHECK(Renderer);
 
 	Renderer->Initialize();
+
+	// build scene manager pipelines etc
 }
 
-void FEngine::Run() WIND_NOEXCEPT
+void FEngine::Run() noexcept
 {
 	bool bIsRunning = true;
 

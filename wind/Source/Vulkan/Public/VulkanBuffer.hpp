@@ -52,11 +52,11 @@ struct FVulkanBuffer
 
 	FVulkanBuffer(VmaAllocator InAllocator, vk::Buffer InBuffer, VmaAllocation InAllocation,
 	              void *InMappedPtr = nullptr)
-	    : Allocator(InAllocator), Buffer(InBuffer), Allocation(InAllocation), Type(EBufferType::Vertex),
-	      MappedPtr(InMappedPtr)
+	    : Allocator(InAllocator), Buffer(InBuffer), Allocation(InAllocation), MappedPtr(InMappedPtr)
 	{
 	}
 
+	// non-copyable
 	FVulkanBuffer(const FVulkanBuffer &) = delete;
 	FVulkanBuffer &operator=(const FVulkanBuffer &) = delete;
 

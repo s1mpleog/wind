@@ -30,6 +30,7 @@ class FFrameContext
 	{
 		return CmdBuffer;
 	}
+
 	inline FVulkanFence *GetPresentFence()
 	{
 		return PresentFence;

@@ -62,7 +62,14 @@ struct FWindAsset
 	std::vector<FWindMaterial> Materials;
 };
 
-WIND_NODISCARD WIND_INLINE auto DecodeWindAsset(std::span<const uint8> Buffer) WIND_NOEXCEPT -> TWindResult<FWindAsset>
+// temp
+enum class EWindLoaderError : uint8_t
+{
+};
+
+using WindLoaderResult<FWindAsset, EWindLoaderError>;
+
+[[nodiscard]] inline TWindResult<FWindAsset> DecodeWindAsset(std::span<const uint8_t> Buffer) noexcept
 {
 	size_t Cursor{0};
 

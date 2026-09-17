@@ -24,6 +24,9 @@ class FStagingAllocator
 class FVulkanAllocator
 {
   public:
+	using Buffer = FVulkanBuffer;
+	using Texture = FVulkanTexture;
+
 	FVulkanAllocator(const vk::Instance Instance, const vk::PhysicalDevice InGpu, vk::Device InDevice,
 	                 FVulkanQueue *InTransferQueue, FVulkanFence *InFence, bool bInHostImageCopySupported);
 
@@ -33,9 +36,8 @@ class FVulkanAllocator
 	FVulkanAllocator(FVulkanAllocator &&Other) noexcept
 	    : Allocator(std::exchange(Other.Allocator, VK_NULL_HANDLE)),
 	      StagingAllocator(std::move(Other.StagingAllocator)), Gpu(std::exchange(Other.Gpu, VK_NULL_HANDLE)),
-	      Device(std::exchange(Other.Device, VK_NULL_HANDLE)),
-	      TransferQueue(std::exchange(Other.TransferQueue, nullptr)),
-	      CommandBuffer(std::exchange(Other.CommandBuffer, nullptr)), Fence(std::exchange(Other.Fence, nullptr)),
+	      Device(Other.Device), TransferQueue(Other.TransferQueue), CommandBuffer(Other.CommandBuffer),
+	      Fence(std::exchange(Other.Fence, nullptr)),
 	      bHostImageCopySupported(std::exchange(Other.bHostImageCopySupported, false)) {};
 
 	FVulkanAllocator &operator=(FVulkanAllocator &&Other) = delete;
