@@ -105,7 +105,7 @@ target_link_libraries(wind
         #WindResources
         WindEngine
         spdlog::spdlog
-        cpptrace::cpptrace
+        # cpptrace::cpptrace
         glm::glm
 
         GPUOpen::VulkanMemoryAllocator
@@ -117,6 +117,7 @@ target_precompile_headers(wind
         <vulkan/vulkan_raii.hpp>
         <spdlog/spdlog.h>
         <ranges>
+        <vulkan/vulkan_profiles.h>
 
         # "${CMAKE_CURRENT_SOURCE_DIR}/Source/Config.hpp"
         # "${CMAKE_CURRENT_SOURCE_DIR}/Source/Utils/ExpectedUtil.hpp"
@@ -168,7 +169,7 @@ if(WIND_RENDERER_WARNINGS_AS_ERRORS)
 endif()
 
 if(WIND_VALIDATION)
-    target_compile_definitions(wind
+  target_compile_definitions(wind
         PRIVATE
             WIND_VULKAN_VALIDATION
     )

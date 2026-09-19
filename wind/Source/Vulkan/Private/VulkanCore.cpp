@@ -67,15 +67,15 @@ static vk::PhysicalDevice SelectPhysicalDevice(const vk::Instance &Instance,
 	                  [](const FPhysicalDeviceInfo &Lhs, const FPhysicalDeviceInfo &Rhs)
 	                  {
 		                  if (Lhs.PhysicalDeviceProperties2.properties.deviceType ==
-		                      Rhs.PhysicalDeviceProperties2.properties.deviceType)
+						      Rhs.PhysicalDeviceProperties2.properties.deviceType)
 		                  {
 			                  return Lhs.OriginalIndex < Rhs.OriginalIndex;
 		                  }
 
 		                  // prefer Discrete gpu first
 		                  return (Lhs.PhysicalDeviceProperties2.properties.deviceType ==
-		                          vk::PhysicalDeviceType::eDiscreteGpu) ||
-		                         (Rhs.PhysicalDeviceProperties2.properties.deviceType == vk::PhysicalDeviceType::eCpu);
+						          vk::PhysicalDeviceType::eDiscreteGpu) ||
+						         (Rhs.PhysicalDeviceProperties2.properties.deviceType == vk::PhysicalDeviceType::eCpu);
 	                  });
 
 	CHECK(!PhysicalDeviceInfos.empty(), "Failed to find any valid suitable Device for Engine...");

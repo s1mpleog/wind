@@ -306,6 +306,8 @@ FFrameResult FVulkanRenderer::EndFrame()
 	}
 
 	CurrentFrame = (CurrentFrame + 1) % MAX_FRAME_IN_FLIGHT;
+
+	return {};
 }
 
 FVulkanRenderer::~FVulkanRenderer()
